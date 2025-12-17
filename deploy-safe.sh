@@ -6,7 +6,7 @@ set -euo pipefail
 # Rol ayrımı: uploads/ git dışı kalır, rsync ile taşınır.
 
 APP_DIR="${APP_DIR:-/home/yunlu/b2b-app}"
-PM2_PROCESS="${PM2_PROCESS:-b2b-trade-pro}"
+PM2_PROCESS="${PM2_PROCESS:-b2b-live b2b-trade-pro}"
 BRANCH="${BRANCH:-main}"
 
 cd "$APP_DIR"
@@ -20,7 +20,11 @@ git checkout "$BRANCH"
 echo "Pulling..."
 git pull --ff-only origin "$BRANCH"
 
-echo "Restarting PM2 process: $PM2_PROCESS"
-pm2 restart "$PM2_PROCESS"
+echo "Restarting PM2 process(es): $PM2_PROCESS"
+for p in $PM2_PROCESS; do
+  if pm2 describe "$p" >/dev/null 2>&1; then
+    pm2 restart "$p"
+  fi
+done
 
 echo "Done. Smoke test: https://b2b.irazoto.com"
