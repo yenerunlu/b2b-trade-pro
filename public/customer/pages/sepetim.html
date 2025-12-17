@@ -1684,10 +1684,6 @@
 
         async function removeItemDirect(index) {
             try {
-                if (!confirm('Bu ürünü sepetinizden kaldırmak istediğinizden emin misiniz?')) {
-                    return;
-                }
-
                 cart.splice(index, 1);
                 
                 const updatedSelections = new Set();
@@ -1712,10 +1708,6 @@
         async function deleteSelectedItems() {
             if (selectedItems.size === 0) return;
             
-            if (!confirm(`Seçilen ${selectedItems.size} ürünü sepetinizden kaldırmak istediğinizden emin misiniz?`)) {
-                return;
-            }
-            
             try {
                 const indices = Array.from(selectedItems).sort((a, b) => b - a);
                 
@@ -1738,6 +1730,13 @@
 
         function saveCartToStorage() {
             localStorage.setItem('b2b_cart', JSON.stringify(cart));
+
+            try {
+                const ch = new BroadcastChannel('b2b_cart_channel');
+                ch.postMessage({ type: 'cart_updated', ts: Date.now() });
+                ch.close();
+            } catch (e) {
+            }
         }
 
         function updateCartUI() {

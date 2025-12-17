@@ -26,6 +26,186 @@ class B2BSearchController {
         return 'text';
     }
 
+    async meiliSearchEnriched(req, res) {
+        const startTime = Date.now();
+        const {
+            query,
+            customerCode = (req.user && (req.user.cari_kodu || req.user.customerCode)) || 'S1981',
+            limit = 100,
+            offset = 0,
+            manufacturerCodes = [],
+            vehicleModels = []
+        } = req.body || {};
+
+        try {
+            const manufacturerFilter = Array.from(Array.isArray(manufacturerCodes) ? manufacturerCodes : [])
+                .map(v => String(v || '').trim())
+                .filter(Boolean);
+            const vehicleModelFilter = Array.from(Array.isArray(vehicleModels) ? vehicleModels : [])
+                .map(v => String(v || '').trim())
+                .filter(Boolean);
+            const hasAnyFilter = manufacturerFilter.length > 0 || vehicleModelFilter.length > 0;
+
+            const q = String(query || '').trim();
+            if (!q && !hasAnyFilter) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Arama yapın veya filtre seçin'
+                });
+            }
+
+            const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
+            const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
+
+            // Filter-only search: do NOT use Meilisearch with '*' because it returns arbitrary hits.
+            // Instead, query Logo DB directly with pagination so that manufacturer/model filters always work.
+            if (!q && hasAnyFilter) {
+                const activeWarehouses = await this.getActiveWarehouses(customerCode);
+                const { rows: logoRows, total } = await this.getLogoProductsByFiltersPaginated({
+                    limit: safeLimit,
+                    offset: safeOffset,
+                    manufacturerCodes: manufacturerFilter,
+                    vehicleModels: vehicleModelFilter
+                });
+
+                const products = (logoRows || []).map(item => {
+                    const centralStock = Number(item.central_stock || 0);
+                    const ikitelliStock = Number(item.ikitelli_stock || 0);
+                    const bostanciStock = Number(item.bostanci_stock || 0);
+                    const depotStock = Number(item.depot_stock || 0);
+
+                    const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
+                        if (inv === 0) return sum + centralStock;
+                        if (inv === 1) return sum + ikitelliStock;
+                        if (inv === 2) return sum + bostanciStock;
+                        if (inv === 3) return sum + depotStock;
+                        return sum;
+                    }, 0);
+
+                    const unitPrice = this.formatPrice(item.price || 0);
+                    const currencyCode = Number(item.currency_code || 160);
+
+                    return {
+                        code: item.item_code,
+                        name: item.item_name,
+                        oemCode: item.oem_code,
+                        manufacturer: item.manufacturer,
+                        centralStock,
+                        ikitelliStock,
+                        bostanciStock,
+                        depotStock,
+                        unitPrice,
+                        currencyCode,
+                        finalPrice: unitPrice,
+                        totalDiscountRate: 0,
+                        discounts: [],
+                        totalStock
+                    };
+                });
+
+                products.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
+
+                return res.json({
+                    success: true,
+                    query: '',
+                    total_results: Number(total || 0),
+                    results: products,
+                    response_time_ms: Date.now() - startTime
+                });
+            }
+
+            const meiliQuery = q || '*';
+            const meiliResult = await meiliSearchService.search(meiliQuery, {
+                limit: safeLimit,
+                offset: safeOffset
+            });
+
+            const meiliHits = (meiliResult && Array.isArray(meiliResult.hits)) ? meiliResult.hits : [];
+            const logicalrefs = Array.from(
+                new Set(
+                    meiliHits
+                        .map(h => h && h.id)
+                        .filter(v => Number.isFinite(Number(v)))
+                        .map(v => Number(v))
+                )
+            );
+
+            if (logicalrefs.length === 0) {
+                return res.json({
+                    success: true,
+                    query: meiliQuery,
+                    total_results: 0,
+                    results: [],
+                    response_time_ms: Date.now() - startTime
+                });
+            }
+
+            const activeWarehouses = await this.getActiveWarehouses(customerCode);
+            const logoRows = await this.getLogoProductsByLogicalrefs(logicalrefs, safeLimit, {
+                manufacturerCodes: manufacturerFilter,
+                vehicleModels: vehicleModelFilter
+            });
+
+            const products = (logoRows || []).map(item => {
+                const centralStock = Number(item.central_stock || 0);
+                const ikitelliStock = Number(item.ikitelli_stock || 0);
+                const bostanciStock = Number(item.bostanci_stock || 0);
+                const depotStock = Number(item.depot_stock || 0);
+
+                const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
+                    if (inv === 0) return sum + centralStock;
+                    if (inv === 1) return sum + ikitelliStock;
+                    if (inv === 2) return sum + bostanciStock;
+                    if (inv === 3) return sum + depotStock;
+                    return sum;
+                }, 0);
+
+                const unitPrice = this.formatPrice(item.price || 0);
+                const currencyCode = Number(item.currency_code || 160);
+
+                return {
+                    code: item.item_code,
+                    name: item.item_name,
+                    oemCode: item.oem_code,
+                    manufacturer: item.manufacturer,
+                    centralStock,
+                    ikitelliStock,
+                    bostanciStock,
+                    depotStock,
+                    unitPrice,
+                    currencyCode,
+                    finalPrice: unitPrice,
+                    totalDiscountRate: 0,
+                    discounts: [],
+                    totalStock
+                };
+            });
+
+            products.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
+
+            const totalResults =
+                (typeof meiliResult?.estimatedTotalHits === 'number')
+                    ? meiliResult.estimatedTotalHits
+                    : (typeof meiliResult?.nbHits === 'number')
+                        ? meiliResult.nbHits
+                        : products.length;
+
+            res.json({
+                success: true,
+                query: meiliQuery,
+                total_results: totalResults,
+                results: products,
+                response_time_ms: Date.now() - startTime
+            });
+        } catch (error) {
+            console.error('❌ Meili enriched search error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Arama sırasında bir hata oluştu'
+            });
+        }
+    }
+
     async getCustomerStockVisibility(customerCode) {
         try {
             const pool = await sql.connect(b2bConfig);
@@ -200,7 +380,19 @@ class B2BSearchController {
     // 7.1 AKILLI ARAMA API'Sİ (LOGO LOGOGO3 tabanlı basit ürün araması)
     async smartSearch(req, res) {
         const startTime = Date.now();
-        const { query, customerCode = 'S1981' } = req.body || {};
+	    const {
+	        query,
+	        customerCode = 'S1981',
+	        manufacturerCodes = [],
+	        vehicleModels = []
+	    } = req.body || {};
+
+	    const manufacturerFilter = Array.from(Array.isArray(manufacturerCodes) ? manufacturerCodes : [])
+	        .map(v => String(v || '').trim())
+	        .filter(Boolean);
+	    const vehicleModelFilter = Array.from(Array.isArray(vehicleModels) ? vehicleModels : [])
+	        .map(v => String(v || '').trim())
+	        .filter(Boolean);
 
         try {
             if (!query || query.trim().length < 2) {
@@ -243,7 +435,7 @@ class B2BSearchController {
             let matchType = (helperResult && helperResult.type) ? helperResult.type : 'UNKNOWN';
             let groupId = null;
 
-            if (meiliUsed) {
+	            if (meiliUsed) {
                 const logicalrefs = Array.from(
                     new Set(
                         (meiliHits || [])
@@ -253,8 +445,11 @@ class B2BSearchController {
                     )
                 );
 
-                const logoRows = await this.getLogoProductsByLogicalrefs(logicalrefs);
-                products = logoRows.map(item => {
+	                const logoRows = await this.getLogoProductsByLogicalrefs(logicalrefs, 50, {
+	                    manufacturerCodes: manufacturerFilter,
+	                    vehicleModels: vehicleModelFilter
+	                });
+	                products = logoRows.map(item => {
                     const centralStock = Number(item.central_stock || 0);
                     const ikitelliStock = Number(item.ikitelli_stock || 0);
                     const bostanciStock = Number(item.bostanci_stock || 0);
@@ -295,7 +490,7 @@ class B2BSearchController {
                 products.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
             }
 
-            if (helperResult && (helperResult.type === 'GROUP_MATCH' || helperResult.type === 'OEM_MATCH') && Array.isArray(helperResult.groups) && helperResult.groups.length > 0) {
+	            if (helperResult && (helperResult.type === 'GROUP_MATCH' || helperResult.type === 'OEM_MATCH') && Array.isArray(helperResult.groups) && helperResult.groups.length > 0) {
                 const bestGroup = helperResult.groups[0];
                 groupId = bestGroup.group_id || null;
 
@@ -308,7 +503,10 @@ class B2BSearchController {
                     )
                 );
 
-                const logoRows = await this.getLogoProductsByLogicalrefs(logicalrefs);
+                const logoRows = await this.getLogoProductsByLogicalrefs(logicalrefs, 50, {
+                    manufacturerCodes: manufacturerFilter,
+                    vehicleModels: vehicleModelFilter
+                });
                 products = logoRows.map(item => {
                     const centralStock = Number(item.central_stock || 0);
                     const ikitelliStock = Number(item.ikitelli_stock || 0);
@@ -348,7 +546,10 @@ class B2BSearchController {
                 });
             } else {
                 if (!meiliUsed) {
-                    const fallback = await this.getLogoProductsBySearchQuery(query);
+                    const fallback = await this.getLogoProductsBySearchQuery(query, 50, {
+                        manufacturerCodes: manufacturerFilter,
+                        vehicleModels: vehicleModelFilter
+                    });
                     products = fallback.map(item => {
                     const centralStock = Number(item.central_stock || 0);
                     const ikitelliStock = Number(item.ikitelli_stock || 0);
@@ -437,13 +638,39 @@ class B2BSearchController {
         }
     }
 
-    async getLogoProductsByLogicalrefs(logicalrefs, limit = 50) {
+    async getLogoProductsByLogicalrefs(logicalrefs, limit = 50, filters = {}) {
         if (!Array.isArray(logicalrefs) || logicalrefs.length === 0) return [];
+
+	    const manufacturerCodes = Array.from(Array.isArray(filters.manufacturerCodes) ? filters.manufacturerCodes : [])
+	        .map(v => String(v || '').trim())
+	        .filter(Boolean);
+	    const vehicleModels = Array.from(Array.isArray(filters.vehicleModels) ? filters.vehicleModels : [])
+	        .map(v => String(v || '').trim())
+	        .filter(Boolean);
 
         const pool = await sql.connect(logoConfig);
         const request = pool.request();
         request.input('refs', sql.NVarChar(sql.MAX), logicalrefs.join(','));
         request.input('limit', sql.Int, limit);
+
+	    const manufacturerPlaceholders = manufacturerCodes.map((v, i) => {
+	        const key = `m${i}`;
+	        request.input(key, sql.NVarChar(50), v);
+	        return `@${key}`;
+	    });
+
+	    const vehiclePlaceholders = vehicleModels.map((v, i) => {
+	        const key = `vm${i}`;
+	        request.input(key, sql.NVarChar(100), v);
+	        return `@${key}`;
+	    });
+
+	    const manufacturerWhere = manufacturerPlaceholders.length > 0
+	        ? ` AND I.STGRPCODE IN (${manufacturerPlaceholders.join(', ')})`
+	        : '';
+	    const vehicleWhere = vehiclePlaceholders.length > 0
+	        ? ` AND I.SPECODE IN (${vehiclePlaceholders.join(', ')})`
+	        : '';
 
         const query = `
             SELECT TOP (@limit)
@@ -480,6 +707,8 @@ class B2BSearchController {
                   SELECT TRY_CAST(value AS INT)
                   FROM STRING_SPLIT(@refs, ',')
               )
+              ${manufacturerWhere}
+              ${vehicleWhere}
             GROUP BY 
                 I.LOGICALREF,
                 I.CODE,
@@ -493,11 +722,37 @@ class B2BSearchController {
         return result.recordset || [];
     }
 
-    async getLogoProductsBySearchQuery(query, limit = 50) {
+    async getLogoProductsBySearchQuery(query, limit = 50, filters = {}) {
         const pool = await sql.connect(logoConfig);
         const request = pool.request();
         request.input('searchQuery', sql.NVarChar(100), `%${query}%`);
         request.input('limit', sql.Int, limit);
+
+	    const manufacturerCodes = Array.from(Array.isArray(filters.manufacturerCodes) ? filters.manufacturerCodes : [])
+	        .map(v => String(v || '').trim())
+	        .filter(Boolean);
+	    const vehicleModels = Array.from(Array.isArray(filters.vehicleModels) ? filters.vehicleModels : [])
+	        .map(v => String(v || '').trim())
+	        .filter(Boolean);
+
+	    const manufacturerPlaceholders = manufacturerCodes.map((v, i) => {
+	        const key = `m${i}`;
+	        request.input(key, sql.NVarChar(50), v);
+	        return `@${key}`;
+	    });
+
+	    const vehiclePlaceholders = vehicleModels.map((v, i) => {
+	        const key = `vm${i}`;
+	        request.input(key, sql.NVarChar(100), v);
+	        return `@${key}`;
+	    });
+
+	    const manufacturerWhere = manufacturerPlaceholders.length > 0
+	        ? ` AND I.STGRPCODE IN (${manufacturerPlaceholders.join(', ')})`
+	        : '';
+	    const vehicleWhere = vehiclePlaceholders.length > 0
+	        ? ` AND I.SPECODE IN (${vehiclePlaceholders.join(', ')})`
+	        : '';
 
         const sqlQuery = `
             SELECT TOP (@limit)
@@ -538,6 +793,8 @@ class B2BSearchController {
                  OR I.PRODUCERCODE LIKE @searchQuery
                  OR I.STGRPCODE LIKE @searchQuery
               )
+              ${manufacturerWhere}
+              ${vehicleWhere}
             GROUP BY 
                 I.LOGICALREF,
                 I.CODE,
@@ -549,6 +806,104 @@ class B2BSearchController {
 
         const result = await request.query(sqlQuery);
         return result.recordset || [];
+    }
+
+    async getLogoProductsByFiltersPaginated({ limit = 50, offset = 0, manufacturerCodes = [], vehicleModels = [] } = {}) {
+        const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+        const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
+
+        const manufacturerFilter = Array.from(Array.isArray(manufacturerCodes) ? manufacturerCodes : [])
+            .map(v => String(v || '').trim())
+            .filter(Boolean);
+        const vehicleModelFilter = Array.from(Array.isArray(vehicleModels) ? vehicleModels : [])
+            .map(v => String(v || '').trim())
+            .filter(Boolean);
+
+        const pool = await sql.connect(logoConfig);
+        const request = pool.request();
+        request.input('limit', sql.Int, safeLimit);
+        request.input('offset', sql.Int, safeOffset);
+
+        const manufacturerPlaceholders = manufacturerFilter.map((v, i) => {
+            const key = `mfp${i}`;
+            request.input(key, sql.NVarChar(50), v);
+            return `@${key}`;
+        });
+
+        const vehiclePlaceholders = vehicleModelFilter.map((v, i) => {
+            const key = `vmfp${i}`;
+            request.input(key, sql.NVarChar(100), v);
+            return `@${key}`;
+        });
+
+        const manufacturerWhere = manufacturerPlaceholders.length > 0
+            ? ` AND I.STGRPCODE IN (${manufacturerPlaceholders.join(', ')})`
+            : '';
+        const vehicleWhere = vehiclePlaceholders.length > 0
+            ? ` AND I.SPECODE IN (${vehiclePlaceholders.join(', ')})`
+            : '';
+
+        const countQuery = `
+            SELECT COUNT(DISTINCT I.LOGICALREF) AS total
+            FROM LG_013_ITEMS I
+            WHERE I.ACTIVE = 0
+              AND I.CARDTYPE = 1
+              ${manufacturerWhere}
+              ${vehicleWhere}
+        `;
+
+        const listQuery = `
+            SELECT
+                I.LOGICALREF,
+                I.CODE AS item_code,
+                I.NAME AS item_name,
+                I.PRODUCERCODE AS oem_code,
+                I.STGRPCODE AS manufacturer,
+                ISNULL(SUM(CASE WHEN S.INVENNO IN (0,1,2,3) THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS stock_qty,
+                ISNULL(SUM(CASE WHEN S.INVENNO = 0 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS central_stock,
+                ISNULL(SUM(CASE WHEN S.INVENNO = 1 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS ikitelli_stock,
+                ISNULL(SUM(CASE WHEN S.INVENNO = 2 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS bostanci_stock,
+                ISNULL(SUM(CASE WHEN S.INVENNO = 3 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS depot_stock,
+                (
+                    SELECT TOP 1 P.PRICE
+                    FROM LG_013_PRCLIST P
+                    WHERE P.CARDREF = I.LOGICALREF
+                      AND P.ACTIVE = 0
+                      AND P.PRIORITY = 0
+                    ORDER BY P.BEGDATE DESC
+                ) AS price,
+                (
+                    SELECT TOP 1 P.CURRENCY
+                    FROM LG_013_PRCLIST P
+                    WHERE P.CARDREF = I.LOGICALREF
+                      AND P.ACTIVE = 0
+                      AND P.PRIORITY = 0
+                    ORDER BY P.BEGDATE DESC
+                ) AS currency_code
+            FROM LG_013_ITEMS I
+            LEFT JOIN LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
+            WHERE I.ACTIVE = 0
+              AND I.CARDTYPE = 1
+              ${manufacturerWhere}
+              ${vehicleWhere}
+            GROUP BY
+                I.LOGICALREF,
+                I.CODE,
+                I.NAME,
+                I.PRODUCERCODE,
+                I.STGRPCODE
+            ORDER BY I.CODE
+            OFFSET @offset ROWS
+            FETCH NEXT @limit ROWS ONLY
+        `;
+
+        const countResult = await request.query(countQuery);
+        const total = (countResult.recordset && countResult.recordset[0]) ? Number(countResult.recordset[0].total || 0) : 0;
+
+        const listResult = await request.query(listQuery);
+        const rows = listResult.recordset || [];
+
+        return { rows, total };
     }
     
     // 7.2 QUERY NORMALİZASYONU

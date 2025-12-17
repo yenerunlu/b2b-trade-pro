@@ -19,6 +19,64 @@ class B2BController {
         this.startupTime = new Date();
     }
 
+    async getFiltersForCustomer(req, res) {
+        try {
+            const { customerCode } = req.query || {};
+
+            if (!customerCode) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Müşteri kodu gereklidir'
+                });
+            }
+
+            const pool = await this.getLogoConnection();
+
+            const manufacturersResult = await pool.request().query(`
+                SELECT DISTINCT
+                    NULLIF(LTRIM(RTRIM(I.STGRPCODE)), '') AS manufacturer
+                FROM LG_013_ITEMS I
+                WHERE I.ACTIVE = 0
+                  AND I.CARDTYPE = 1
+                  AND I.STGRPCODE IS NOT NULL
+                  AND LEN(LTRIM(RTRIM(I.STGRPCODE))) > 0
+                ORDER BY manufacturer
+            `);
+
+            const vehicleModelsResult = await pool.request().query(`
+                SELECT DISTINCT
+                    NULLIF(LTRIM(RTRIM(I.SPECODE)), '') AS vehicleModel
+                FROM LG_013_ITEMS I
+                WHERE I.ACTIVE = 0
+                  AND I.CARDTYPE = 1
+                  AND I.SPECODE IS NOT NULL
+                  AND LEN(LTRIM(RTRIM(I.SPECODE))) > 0
+                ORDER BY vehicleModel
+            `);
+
+            const manufacturers = (manufacturersResult.recordset || [])
+                .map(r => r.manufacturer)
+                .filter(Boolean);
+
+            const vehicleModels = (vehicleModelsResult.recordset || [])
+                .map(r => r.vehicleModel)
+                .filter(Boolean);
+
+            return res.json({
+                success: true,
+                customerCode,
+                manufacturers,
+                vehicleModels
+            });
+        } catch (error) {
+            console.error('❌ Filtre listesi hatası:', error);
+            return res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
     async getItemVisibilityOverrides(customerCode, productCodes) {
         try {
             if (!productCodes || productCodes.length === 0) {
@@ -1644,6 +1702,7 @@ module.exports = {
     updateProductForAdmin: (req, res) => b2bController.updateProductForAdmin(req, res),
     getProductsForCustomer: (req, res) => b2bController.getProductsForCustomer(req, res),
     searchProductsForCustomer: (req, res) => b2bController.searchProductsForCustomer(req, res),
+    getFiltersForCustomer: (req, res) => b2bController.getFiltersForCustomer(req, res),
     getProductDetailForCustomer: (req, res) => b2bController.getProductDetailForCustomer(req, res),
     calculateCart: (req, res) => b2bController.calculateCart(req, res),
     getCustomerInfo: (req, res) => b2bController.getCustomerInfo(req, res),

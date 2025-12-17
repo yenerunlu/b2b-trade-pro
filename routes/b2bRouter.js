@@ -159,6 +159,11 @@ router.get('/products/search',
     b2bController.searchProductsForCustomer
 );
 
+router.get('/filters',
+    cacheControl(600),
+    b2bController.getFiltersForCustomer
+);
+
 // Yeni akıllı ürün arama endpoint'i (grup tabanlı smart search)
 router.post('/products/smart-search',
     cacheControl(0),

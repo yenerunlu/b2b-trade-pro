@@ -50,6 +50,11 @@ router.post('/meili-search', authenticateCustomer, async (req, res) => {
     await meiliSearchController.search(req, res);
 });
 
+// Meilisearch - Search (enriched with Logo DB price + warehouse stocks)
+router.post('/meili-search-enriched', authenticateCustomer, async (req, res) => {
+    await b2bSearchController.meiliSearchEnriched(req, res);
+});
+
 // Alias: Search
 router.post('/search', authenticateCustomer, async (req, res) => {
     await meiliSearchController.search(req, res);

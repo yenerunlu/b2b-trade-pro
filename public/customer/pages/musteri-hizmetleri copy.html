@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Müşteri Hizmetleri | B2B Trade Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #f59e0b;
+            --success: #10b981;
+            --success-dark: #059669;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --gray-light: #e2e8f0;
+            --border-radius: 12px;
+            --shadow: 0 4px 20px rgba(0,0,0,0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1.5rem 0;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            transition: var(--transition);
+        }
+
+        .logo {
+            padding: 0 1.5rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 1rem;
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo span {
+            color: var(--secondary);
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0 1rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            border-radius: var(--border-radius);
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            z-index: 10;
+        }
+
+        .welcome-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .welcome-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(37, 99, 235, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 20px;
+        }
+
+        .welcome-text h1 {
+            font-size: 20px;
+            margin-bottom: 4px;
+            color: var(--dark);
+        }
+
+        .page-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            color: var(--gray);
+            font-size: 1rem;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 1rem;
+        }
+
+        .card-title i {
+            color: var(--primary);
+        }
+
+        .contact-row {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .contact-row:last-child {
+            border-bottom: none;
+        }
+
+        .contact-label {
+            color: var(--gray);
+            font-weight: 600;
+            min-width: 90px;
+        }
+
+        .contact-value {
+            font-weight: 700;
+            color: var(--dark);
+            word-break: break-word;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            background: rgba(37, 99, 235, 0.08);
+            color: var(--primary-dark);
+            border: 1px solid rgba(37, 99, 235, 0.18);
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #f8fafc, #eef2ff);
+            border: 1px solid rgba(37, 99, 235, 0.15);
+            border-radius: var(--border-radius);
+            padding: 1.25rem;
+            box-shadow: 0 0 0 rgba(0,0,0,0);
+        }
+
+        .info-box h3 {
+            font-size: 1.05rem;
+            margin-bottom: 0.75rem;
+            color: var(--dark);
+        }
+
+        .info-box p {
+            color: var(--gray);
+            margin-bottom: 0.5rem;
+        }
+
+        .hours {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .hours .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            background: white;
+            border: 1px solid var(--gray-light);
+            border-radius: 10px;
+        }
+
+        @media (max-width: 1024px) {
+            .app-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+            }
+
+            .nav-menu {
+                flex-direction: row;
+                overflow-x: auto;
+                padding: 0 1rem 1rem;
+            }
+
+            .nav-item {
+                white-space: nowrap;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page-content {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <h1><i class="fas fa-store"></i> B2B<span>TRADE</span></h1>
+            </div>
+            <div class="customer-info">
+                <div class="customer-name" id="customer-name">Yükleniyor...</div>
+                <div class="customer-code" id="customer-code">Müşteri Kodu: Yükleniyor...</div>
+            </div>
+            <nav class="nav-menu">
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-home"></i> Anasayfa
+                </a>
+                <a href="sepetim.html" class="nav-item">
+                    <i class="fas fa-shopping-cart"></i> Sepetim
+                </a>
+                <a href="kampanya-sepeti.html" class="nav-item">
+                    <i class="fas fa-tags"></i> Kampanya Sepetim
+                </a>
+                <a href="sanal-pos.html" class="nav-item">
+                    <i class="fas fa-credit-card"></i> Sanal Pos Ödeme
+                </a>
+                <a href="cari-hesap.html" class="nav-item">
+                    <i class="fas fa-file-invoice-dollar"></i> Cari Hesabım
+                </a>
+                <a href="siparis-gecmisi.html" class="nav-item">
+                    <i class="fas fa-clipboard-list"></i> Sipariş Geçmişim
+                </a>
+                <a href="iade-islemleri.html" class="nav-item">
+                    <i class="fas fa-undo-alt"></i> İade İşlemlerim
+                </a>
+                <a href="musteri-hizmetleri.html" class="nav-item active">
+                    <i class="fas fa-headset"></i> Müşteri Hizmetleri
+                </a>
+                <a href="hesap-ayarlari.html" class="nav-item">
+                    <i class="fas fa-user-cog"></i> Hesap Ayarları
+                </a>
+                <a href="#" class="nav-item" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <div class="welcome-section">
+                    <div class="welcome-icon">
+                        <i class="fas fa-headset"></i>
+                    </div>
+                    <div class="welcome-text">
+                        <h1 id="welcome-title">Müşteri Hizmetleri</h1>
+                        <p>Destek ve iletişim bilgileri</p>
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-content">
+                <div class="page-header">
+                    <h1 class="page-title">Müşteri Hizmetleri</h1>
+                    <p class="page-subtitle">Size daha hızlı yardımcı olabilmemiz için bize aşağıdaki kanallardan ulaşabilirsiniz.</p>
+                </div>
+
+                <div class="cards">
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-address-card"></i> İletişim</div>
+
+                        <div class="contact-row">
+                            <div class="contact-label">E-posta</div>
+                            <div class="contact-value">info@irazoto.com</div>
+                        </div>
+
+                        <div class="contact-row">
+                            <div class="contact-label">Telefon</div>
+                            <div class="contact-value">0212 549 82 64</div>
+                        </div>
+
+                        <div class="contact-row">
+                            <div class="contact-label">Yanıt</div>
+                            <div class="contact-value">
+                                <span class="pill"><i class="fas fa-clock"></i> Aynı gün dönüş</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-question-circle"></i> Sık Sorulan Konular</div>
+                        <div class="info-box">
+                            <h3>Hızlı Destek</h3>
+                            <p>- Sipariş durumu ve kargo takibi</p>
+                            <p>- İade / değişim süreçleri</p>
+                            <p>- Fiyat / stok bilgisi</p>
+                            <p>- Fatura ve ödeme işlemleri</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-business-time"></i> Çalışma Saatleri</div>
+                        <div class="info-box">
+                            <h3>Destek Saatleri</h3>
+                            <div class="hours">
+                                <div class="row"><span>Hafta içi</span><strong>09:00 - 18:00</strong></div>
+                                <div class="row"><span>Cumartesi</span><strong>09:00 - 13:00</strong></div>
+                                <div class="row"><span>Pazar</span><strong>Kapalı</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-info-circle"></i> Not</div>
+                    <div class="info-box">
+                        <p>Destek talebi oluştururken:</p>
+                        <p>- Müşteri kodunuzu</p>
+                        <p>- Sipariş numaranızı (varsa)</p>
+                        <p>- İlgili ürün kodunu (varsa)</p>
+                        <p>paylaşırsanız daha hızlı yardımcı olabiliriz.</p>
+                    </div>
+                </div>
+
+            </div>
+            </main>
+        </div>
+
+        <script>
+            const welcomeTitleEl = document.getElementById('welcome-title');
+
+            document.addEventListener('DOMContentLoaded', function() {
+                setupEventListeners();
+                if (welcomeTitleEl) welcomeTitleEl.textContent = 'Müşteri Hizmetleri';
+            });
+
+            function setupEventListeners() {
+                document.getElementById('logout-btn')?.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.location.href = '/login.html';
+                });
+            }
+        </script>
+    </body>
+    </html>
