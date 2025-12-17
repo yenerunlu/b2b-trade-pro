@@ -1,0 +1,20 @@
+b2b-app:
+  build: .
+  container_name: b2b-app
+  ports:
+    - "8080:3000"
+  networks:
+    - b2b-network
+  depends_on:
+    - mysql-master
+    - mysql-replica
+    - redis
+  environment:
+    - NODE_ENV=development
+  volumes:
+    - ./server.js:/app/server.js:rw
+    - ./public:/app/public:rw
+    - ./package.json:/app/package.json:rw
+    - ./node_modules:/app/node_modules:rw
+  working_dir: /app
+  command: npm run dev

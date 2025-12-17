@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giriş Yap</title>
+    
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
+            padding: 50px 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 420px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Dekoratif çizgiler */
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4f46e5, #7c3aed, #ec4899);
+        }
+        
+        .brand-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .logo-placeholder {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #4f46e5;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+        
+        .logo-placeholder span {
+            background: linear-gradient(90deg, #4f46e5, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .welcome-text {
+            color: #6b7280;
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+        
+        .form-group { 
+            margin-bottom: 24px; 
+        }
+        
+        .form-group label { 
+            display: block; 
+            margin-bottom: 8px; 
+            color: #374151; 
+            font-weight: 500;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .input-wrapper i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 1rem;
+        }
+        
+        .input-wrapper input {
+            width: 100%; 
+            padding: 14px 16px 14px 46px;
+            border: 2px solid #e5e7eb; 
+            border-radius: 12px;
+            font-size: 15px; 
+            transition: all 0.3s ease;
+            background: white;
+            color: #111827;
+        }
+        
+        .input-wrapper input:focus { 
+            outline: none; 
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        
+        .input-wrapper input::placeholder {
+            color: #9ca3af;
+        }
+        
+        .btn-login {
+            width: 100%; 
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white; 
+            border: none; 
+            padding: 16px; 
+            border-radius: 12px;
+            font-size: 16px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-login:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(79, 70, 229, 0.3);
+        }
+        
+        .btn-login:active {
+            transform: translateY(0);
+        }
+        
+        .btn-login i {
+            font-size: 1.1rem;
+        }
+        
+        .error-message {
+            background: #fef2f2; 
+            color: #dc2626; 
+            padding: 12px 16px; 
+            border-radius: 10px;
+            margin-bottom: 20px; 
+            text-align: center; 
+            display: none;
+            border: 1px solid #fecaca;
+            font-size: 0.9rem;
+        }
+        
+        .success-message {
+            background: #f0fdf4; 
+            color: #16a34a; 
+            padding: 12px 16px; 
+            border-radius: 10px;
+            margin-bottom: 20px; 
+            text-align: center; 
+            display: none;
+            border: 1px solid #bbf7d0;
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            color: #4f46e5;
+            margin: 20px 0;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px;
+        }
+        
+        .loading-text {
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .password-note {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-top: 6px;
+            text-align: center;
+        }
+        
+        .copyright {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #f3f4f6;
+            color: #9ca3af;
+            font-size: 0.85rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 40px 24px;
+                border-radius: 20px;
+            }
+            
+            .logo-placeholder {
+                font-size: 2rem;
+            }
+            
+            .welcome-text {
+                font-size: 0.9rem;
+            }
+            
+            .input-wrapper input {
+                padding: 14px 14px 14px 44px;
+            }
+            
+            .btn-login {
+                padding: 14px;
+                font-size: 15px;
+            }
+        }
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            }
+            
+            .login-container {
+                background: #1f2937;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            }
+            
+            .logo-placeholder {
+                color: #818cf8;
+            }
+            
+            .welcome-text {
+                color: #d1d5db;
+            }
+            
+            .form-group label {
+                color: #e5e7eb;
+            }
+            
+            .input-wrapper input {
+                background: #374151;
+                border-color: #4b5563;
+                color: #f3f4f6;
+            }
+            
+            .input-wrapper input::placeholder {
+                color: #9ca3af;
+            }
+            
+            .input-wrapper i {
+                color: #9ca3af;
+            }
+            
+            .copyright {
+                color: #9ca3af;
+                border-color: #374151;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <!-- Logo ve Marka Alanı -->
+        <div class="brand-section">
+            <div class="logo-placeholder">
+                <span>LOGO</span>
+            </div>
+            <p class="welcome-text">Sisteme giriş yapınız</p>
+        </div>
+
+        <!-- Hata ve Başarı Mesajları -->
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+        
+        <!-- Yükleme Göstergesi -->
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Giriş yapılıyor...</div>
+        </div>
+
+        <!-- Giriş Formu -->
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Kullanıcı Adı</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="username" placeholder="Kullanıcı adınızı girin" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Şifre</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" placeholder="Şifrenizi girin" required>
+                </div>
+                <div class="password-note">
+                    Büyük/küçük harf duyarsız
+                </div>
+            </div>
+
+            <button type="button" id="loginBtn" class="btn-login">
+                <i class="fas fa-sign-in-alt"></i>
+                GİRİŞ YAP
+            </button>
+        </form>
+
+        <!-- Telif Hakkı -->
+        <div class="copyright">
+            © 2024 Tüm hakları saklıdır.
+        </div>
+    </div>
+
+    <!-- Font Awesome (iconlar için) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
+<script>
+    // UserDatabase class'ını login sayfasına da ekleyelim
+    class UserDatabase {
+        constructor() {
+            this.STORAGE_KEY = 'b2b_users_database';
+            this.initDatabase();
+        }
+
+        initDatabase() {
+            // localStorage'da veritabanı yoksa demo kullanıcılar oluştur
+            if (!localStorage.getItem(this.STORAGE_KEY)) {
+                const defaultUsers = [
+                    {
+                        id: 1,
+                        username: 'admin',
+                        password: 'admin123',
+                        email: 'admin@irazot.com',
+                        type: 'admin',
+                        status: 'active',
+                        createdAt: '2024-01-15',
+                        avatarText: 'A',
+                        fullName: 'Sistem Yöneticisi',
+                        lastLogin: null,
+                        customerCode: null,
+                        permissions: {
+                            dashboard: true,
+                            products: true,
+                            customers: true,
+                            orders: true,
+                            inventory: true,
+                            sales: true,
+                            settings: true,
+                            userManagement: true,
+                            reports: true
+                        }
+                    },
+                    {
+                        id: 2,
+                        username: 'plasiyer_ahmet',
+                        password: 'ahmet123',
+                        email: 'ahmet@irazot.com',
+                        type: 'plasiyer',
+                        status: 'active',
+                        createdAt: '2024-02-10',
+                        avatarText: 'A',
+                        fullName: 'Ahmet Yılmaz',
+                        lastLogin: null,
+                        plasiyerCode: 'PL001',
+                        permissions: {
+                            dashboard: true,
+                            products: true,
+                            customers: true,
+                            orders: true,
+                            inventory: true,
+                            sales: false,
+                            settings: false,
+                            userManagement: false,
+                            reports: false
+                        },
+                        regions: ['istanbul'],
+                        specialCustomers: ['S6064']
+                    },
+                    {
+                        id: 3,
+                        username: 'S6064',
+                        password: 's6064',
+                        email: 'irazot@irazot.com',
+                        type: 'musteri',
+                        status: 'active',
+                        createdAt: '2024-02-15',
+                        avatarText: 'İ',
+                        fullName: 'İraz Otomotiv',
+                        lastLogin: null,
+                        customerCode: 'S6064',
+                        restrictions: {
+                            orders: true,
+                            prices: true,
+                            stock: true,
+                            maxOrderAmount: 50000,
+                            creditLimit: 100000
+                        },
+                        permissions: {
+                            dashboard: true,
+                            products: true,
+                            customers: false,
+                            orders: true,
+                            inventory: false,
+                            sales: false,
+                            settings: false,
+                            userManagement: false,
+                            reports: false
+                        }
+                    },
+                    {
+                        id: 4,
+                        username: 'M7890',
+                        password: 'm7890',
+                        email: 'aydinoto@aydin.com',
+                        type: 'musteri',
+                        status: 'active',
+                        createdAt: '2024-03-01',
+                        avatarText: 'A',
+                        fullName: 'Aydın Oto',
+                        lastLogin: null,
+                        customerCode: 'M7890',
+                        restrictions: {
+                            orders: true,
+                            prices: true,
+                            stock: true,
+                            maxOrderAmount: 30000,
+                            creditLimit: 75000
+                        },
+                        permissions: {
+                            dashboard: true,
+                            products: true,
+                            customers: false,
+                            orders: true,
+                            inventory: false,
+                            sales: false,
+                            settings: false,
+                            userManagement: false,
+                            reports: false
+                        }
+                    }
+                ];
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(defaultUsers));
+                console.log('✅ Varsayılan kullanıcı veritabanı oluşturuldu');
+            }
+        }
+
+        getAllUsers() {
+            const usersJson = localStorage.getItem(this.STORAGE_KEY);
+            return usersJson ? JSON.parse(usersJson) : [];
+        }
+
+        getUserByUsername(username) {
+            const users = this.getAllUsers();
+            return users.find(user => user.username.toLowerCase() === username.toLowerCase());
+        }
+
+        authenticate(username, password) {
+            const user = this.getUserByUsername(username);
+            
+            if (!user) {
+                return { success: false, message: 'Kullanıcı bulunamadı!' };
+            }
+
+            if (user.status !== 'active') {
+                return { success: false, message: 'Bu hesap yasaklı veya pasif!' };
+            }
+
+            if (user.password !== password) {
+                return { success: false, message: 'Şifre hatalı!' };
+            }
+
+            // Son giriş tarihini güncelle
+            user.lastLogin = new Date().toISOString();
+            this.updateUserLoginTime(user.id, user.lastLogin);
+
+            return {
+                success: true,
+                user: {
+                    id: user.id,
+                    kullanici: user.username,
+                    type: user.type,
+                    fullName: user.fullName,
+                    email: user.email,
+                    permissions: user.permissions,
+                    customerCode: user.customerCode,
+                    plasiyerCode: user.plasiyerCode,
+                    avatarText: user.avatarText,
+                    regions: user.regions || [],
+                    specialCustomers: user.specialCustomers || [],
+                    restrictions: user.restrictions || {}
+                }
+            };
+        }
+
+        updateUserLoginTime(userId, loginTime) {
+            const users = this.getAllUsers();
+            const userIndex = users.findIndex(user => user.id === userId);
+            
+            if (userIndex !== -1) {
+                users[userIndex].lastLogin = loginTime;
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(users));
+            }
+        }
+    }
+
+    class ModernLogin {
+        constructor() {
+            this.userDB = new UserDatabase();
+            this.init();
+        }
+
+        init() {
+            console.log('🚀 Modern Login başlatılıyor...');
+            this.setupFormSubmit();
+            this.setupLoginButton();
+            this.setupEnterKey();
+            this.checkExistingSession();
+            console.log('✅ Modern Login hazır!');
+        }
+
+        setupFormSubmit() {
+            const form = document.getElementById('loginForm');
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleLogin();
+            });
+        }
+
+        setupLoginButton() {
+            const loginBtn = document.getElementById('loginBtn');
+            console.log('🔧 Login butonu bulundu:', loginBtn);
+
+            loginBtn.addEventListener('click', () => {
+                console.log('🎯 GİRİŞ BUTONU TIKLANDI!');
+                this.handleLogin();
+            });
+        }
+
+        setupEnterKey() {
+            // Enter tuşu ile giriş yapma
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.handleLogin();
+                }
+            });
+        }
+
+        checkExistingSession() {
+            // Önceki oturum kontrolü
+            const sessionUserData = sessionStorage.getItem('b2b_user_data');
+            
+            if (sessionUserData) {
+                try {
+                    const userData = JSON.parse(sessionUserData);
+                    console.log('⚠️ BU SEKMEDE ÖNCEDEN GİRİŞ YAPILMIŞ:', userData);
+                    
+                    // Otomatik yönlendirme yapma, sadece bilgi ver
+                    this.showSuccess(`${userData.kullanici} olarak önceden giriş yapılmış. Tekrar giriş yapabilirsiniz.`);
+                    
+                } catch (error) {
+                    console.error('❌ Session verisi okuma hatası:', error);
+                }
+            }
+        }
+
+        async handleLogin() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            console.log('🔍 GİRİŞ BİLGİLERİ:', { username });
+
+            if (!username || !password) {
+                this.showError('Kullanıcı adı ve şifre gereklidir!');
+                return;
+            }
+
+            this.hideMessages();
+            this.showLoading();
+            console.log('🚀 GİRİŞ İŞLEMİ BAŞLIYOR...');
+
+            try {
+                // 1. Önce localStorage veritabanından kontrol et
+                const dbResult = this.userDB.authenticate(username, password);
+                
+                if (dbResult.success) {
+                    console.log('✅ LOCALSTORAGE GİRİŞ BAŞARILI:', dbResult.user);
+                    this.handleSuccessfulLogin(dbResult.user);
+                    return;
+                }
+
+                // 2. Eğer localStorage'da yoksa API'ye dene
+                console.log('📡 API ÇAĞRISI YAPILIYOR...');
+                
+                const normalizedPassword = password.toUpperCase();
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        kullanici: username, 
+                        sifre: normalizedPassword 
+                    })
+                });
+
+                console.log('📡 API STATUS:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('✅ API YANITI:', data);
+
+                if (data.success) {
+                    console.log('🎉 API GİRİŞ BAŞARILI!');
+                    
+                    // API'den gelen kullanıcıyı localStorage'a ekle
+                    const apiUser = data.user || data.data;
+                    this.handleApiUserLogin(apiUser, username, password);
+                    
+                } else {
+                    console.log('❌ GİRİŞ BAŞARISIZ:', data.message);
+                    this.showError(data.message || 'Giriş başarısız! Kullanıcı adı veya şifre hatalı.');
+                }
+
+            } catch (error) {
+                console.error('💥 LOGIN HATASI:', error);
+                
+                // 3. API erişilemezse demo fallback
+                if (error.message.includes('Failed to fetch')) {
+                    console.log('⚠️ API erişilemez, demo giriş deneniyor...');
+                    this.fallbackDemoLogin(username, password);
+                } else {
+                    this.showError('Bağlantı hatası! Lütfen tekrar deneyin. Hata: ' + error.message);
+                }
+            } finally {
+                console.log('🏁 GİRİŞ İŞLEMİ TAMAMLANDI');
+                this.hideLoading();
+            }
+        }
+
+        handleSuccessfulLogin(userData) {
+            // Kullanıcı bilgilerini kaydet
+            this.saveUserData(userData);
+            
+            // Başarı mesajı göster
+            const displayName = userData.fullName || userData.kullanici || userData.username;
+            this.showSuccess(`${displayName} olarak giriş başarılı! Yönlendiriliyorsunuz...`);
+            
+            // 1.5 saniye sonra yönlendir
+            setTimeout(() => {
+                this.redirectUser(userData);
+            }, 1500);
+        }
+
+        handleApiUserLogin(apiUser, username, password) {
+            // API kullanıcısını localStorage veritabanına ekle
+            const users = this.userDB.getAllUsers();
+            const existingUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+            
+            if (!existingUser) {
+                // Yeni kullanıcı oluştur
+                const newUser = {
+                    id: users.length + 1,
+                    username: username,
+                    password: password, // API şifresini kaydet
+                    email: apiUser.email || `${username}@demo.com`,
+                    type: this.determineUserType(apiUser),
+                    status: 'active',
+                    createdAt: new Date().toISOString().split('T')[0],
+                    avatarText: username.charAt(0).toUpperCase(),
+                    fullName: apiUser.musteri_adi || username,
+                    lastLogin: new Date().toISOString(),
+                    customerCode: apiUser.kullanici || username,
+                    permissions: {
+                        dashboard: true,
+                        products: true,
+                        customers: false,
+                        orders: true,
+                        inventory: false,
+                        sales: false,
+                        settings: false,
+                        userManagement: false,
+                        reports: false
+                    },
+                    restrictions: {
+                        orders: true,
+                        prices: true,
+                        stock: true
+                    }
+                };
+                
+                users.push(newUser);
+                localStorage.setItem('b2b_users_database', JSON.stringify(users));
+                console.log('✅ API kullanıcısı veritabanına eklendi:', newUser);
+            }
+            
+            // Giriş yap
+            const userForLogin = {
+                kullanici: username,
+                type: this.determineUserType(apiUser),
+                fullName: apiUser.musteri_adi || username,
+                customerCode: apiUser.kullanici || username,
+                permissions: {
+                    dashboard: true,
+                    products: true,
+                    customers: false,
+                    orders: true,
+                    inventory: false,
+                    sales: false,
+                    settings: false,
+                    userManagement: false,
+                    reports: false
+                }
+            };
+            
+            this.handleSuccessfulLogin(userForLogin);
+        }
+
+        fallbackDemoLogin(username, password) {
+            // DEMO KULLANICILAR (localStorage'dan kontrol et)
+            const dbResult = this.userDB.authenticate(username, password);
+            
+            if (dbResult.success) {
+                console.log('✅ DEMO GİRİŞ BAŞARILI (veritabanından):', dbResult.user);
+                this.handleSuccessfulLogin(dbResult.user);
+                return;
+            }
+
+            // Eski demo kullanıcılar (geçiş dönemi için)
+            const legacyDemoUsers = {
+                'ADMIN': { 
+                    type: 'admin', 
+                    name: 'Yönetici',
+                    redirect: '/admin/pages/dashboard.html'
+                },
+                'S6064': { 
+                    type: 'customer', 
+                    name: 'Demo Müşteri',
+                    redirect: '/customer/pages/dashboard.html'
+                },
+                'PLASIYER': { 
+                    type: 'sales', 
+                    name: 'Satış Temsilcisi',
+                    redirect: '/sales/pages/dashboard.html'
+                }
+            };
+
+            const validPassword = 'YUNLU';
+            
+            if (password.toUpperCase() === validPassword.toUpperCase() && legacyDemoUsers[username.toUpperCase()]) {
+                const userInfo = legacyDemoUsers[username.toUpperCase()];
+                console.log('✅ ESKİ DEMO GİRİŞ BAŞARILI:', userInfo);
+                
+                const demoUserData = {
+                    kullanici: username,
+                    fullName: userInfo.name,
+                    type: userInfo.type,
+                    loginTime: new Date().toISOString(),
+                    isDemo: true,
+                    permissions: {
+                        dashboard: true,
+                        products: true,
+                        customers: userInfo.type === 'admin',
+                        orders: true,
+                        inventory: userInfo.type === 'admin',
+                        sales: userInfo.type === 'admin',
+                        settings: userInfo.type === 'admin',
+                        userManagement: false,
+                        reports: false
+                    }
+                };
+                
+                this.saveUserData(demoUserData);
+                
+                this.showSuccess(`${userInfo.name} olarak giriş başarılı! Yönlendiriliyorsunuz...`);
+                
+                setTimeout(() => {
+                    window.location.href = userInfo.redirect;
+                }, 1500);
+                
+            } else {
+                this.showError('Kullanıcı adı veya şifre hatalı!');
+            }
+        }
+
+            saveUserData(userData) {
+                console.log('💾 KULLANICI VERİSİ KAYDEDİLİYOR...');
+                
+                // Dashboard formatına dönüştür
+                const dashboardFormat = {
+                    kullanici: userData.customerCode || userData.kullanici,
+                    rol: userData.type === 'musteri' ? 'customer' : userData.type,
+                    cari_kodu: userData.customerCode || userData.kullanici,
+                    musteri_adi: userData.fullName || 'Müşteri',
+                    aktif: true,
+                    ilk_giris: false,
+                    isLogoUser: true,
+                    loginTime: new Date().toISOString()
+                };
+
+                const userDataString = JSON.stringify(dashboardFormat);
+                
+                // SessionStorage ve LocalStorage'a kaydet
+                sessionStorage.setItem('b2b_user_data', userDataString);
+                sessionStorage.setItem('b2b_user_type', dashboardFormat.rol);
+                localStorage.setItem('b2b_user_data', userDataString);
+                localStorage.setItem('b2b_user_type', dashboardFormat.rol);
+                
+                console.log('✅ KULLANICI VERİSİ KAYDEDİLDİ (Dashboard formatında):', dashboardFormat);
+            }
+
+        determineUserType(userData) {
+            console.log('🔍 KULLANICI TİPİ BELİRLENİYOR:', userData);
+            
+            const username = userData?.kullanici || userData?.username || '';
+            const role = userData?.rol || userData?.role || '';
+
+            if (username.toUpperCase() === 'ADMIN' || role === 'admin' || userData.type === 'admin') {
+                console.log('✅ ADMIN TESPİT EDİLDİ');
+                return 'admin';
+            }
+
+            if (username.toUpperCase().includes('PLASIYER') || role === 'sales' || role === 'plasiyer' || userData.type === 'plasiyer') {
+                console.log('✅ SATIŞ TEMSİLCİSİ TESPİT EDİLDİ');
+                return 'plasiyer';
+            }
+
+            // Müşteri veya varsayılan
+            console.log('✅ MÜŞTERİ TESPİT EDİLDİ');
+            return 'musteri';
+        }
+
+        redirectUser(userInfo) {
+            console.log('🔄 YÖNLENDİRME YAPILIYOR:', userInfo);
+            
+            const userType = userInfo.type;
+            let redirectUrl = '/customer/pages/dashboard.html';
+            
+            switch(userType) {
+                case 'admin':
+                    redirectUrl = '/admin/pages/dashboard.html';
+                    break;
+                case 'plasiyer':
+                case 'sales':
+                    redirectUrl = '/sales/pages/dashboard.html';
+                    break;
+                case 'musteri':
+                case 'customer':
+                    redirectUrl = '/customer/pages/dashboard.html';
+                    break;
+                default:
+                    redirectUrl = '/customer/pages/dashboard.html';
+            }
+            
+            console.log('🎯 YÖNLENDİRME URL:', redirectUrl);
+            window.location.href = redirectUrl;
+        }
+
+        showError(message) {
+            console.log('❌ HATA:', message);
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            // Başarı mesajını gizle
+            document.getElementById('successMessage').style.display = 'none';
+        }
+
+        showSuccess(message) {
+            console.log('✅ BAŞARI:', message);
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+                
+            // Hata mesajını gizle
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        hideMessages() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+
+        showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loginBtn').disabled = true;
+            document.getElementById('loginBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> GİRİŞ YAPILIYOR';
+            document.getElementById('loginBtn').style.opacity = '0.8';
+        }
+
+        hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('loginBtn').disabled = false;
+            document.getElementById('loginBtn').innerHTML = '<i class="fas fa-sign-in-alt"></i> GİRİŞ YAP';
+            document.getElementById('loginBtn').style.opacity = '1';
+        }
+    }
+
+    // Sayfa yüklendiğinde başlat
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('🚀 SAYFA YÜKLENDİ - Modern Login başlatılıyor');
+        window.modernLogin = new ModernLogin();
+        
+        // Input alanlarına otomatik focus
+        setTimeout(() => {
+            document.getElementById('username').focus();
+        }, 100);
+    });
+
+    console.log('✅ Modern login sistemi hazır!');
+</script>
+
+</body>
+</html>

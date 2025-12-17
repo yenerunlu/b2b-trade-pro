@@ -1,0 +1,20 @@
+{
+  "ADMIN": {
+    "password": "$2b$10$5sbGpL7GgikLw5wHFeB.ye9Q5jWF1JDdx.Xk5Hh4jEjyth8GI8f36",
+    "musteri_adi": "Yönetici",
+    "rol": "admin",
+    "email": "admin@firma.com",
+    "aktif": true,
+    "ilk_giris": false,
+    "created_at": "2025-12-06T15:48:08.581Z"
+  },
+  "PLASIYER": {
+    "password": "$2b$10$Y6dCZQ27RduBp6AH1wZZsOqQFA.OD2Yx76nW0C5rYM2Yty40E1Mti",
+    "musteri_adi": "Satış Temsilcisi",
+    "rol": "sales",
+    "email": "sales@firma.com",
+    "aktif": true,
+    "ilk_giris": true,
+    "created_at": "2025-12-06T15:48:08.635Z"
+  }
+}

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plasiyer Paneli | B2B Trade Pro</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --border-radius: 12px;
+            --shadow: 0 4px 20px rgba(0,0,0,0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #fff8f0 0%, #fef3c7 100%);
+            color: #334155;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--warning), #d97706);
+            color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1 i {
+            font-size: 1.5rem;
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 10px 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+
+        .main-content {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 25px;
+        }
+
+        .sidebar {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+        }
+
+        .welcome-section {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--light), #f1f5f9);
+            border-radius: var(--border-radius);
+        }
+
+        .welcome-section h2 {
+            font-size: 1.5rem;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+
+        .welcome-section p {
+            color: var(--gray);
+            font-size: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--light), #f1f5f9);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            text-align: center;
+            transition: var(--transition);
+            border: 1px solid var(--gray-light);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow);
+            border-color: var(--warning);
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .action-btn.success {
+            background: linear-gradient(135deg, var(--success), #059669);
+        }
+
+        .action-btn.warning {
+            background: linear-gradient(135deg, var(--warning), #d97706);
+        }
+
+        .action-btn.info {
+            background: linear-gradient(135deg, var(--info), #1d4ed8);
+        }
+
+        .user-info {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .user-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--warning), #d97706);
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .user-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 5px;
+        }
+
+        .user-role {
+            color: var(--warning);
+            font-weight: 600;
+            background: rgba(245, 158, 11, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 0.875rem;
+        }
+
+        .recent-activities {
+            margin-top: 20px;
+        }
+
+        .recent-activities h3 {
+            font-size: 1.1rem;
+            color: var(--dark);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .activity-list {
+            list-style: none;
+        }
+
+        .activity-item {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--gray-light);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(37, 99, 235, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 0.875rem;
+        }
+
+        .activity-text {
+            flex: 1;
+            font-size: 0.875rem;
+            color: var(--dark);
+        }
+
+        .activity-time {
+            font-size: 0.75rem;
+            color: var(--gray);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+            padding: 15px 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            max-width: 400px;
+        }
+
+        .notification.error {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+        }
+
+        .notification.warning {
+            background: linear-gradient(135deg, var(--warning), #d97706);
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        .loading {
+            padding: 40px;
+            text-align: center;
+            color: var(--gray);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--warning);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-user-tie"></i> Plasiyer Paneli</h1>
+            <button class="logout-btn" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+            </button>
+        </div>
+        
+        <div class="content">
+            <div class="main-content">
+                <div class="welcome-section">
+                    <h2 id="welcome-title">Hoş Geldiniz!</h2>
+                    <p id="welcome-subtitle">Plasiyer paneline hoş geldiniz. Satış istatistikleriniz ve hızlı işlemler burada.</p>
+                </div>
+
+                <div id="salesInfo" class="loading">
+                    <div class="spinner"></div>
+                    <div>Plasiyer bilgileri yükleniyor...</div>
+                </div>
+
+                <div id="stats-section" style="display: none;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="today-sales">0</div>
+                            <div class="stat-label">Bugünkü Satış</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="month-sales">0</div>
+                            <div class="stat-label">Bu Ay Satış</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-customers">0</div>
+                            <div class="stat-label">Toplam Müşteri</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="total-orders">0</div>
+                            <div class="stat-label">Toplam Sipariş</div>
+                        </div>
+                    </div>
+
+                    <div class="quick-actions">
+                        <button class="action-btn" onclick="navigateTo('musteri-listesi.html')">
+                            <i class="fas fa-users"></i> Müşterilerim
+                        </button>
+                        <button class="action-btn success" onclick="navigateTo('siparislerim.html')">
+                            <i class="fas fa-shopping-cart"></i> Siparişlerim
+                        </button>
+                        <button class="action-btn warning" onclick="navigateTo('urun-listesi.html')">
+                            <i class="fas fa-box"></i> Ürün Listesi
+                        </button>
+                        <button class="action-btn info" onclick="navigateTo('satis-raporu.html')">
+                            <i class="fas fa-chart-line"></i> Satış Raporu
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="user-info">
+                    <div class="user-avatar" id="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-name" id="user-name">-</div>
+                    <div class="user-role">PLASİYER</div>
+                </div>
+
+                <div class="recent-activities">
+                    <h3><i class="fas fa-history"></i> Son İşlemler</h3>
+                    <ul class="activity-list" id="activity-list">
+                        <li class="activity-item">
+                            <div class="activity-icon">
+                                <i class="fas fa-sign-in-alt"></i>
+                            </div>
+                            <div class="activity-text">Sisteme giriş yapıldı</div>
+                            <div class="activity-time">şimdi</div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notification-text">İşlem başarılı!</span>
+    </div>
+
+    <script>
+        // Base64 encoding fonksiyonu
+        function encodeUserDataToBase64(userData) {
+            try {
+                const jsonString = JSON.stringify(userData);
+                return btoa(unescape(encodeURIComponent(jsonString)));
+            } catch (error) {
+                console.error('Base64 encode hatası:', error);
+                return '';
+            }
+        }
+
+        // Base64 decoding fonksiyonu
+        function decodeBase64ToUserData(base64String) {
+            try {
+                const decodedString = atob(base64String);
+                return JSON.parse(decodeURIComponent(escape(decodedString)));
+            } catch (error) {
+                console.error('Base64 decode hatası:', error);
+                return null;
+            }
+        }
+
+        // Değişkenler
+        let currentUser = null;
+        let notificationTimeout = null;
+
+        // Sayfa yüklendiğinde
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        // Uygulamayı başlat
+        async function initializeApp() {
+            try {
+                await loadUserData();
+                displayUserInfo();
+                await loadSalesStatistics();
+                setupEventListeners();
+                showNotification('Plasiyer paneline hoş geldiniz!', 'success');
+                
+            } catch (error) {
+                console.error('Uygulama başlatma hatası:', error);
+                showNotification('Uygulama başlatılamadı: ' + error.message, 'error');
+            }
+        }
+
+        // Kullanıcı verilerini yükle
+        async function loadUserData() {
+            try {
+                const userDataString = localStorage.getItem('b2b_user_data');
+                
+                if (!userDataString) {
+                    showNotification('Giriş yapılmamış! Login sayfasına yönlendiriliyor...', 'warning');
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 2000);
+                    throw new Error('Kullanıcı girişi bulunamadı');
+                }
+
+                const userData = JSON.parse(userDataString);
+                currentUser = userData;
+                
+                // Kullanıcı tipini kontrol et (plasiyer mi?)
+                if (!userData.user_type || userData.user_type !== 'plasiyer') {
+                    console.warn('Kullanıcı tipi plasiyer değil:', userData.user_type);
+                }
+                
+            } catch (error) {
+                console.error('Kullanıcı bilgisi yükleme hatası:', error);
+                throw error;
+            }
+        }
+
+        // Kullanıcı bilgilerini göster
+        function displayUserInfo() {
+            if (!currentUser) {
+                document.getElementById('user-name').textContent = 'Kullanıcı Bulunamadı';
+                return;
+            }
+
+            const userName = currentUser.kullanici || currentUser.ad_soyad || 'Plasiyer';
+            const userCode = currentUser.plasiyer_kodu || currentUser.kullanici_kodu || '-';
+            
+            document.getElementById('user-name').textContent = userName;
+            document.getElementById('welcome-title').textContent = `Hoş Geldiniz, ${userName}!`;
+            document.getElementById('welcome-subtitle').textContent = `Plasiyer kodu: ${userCode}`;
+            
+            // Avatar için baş harf
+            const firstLetter = userName.charAt(0).toUpperCase();
+            document.getElementById('user-avatar').innerHTML = `<span>${firstLetter}</span>`;
+            
+            // Loading'i gizle, istatistikleri göster
+            document.getElementById('salesInfo').style.display = 'none';
+            document.getElementById('stats-section').style.display = 'block';
+        }
+
+        // Satış istatistiklerini yükle
+        async function loadSalesStatistics() {
+            try {
+                if (!currentUser || !currentUser.plasiyer_kodu) {
+                    console.warn('Plasiyer kodu bulunamadı');
+                    return;
+                }
+
+                const salesmanCode = currentUser.plasiyer_kodu;
+                const userDataBase64 = encodeUserDataToBase64(currentUser);
+                
+                console.log(`🔄 Plasiyer istatistikleri yükleniyor: ${salesmanCode}`);
+                
+                // API'den istatistikleri al
+                const response = await fetch(`/api/plasiyer/statistics?salesmanCode=${encodeURIComponent(salesmanCode)}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-user-data-base64': userDataBase64,
+                        'x-user-type': 'plasiyer'
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        updateStatistics(result.data);
+                        console.log('✅ Plasiyer istatistikleri yüklendi');
+                    } else {
+                        throw new Error(result.error || 'İstatistikler alınamadı');
+                    }
+                } else {
+                    // API yoksa test verileri göster
+                    showTestStatistics();
+                }
+                
+            } catch (error) {
+                console.error('İstatistik yükleme hatası:', error);
+                // Hata durumunda test verileri göster
+                showTestStatistics();
+            }
+        }
+
+        // İstatistikleri güncelle
+        function updateStatistics(data) {
+            if (!data) return;
+            
+            if (data.today_sales !== undefined) {
+                document.getElementById('today-sales').textContent = data.today_sales;
+            }
+            
+            if (data.month_sales !== undefined) {
+                document.getElementById('month-sales').textContent = data.month_sales;
+            }
+            
+            if (data.total_customers !== undefined) {
+                document.getElementById('total-customers').textContent = data.total_customers;
+            }
+            
+            if (data.total_orders !== undefined) {
+                document.getElementById('total-orders').textContent = data.total_orders;
+            }
+        }
+
+        // Test istatistikleri göster
+        function showTestStatistics() {
+            document.getElementById('today-sales').textContent = '12';
+            document.getElementById('month-sales').textContent = '145';
+            document.getElementById('total-customers').textContent = '48';
+            document.getElementById('total-orders').textContent = '89';
+        }
+
+        // Bildirim göster
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const notificationText = document.getElementById('notification-text');
+            
+            notificationText.textContent = message;
+            
+            // Tip'e göre stil ayarla
+            notification.className = 'notification';
+            if (type === 'error') {
+                notification.classList.add('error');
+            } else if (type === 'warning') {
+                notification.classList.add('warning');
+            }
+            
+            // Bildirimi göster
+            notification.style.display = 'flex';
+            
+            // Önceki timeout'u temizle
+            if (notificationTimeout) {
+                clearTimeout(notificationTimeout);
+            }
+            
+            // 3 saniye sonra gizle
+            notificationTimeout = setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // Sayfaya yönlendir
+        function navigateTo(page) {
+            showNotification(`${page} sayfasına yönlendiriliyor...`, 'info');
+            setTimeout(() => {
+                window.location.href = page;
+            }, 1000);
+        }
+
+        // Çıkış yap
+        function logout() {
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                // Tüm localStorage'ı temizle
+                localStorage.removeItem('b2b_user_data');
+                localStorage.removeItem('b2b_cart');
+                localStorage.removeItem('b2b_user_type');
+                localStorage.removeItem('b2b_session_id');
+                sessionStorage.clear();
+                
+                showNotification('Çıkış yapılıyor...', 'info');
+                
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 1500);
+            }
+        }
+
+        // Event listener'ları kur
+        function setupEventListeners() {
+            // Klavye kısayolları
+            document.addEventListener('keydown', (e) => {
+                // Ctrl + L ile logout
+                if (e.ctrlKey && e.key === 'l') {
+                    e.preventDefault();
+                    logout();
+                }
+                
+                // Ctrl + M ile müşteri listesi
+                if (e.ctrlKey && e.key === 'm') {
+                    e.preventDefault();
+                    navigateTo('musteri-listesi.html');
+                }
+                
+                // Ctrl + S ile siparişler
+                if (e.ctrlKey && e.key === 's') {
+                    e.preventDefault();
+                    navigateTo('siparislerim.html');
+                }
+            });
+            
+            // Online/offline durumunu izle
+            window.addEventListener('online', () => {
+                showNotification('İnternet bağlantınız yeniden sağlandı', 'success');
+            });
+            
+            window.addEventListener('offline', () => {
+                showNotification('İnternet bağlantınız kesildi', 'warning');
+            });
+            
+            // Sayfadan çıkarken uyarı
+            window.addEventListener('beforeunload', (e) => {
+                // Eğer veri kaydedilmediyse uyarı göster
+                // e.preventDefault();
+                // e.returnValue = '';
+            });
+        }
+
+        // Global fonksiyonlar
+        window.logout = logout;
+        window.navigateTo = navigateTo;
+    </script>
+</body>
+</html>

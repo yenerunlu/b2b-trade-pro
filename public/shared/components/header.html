@@ -1,0 +1,851 @@
+<!-- public/shared/components/header.html -->
+<header class="b2b-header" id="mainHeader">
+    <div class="b2b-header-container">
+        <!-- Logo & Brand -->
+        <div class="b2b-header-brand">
+            <a href="#" class="b2b-logo" data-dashboard-redirect>
+                <div class="b2b-logo-icon">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
+                        <path d="M12 16L14 18L20 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M10 20H22" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span class="b2b-logo-text">${B2BConfig.system.companyName}</span>
+            </a>
+        </div>
+
+        <!-- Mobile Menu Toggle -->
+        <button class="b2b-mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+        <!-- Header Actions -->
+        <div class="b2b-header-actions">
+            <!-- Notifications -->
+            <div class="b2b-notification-dropdown">
+                <button class="b2b-notification-btn" id="notificationBtn" aria-label="Notifications">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span class="b2b-notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </button>
+                <div class="b2b-notification-dropdown-content" id="notificationDropdown">
+                    <div class="b2b-notification-header">
+                        <h3>Bildirimler</h3>
+                        <button class="b2b-mark-all-read" id="markAllRead">Tümünü Okundu İşaretle</button>
+                    </div>
+                    <div class="b2b-notification-list" id="notificationList">
+                        <div class="b2b-notification-empty">
+                            <p>Yeni bildirim bulunmuyor</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Menu -->
+            <div class="b2b-user-dropdown">
+                <button class="b2b-user-btn" id="userMenuBtn">
+                    <div class="b2b-user-avatar">
+                        <img src="" alt="User Avatar" id="userAvatar" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNlNWU1ZTUiLz48cGF0aCBkPSJNMTYgMTcuNUMxMi40MTI1IDE3LjUgOS41IDE2LjI0MDEgOS41IDE0LjVDOS41IDEyLjc1OTkgMTIuNDEyNSAxMS41IDE2IDExLjVDMTkuNTg3NSAxMS41IDIyLjUgMTIuNzU5OSAyMi41IDE0LjVDMjIuNSAxNi4yNDAxIDE5LjU4NzUgMTcuNSAxNiAxNy41Wk0xNiAxOUMyMC4yNDI2IDE5IDIzLjUgMjAuMzQzOCAyMy41IDIyVjIzSDIxLjVWMjJDMjEuNSAyMS4xNjc5IDE4Ljk4MyAyMCAxNiAyMEMxMy4wMTcgMjAgMTAuNSAyMS4xNjc5IDEwLjUgMjJWMjNIOC41VjIyQzguNSAyMC4zNDM4IDExLjc1NzQgMTkgMTYgMTkiIGZpbGw9IiM5OTk5OTkiLz48L3N2Zz4='">
+                    </div>
+                    <div class="b2b-user-info">
+                        <span class="b2b-user-name" id="userName">Kullanıcı</span>
+                        <span class="b2b-user-role" id="userRole">Rol</span>
+                    </div>
+                    <svg class="b2b-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <div class="b2b-user-dropdown-content" id="userDropdown">
+                    <div class="b2b-user-profile">
+                        <div class="b2b-user-avatar-large">
+                            <img src="" alt="User Avatar" id="userAvatarLarge" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMzIiIGZpbGw9IiNlNWU1ZTUiLz48cGF0aCBkPSJNMzIgMzVDMjQuODI1IDM1IDE5IDMzLjQ4MDMgMTkgMzEuNUMxOSAyOS41MTk3IDI0LjgyNSAyOCAzMiAyOEMzOS4xNzUgMjggNDUgMjkuNTE5NyA0NSAzMS41QzQ1IDMzLjQ4MDMgMzkuMTc1IDM1IDMyIDM1Wk0zMiAzOEM0MC40ODUzIDM4IDQ4IDM5LjY4NzUgNDggNDJWMzRINDhWNDJDNDggMzkuNjg3NSA0MC40ODUzIDM4IDMyIDM4WiIgZmlsbD0iIzk5OTk5OSIvPjwvc3ZnPg=='">
+                        </div>
+                        <div class="b2b-user-details">
+                            <h4 id="userFullName">Kullanıcı Adı</h4>
+                            <p id="userEmail">email@example.com</p>
+                            <span class="b2b-user-badge" id="userTypeBadge">Admin</span>
+                        </div>
+                    </div>
+                    <div class="b2b-user-menu-items">
+                        <a href="#" class="b2b-user-menu-item" data-page="profile">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 12C14.2091 12 16 10.2091 16 8C16 5.79086 14.2091 4 12 4C9.79086 4 8 5.79086 8 8C8 10.2091 9.79086 12 12 12Z" stroke="currentColor" stroke-width="2"/>
+                                <path d="M6 20C6 17.7909 7.79086 16 10 16H14C16.2091 16 18 17.7909 18 20C18 21.1046 17.1046 22 16 22H8C6.89543 22 6 21.1046 6 20Z" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            Profilim
+                        </a>
+                        <a href="#" class="b2b-user-menu-item" data-page="settings">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
+                                <path d="M19.4 15C19.2669 15.3044 19.1772 15.6305 19.135 15.966L21 17V19L19.135 19.034C19.1772 19.3695 19.2669 19.6956 19.4 20L20 21L18 22L17.4 21.4C17.0956 21.5331 16.7695 21.6228 16.434 21.665L16 19.8H14L13.566 21.665C13.2305 21.6228 12.9044 21.5331 12.6 21.4L12 22L10 21L10.6 20C10.4669 19.6956 10.3772 19.3695 10.335 19.034L8.5 19V17L10.335 16.966C10.3772 16.6305 10.4669 16.3044 10.6 16L10 15L12 14L12.6 14.6C12.9044 14.4669 13.2305 14.3772 13.566 14.335L14 16.2H16L16.434 14.335C16.7695 14.3772 17.0956 14.4669 17.4 14.6L18 14L20 15L19.4 15Z" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            Ayarlar
+                        </a>
+                        <div class="b2b-user-menu-divider"></div>
+                        <button class="b2b-user-menu-item b2b-logout-btn" id="logoutBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Çıkış Yap
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<style>
+.b2b-header {
+    background: var(--color-background-white);
+    border-bottom: 1px solid #e5e7eb;
+    position: fixed;
+    top: 0;
+    left: var(--sidebarWidth, 0);
+    right: 0;
+    height: var(--headerHeight, 64px);
+    z-index: 1000;
+    transition: left 0.3s ease;
+}
+
+.b2b-header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    padding: 0 var(--spacing-lg, 1.5rem);
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.b2b-header-brand {
+    display: flex;
+    align-items: center;
+}
+
+.b2b-logo {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: var(--color-primary);
+    font-weight: 700;
+    font-size: 1.25rem;
+    gap: var(--spacing-sm, 0.75rem);
+}
+
+.b2b-logo-icon {
+    display: flex;
+    align-items: center;
+}
+
+.b2b-logo-text {
+    color: #1f2937;
+    font-weight: 700;
+}
+
+.b2b-mobile-toggle {
+    display: none;
+    flex-direction: column;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    gap: 0.25rem;
+}
+
+.b2b-mobile-toggle span {
+    width: 20px;
+    height: 2px;
+    background: #6b7280;
+    transition: 0.3s;
+}
+
+.b2b-mobile-toggle:hover span {
+    background: var(--color-primary);
+}
+
+.b2b-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm, 1rem);
+}
+
+/* Notification Styles */
+.b2b-notification-dropdown {
+    position: relative;
+}
+
+.b2b-notification-btn {
+    position: relative;
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    border-radius: var(--borderRadius, 0.375rem);
+    transition: all 0.2s;
+}
+
+.b2b-notification-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.b2b-notification-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: var(--color-error);
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.b2b-notification-dropdown-content {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 380px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--borderRadius, 0.75rem);
+    box-shadow: var(--shadow-default, 0 10px 25px rgba(0, 0, 0, 0.1));
+    margin-top: 0.5rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s;
+    z-index: 1001;
+}
+
+.b2b-notification-dropdown-content.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.b2b-notification-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm, 1rem) var(--spacing-md, 1.25rem);
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.b2b-notification-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.b2b-mark-all-read {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--borderRadius, 0.375rem);
+    transition: all 0.2s;
+}
+
+.b2b-mark-all-read:hover {
+    background: #f3f4f6;
+}
+
+.b2b-notification-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.b2b-notification-empty {
+    padding: var(--spacing-lg, 2rem) var(--spacing-sm, 1rem);
+    text-align: center;
+    color: #6b7280;
+}
+
+/* User Menu Styles */
+.b2b-user-dropdown {
+    position: relative;
+}
+
+.b2b-user-btn {
+    display: flex;
+    align-items: center;
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: var(--borderRadius, 0.75rem);
+    transition: all 0.2s;
+    gap: var(--spacing-sm, 0.75rem);
+    color: #374151;
+}
+
+.b2b-user-btn:hover {
+    background: #f3f4f6;
+}
+
+.b2b-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #e5e7eb;
+}
+
+.b2b-user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.b2b-user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.125rem;
+}
+
+.b2b-user-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.b2b-user-role {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.b2b-chevron {
+    transition: transform 0.2s;
+}
+
+.b2b-user-dropdown-content.show + .b2b-user-btn .b2b-chevron {
+    transform: rotate(180deg);
+}
+
+.b2b-user-dropdown-content {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 320px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--borderRadius, 0.75rem);
+    box-shadow: var(--shadow-default, 0 10px 25px rgba(0, 0, 0, 0.1));
+    margin-top: 0.5rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s;
+    z-index: 1001;
+}
+
+.b2b-user-dropdown-content.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.b2b-user-profile {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-md, 1.25rem);
+    gap: var(--spacing-sm, 0.75rem);
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.b2b-user-avatar-large {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #f3f4f6;
+}
+
+.b2b-user-avatar-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.b2b-user-details h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.b2b-user-details p {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.b2b-user-badge {
+    background: var(--color-primary);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.b2b-user-menu-items {
+    padding: var(--spacing-xs, 0.5rem);
+}
+
+.b2b-user-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: var(--spacing-sm, 0.75rem) var(--spacing-sm, 1rem);
+    background: none;
+    border: none;
+    text-decoration: none;
+    color: #374151;
+    font-size: 0.875rem;
+    border-radius: var(--borderRadius, 0.5rem);
+    cursor: pointer;
+    transition: all 0.2s;
+    gap: var(--spacing-sm, 0.75rem);
+}
+
+.b2b-user-menu-item:hover {
+    background: #f3f4f6;
+    color: #1f2937;
+}
+
+.b2b-user-menu-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: var(--spacing-xs, 0.5rem) 0;
+}
+
+.b2b-logout-btn {
+    color: var(--color-error);
+}
+
+.b2b-logout-btn:hover {
+    background: #fef2f2;
+    color: var(--color-error);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .b2b-header {
+        left: 0;
+    }
+    
+    .b2b-header-container {
+        padding: 0 var(--spacing-sm, 1rem);
+    }
+    
+    .b2b-mobile-toggle {
+        display: flex;
+    }
+    
+    .b2b-user-info {
+        display: none;
+    }
+    
+    .b2b-notification-dropdown-content {
+        width: 320px;
+        right: -1rem;
+    }
+    
+    .b2b-user-dropdown-content {
+        width: 280px;
+        right: -1rem;
+    }
+    
+    .sidebar-open .b2b-header {
+        left: var(--sidebarWidth, 250px);
+    }
+}
+
+@media (max-width: 480px) {
+    .b2b-logo-text {
+        display: none;
+    }
+    
+    .b2b-notification-dropdown-content {
+        width: 280px;
+        right: -0.5rem;
+    }
+    
+    .b2b-user-dropdown-content {
+        width: 260px;
+        right: -0.5rem;
+    }
+}
+
+/* Mobile sidebar state */
+@media (max-width: 768px) {
+    .b2b-sidebar.mobile-open ~ .b2b-header {
+        left: var(--sidebarWidth, 250px);
+    }
+}
+</style>
+
+<script>
+class HeaderComponent {
+    constructor() {
+        this.notificationDropdown = document.getElementById('notificationDropdown');
+        this.userDropdown = document.getElementById('userDropdown');
+        this.notificationBtn = document.getElementById('notificationBtn');
+        this.userMenuBtn = document.getElementById('userMenuBtn');
+        this.logoutBtn = document.getElementById('logoutBtn');
+        this.mobileToggle = document.getElementById('mobileToggle');
+        this.markAllReadBtn = document.getElementById('markAllRead');
+        
+        this.isMobileMenuOpen = false;
+        this.init();
+    }
+
+    init() {
+        this.loadUserData();
+        this.setupEventListeners();
+        this.loadNotifications();
+        this.setupConfigListener();
+    }
+
+    // YENİ: Config değişikliklerini dinle
+    setupConfigListener() {
+        window.addEventListener('b2bConfigChanged', (event) => {
+            this.updateCompanyName();
+        });
+    }
+
+    updateCompanyName() {
+        const logoText = document.querySelector('.b2b-logo-text');
+        if (logoText) {
+            logoText.textContent = B2BConfig.system.companyName;
+        }
+    }
+
+    loadUserData() {
+        const userData = b2bUtils.getStorage(B2BConfig.storage.userData);
+        const userType = b2bUtils.getStorage(B2BConfig.storage.userType);
+        
+        if (userData) {
+            document.getElementById('userName').textContent = userData.name || userData.fullName || 'Kullanıcı';
+            document.getElementById('userRole').textContent = this.getRoleDisplayName(userType);
+            document.getElementById('userFullName').textContent = userData.fullName || userData.name || 'Kullanıcı';
+            document.getElementById('userEmail').textContent = userData.email || 'email@example.com';
+            document.getElementById('userTypeBadge').textContent = this.getRoleDisplayName(userType);
+            
+            if (userData.avatar) {
+                document.getElementById('userAvatar').src = userData.avatar;
+                document.getElementById('userAvatarLarge').src = userData.avatar;
+            }
+        } else {
+            // Fallback: userType'dan bilgi al
+            const userConfig = B2BConfig.getUserTypeConfig(userType);
+            if (userConfig) {
+                document.getElementById('userRole').textContent = userConfig.displayName;
+                document.getElementById('userTypeBadge').textContent = userConfig.displayName;
+            }
+        }
+
+        // Şirket adını güncelle
+        this.updateCompanyName();
+    }
+
+    getRoleDisplayName(role) {
+        const userConfig = B2BConfig.getUserTypeConfig(role);
+        return userConfig ? userConfig.displayName : 'Kullanıcı';
+    }
+
+    setupEventListeners() {
+        // Notification dropdown
+        this.notificationBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleDropdown(this.notificationDropdown);
+            this.userDropdown.classList.remove('show');
+        });
+
+        // User dropdown
+        this.userMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleDropdown(this.userDropdown);
+            this.notificationDropdown.classList.remove('show');
+        });
+
+        // Logout
+        this.logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.handleLogout();
+        });
+
+        // Mark all as read
+        this.markAllReadBtn.addEventListener('click', () => {
+            this.markAllAsRead();
+        });
+
+        // Close dropdowns on click outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.b2b-notification-dropdown')) {
+                this.notificationDropdown.classList.remove('show');
+            }
+            if (!e.target.closest('.b2b-user-dropdown')) {
+                this.userDropdown.classList.remove('show');
+            }
+        });
+
+        // Mobile toggle
+        this.mobileToggle.addEventListener('click', () => {
+            this.toggleMobileMenu();
+        });
+
+        // Dashboard redirect
+        const dashboardLink = document.querySelector('[data-dashboard-redirect]');
+        if (dashboardLink) {
+            dashboardLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.redirectToDashboard();
+            });
+        }
+
+        // User menu items
+        document.querySelectorAll('.b2b-user-menu-item[data-page]').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = e.currentTarget.getAttribute('data-page');
+                this.navigateToPage(page);
+            });
+        });
+
+        // YENİ: Escape key ile dropdown'ları kapat
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.notificationDropdown.classList.remove('show');
+                this.userDropdown.classList.remove('show');
+            }
+        });
+    }
+
+    toggleDropdown(dropdown) {
+        const isShowing = dropdown.classList.contains('show');
+        
+        // Tüm dropdown'ları kapat
+        this.notificationDropdown.classList.remove('show');
+        this.userDropdown.classList.remove('show');
+        
+        // Tıklananı aç
+        if (!isShowing) {
+            dropdown.classList.add('show');
+        }
+    }
+
+    async handleLogout() {
+        const confirmed = await b2bUtils.confirm('Çıkış yapmak istediğinizden emin misiniz?', 'Çıkış Yap');
+        if (!confirmed) return;
+
+        try {
+            // API logout çağrısı
+            if (window.b2bApi && typeof b2bApi.logout === 'function') {
+                await b2bApi.logout();
+            }
+            
+            b2bUtils.showNotification('Başarıyla çıkış yapıldı', 'success');
+            
+            // Storage'ı temizle ve login sayfasına yönlendir
+            setTimeout(() => {
+                b2bUtils.clearStorage();
+                window.location.href = '/login.html';
+            }, 1000);
+            
+        } catch (error) {
+            console.error('Logout error:', error);
+            // API hatasında bile local logout yap
+            b2bUtils.clearStorage();
+            window.location.href = '/login.html';
+        }
+    }
+
+    async loadNotifications() {
+        try {
+            // Simulated notifications - will be replaced with actual API call
+            const notifications = this.getMockNotifications();
+            this.updateNotificationBadge(notifications.length);
+            this.renderNotifications(notifications);
+        } catch (error) {
+            console.error('Notifications load error:', error);
+        }
+    }
+
+    getMockNotifications() {
+        // Mock notifications - gerçek uygulamada API'den gelecek
+        return [
+            {
+                id: 1,
+                type: 'info',
+                title: 'Sistem Güncellemesi',
+                message: 'Sistem bakımı gece 02:00-04:00 saatleri arasında yapılacaktır.',
+                time: new Date(Date.now() - 300000), // 5 dakika önce
+                read: false
+            },
+            {
+                id: 2,
+                type: 'success', 
+                title: 'Yeni Sipariş',
+                message: '#SIP-2024-0012 numaralı siparişiniz oluşturuldu.',
+                time: new Date(Date.now() - 1800000), // 30 dakika önce
+                read: false
+            }
+        ];
+    }
+
+    renderNotifications(notifications) {
+        const notificationList = document.getElementById('notificationList');
+        if (!notificationList) return;
+
+        if (notifications.length === 0) {
+            notificationList.innerHTML = `
+                <div class="b2b-notification-empty">
+                    <p>Yeni bildirim bulunmuyor</p>
+                </div>
+            `;
+            return;
+        }
+
+        notificationList.innerHTML = notifications.map(notification => `
+            <div class="b2b-notification-item ${notification.read ? 'read' : 'unread'}" data-id="${notification.id}">
+                <div class="b2b-notification-icon b2b-notification-${notification.type}">
+                    ${this.getNotificationIcon(notification.type)}
+                </div>
+                <div class="b2b-notification-content">
+                    <div class="b2b-notification-title">${notification.title}</div>
+                    <div class="b2b-notification-message">${notification.message}</div>
+                    <div class="b2b-notification-time">${b2bUtils.formatTime(notification.time)}</div>
+                </div>
+                ${!notification.read ? '<div class="b2b-notification-dot"></div>' : ''}
+            </div>
+        `).join('');
+
+        // YENİ: Notification item click event'leri
+        notificationList.querySelectorAll('.b2b-notification-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const notificationId = item.getAttribute('data-id');
+                this.handleNotificationClick(notificationId);
+            });
+        });
+    }
+
+    getNotificationIcon(type) {
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        return icons[type] || icons.info;
+    }
+
+    updateNotificationBadge(count) {
+        const badge = document.getElementById('notificationBadge');
+        if (!badge) return;
+
+        if (count > 0) {
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    markAllAsRead() {
+        this.updateNotificationBadge(0);
+        this.notificationDropdown.classList.remove('show');
+        b2bUtils.showNotification('Tüm bildirimler okundu olarak işaretlendi', 'success');
+        
+        // Mock: Tüm notification'ları read yap
+        const notificationItems = document.querySelectorAll('.b2b-notification-item');
+        notificationItems.forEach(item => {
+            item.classList.add('read');
+            item.classList.remove('unread');
+            const dot = item.querySelector('.b2b-notification-dot');
+            if (dot) dot.remove();
+        });
+    }
+
+    handleNotificationClick(notificationId) {
+        // Notification click handler - gerçek uygulamada gerekli action'lar yapılacak
+        console.log('Notification clicked:', notificationId);
+        this.notificationDropdown.classList.remove('show');
+    }
+
+    toggleMobileMenu() {
+        this.isMobileMenuOpen = !this.isMobileMenuOpen;
+        const sidebar = document.querySelector('.b2b-sidebar, .sidebar');
+        
+        if (sidebar) {
+            sidebar.classList.toggle('mobile-open');
+            document.body.classList.toggle('sidebar-open');
+        }
+
+        // Mobile toggle animasyonu
+        const spans = this.mobileToggle.querySelectorAll('span');
+        if (this.isMobileMenuOpen) {
+            spans[0].style.transform = 'rotate(45deg) translate(5px, 5px)';
+            spans[1].style.opacity = '0';
+            spans[2].style.transform = 'rotate(-45deg) translate(7px, -6px)';
+        } else {
+            spans[0].style.transform = 'none';
+            spans[1].style.opacity = '1';
+            spans[2].style.transform = 'none';
+        }
+    }
+
+    redirectToDashboard() {
+        const userType = b2bUtils.getUserType();
+        const userConfig = B2BConfig.getUserTypeConfig(userType);
+        const dashboardPath = userConfig ? userConfig.dashboard : '/login.html';
+        b2bUtils.redirectTo(dashboardPath);
+    }
+
+    navigateToPage(page) {
+        const userType = b2bUtils.getUserType();
+        let path = '';
+        
+        switch (page) {
+            case 'profile':
+                path = `/${userType}/profile.html`;
+                break;
+            case 'settings':
+                path = `/${userType}/settings.html`;
+                break;
+            default:
+                return;
+        }
+        
+        this.userDropdown.classList.remove('show');
+        b2bUtils.redirectTo(path);
+    }
+}
+
+// Initialize header when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    new HeaderComponent();
+});
+
+// YENİ: Global erişim için
+window.HeaderComponent = HeaderComponent;
+</script>

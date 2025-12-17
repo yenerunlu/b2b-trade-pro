@@ -1,0 +1,992 @@
+<!-- public/shared/components/sidebar.html -->
+<nav class="b2b-sidebar" id="mainSidebar">
+    <div class="b2b-sidebar-container">
+        <!-- Sidebar Header -->
+        <div class="b2b-sidebar-header">
+            <div class="b2b-sidebar-logo">
+                <a href="#" data-dashboard-redirect>
+                    <div class="b2b-logo-compact">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                            <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
+                            <path d="M12 16L14 18L20 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M10 20H22" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <span class="b2b-sidebar-logo-text">${B2BConfig.system.companyName}</span>
+                </a>
+            </div>
+            <button class="b2b-sidebar-close" id="sidebarClose">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Sidebar Content -->
+        <div class="b2b-sidebar-content">
+            <!-- User Info -->
+            <div class="b2b-sidebar-user">
+                <div class="b2b-sidebar-user-avatar">
+                    <img src="" alt="User Avatar" id="sidebarUserAvatar" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU1ZTUiLz48cGF0aCBkPSJNMjAgMjEuODc1QzE2Ljg5ODQgMjEuODc1IDE0LjM3NSAyMC4zMDAyIDE0LjM3NSAxOC4xMjVDMTQuMzc1IDE1Ljk0OTggMTYuODk4NCAxNC4zNzUgMjAgMTQuMzc1QzIzLjEwMTYgMTQuMzc1IDI1LjYyNSAxNS45NDk4IDI1LjYyNSAxOC4xMjVDMjUuNjI1IDIwLjMwMDIgMjMuMTAxNiAyMS44NzUgMjAgMjEuODc1Wk0yMCAyMy43NUMyNS4zMDMgMjMuNzUgMzAgMjUuNDI5NyAzMCAyNy41VjI4Ljc1SDEwVjI3LjVDMTAgMjUuNDI5NyAxNC42OTcgMjMuNzUgMjAgMjMuNzVaIiBmaWxsPSIjOTk5OTk5Ii8+PC9zdmc+'">
+                </div>
+                <div class="b2b-sidebar-user-info">
+                    <h4 id="sidebarUserName">Kullanıcı Adı</h4>
+                    <p id="sidebarUserRole">Rol</p>
+                </div>
+            </div>
+
+            <!-- Navigation Menu -->
+            <div class="b2b-sidebar-menu">
+                <ul class="b2b-menu-list" id="sidebarMenu">
+                    <!-- Menu items will be dynamically loaded based on user type -->
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="b2b-sidebar-footer">
+                <div class="b2b-sidebar-theme-toggle">
+                    <button class="b2b-theme-btn" id="themeToggle" aria-label="Toggle theme">
+                        <svg class="b2b-theme-icon-light" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 2V4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M12 20V22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M4.93 4.93L6.34 6.34" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M17.66 17.66L19.07 19.07" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M2 12H4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M20 12H22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M6.34 17.66L4.93 19.07" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M19.07 4.93L17.66 6.34" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <svg class="b2b-theme-icon-dark" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M21 12.79C20.8427 14.4922 20.2039 16.1144 19.1582 17.4668C18.1126 18.8192 16.7035 19.8458 15.0957 20.4265C13.4879 21.0073 11.748 21.1181 10.0795 20.7461C8.41104 20.3741 6.88299 19.5345 5.67422 18.3258C4.46545 17.117 3.62593 15.589 3.2539 13.9205C2.88187 12.252 2.99274 10.5121 3.57348 8.9043C4.15422 7.29651 5.18085 5.88737 6.53323 4.84175C7.88562 3.79614 9.50782 3.15731 11.21 3C10.2134 4.34827 9.73375 6.00945 9.85843 7.68141C9.98312 9.35338 10.7039 10.9251 11.8894 12.1106C13.0749 13.2961 14.6466 14.0169 16.3186 14.1416C17.9906 14.2662 19.6517 13.7866 21 12.79Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span class="b2b-theme-text">Koyu Tema</span>
+                    </button>
+                </div>
+                <div class="b2b-sidebar-collapse">
+                    <button class="b2b-collapse-btn" id="sidebarCollapse" aria-label="Collapse sidebar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Overlay -->
+    <div class="b2b-sidebar-overlay" id="sidebarOverlay"></div>
+</nav>
+
+<style>
+.b2b-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: var(--sidebarWidth, 260px);
+    background: var(--color-background-white);
+    border-right: 1px solid #e5e7eb;
+    z-index: 999;
+    transition: all 0.3s ease;
+    transform: translateX(0);
+    box-shadow: var(--shadow-sidebar, 4px 0 15px rgba(0,0,0,0.1));
+}
+
+.b2b-sidebar.collapsed {
+    width: 80px;
+}
+
+.b2b-sidebar-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Sidebar Header */
+.b2b-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm, 1rem) var(--spacing-md, 1.25rem);
+    border-bottom: 1px solid #e5e7eb;
+    height: var(--headerHeight, 64px);
+}
+
+.b2b-sidebar-logo a {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: var(--color-primary);
+    font-weight: 700;
+    font-size: 1.125rem;
+    gap: var(--spacing-sm, 0.75rem);
+}
+
+.b2b-logo-compact {
+    display: flex;
+    align-items: center;
+}
+
+.b2b-sidebar-logo-text {
+    color: #1f2937;
+    font-weight: 700;
+    transition: opacity 0.3s;
+}
+
+.b2b-sidebar.collapsed .b2b-sidebar-logo-text {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+}
+
+.b2b-sidebar-close {
+    display: none;
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    border-radius: var(--borderRadius, 0.375rem);
+    transition: all 0.2s;
+}
+
+.b2b-sidebar-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+/* Sidebar Content */
+.b2b-sidebar-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-sm, 1rem) 0;
+    overflow-y: auto;
+}
+
+/* User Info */
+.b2b-sidebar-user {
+    display: flex;
+    align-items: center;
+    padding: 0 var(--spacing-md, 1.25rem) var(--spacing-md, 1.5rem);
+    gap: var(--spacing-sm, 0.75rem);
+    border-bottom: 1px solid #f3f4f6;
+    margin-bottom: var(--spacing-sm, 1rem);
+}
+
+.b2b-sidebar-user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid #e5e7eb;
+}
+
+.b2b-sidebar-user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.b2b-sidebar-user-info {
+    flex: 1;
+    min-width: 0;
+    transition: opacity 0.3s;
+}
+
+.b2b-sidebar-user-info h4 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.b2b-sidebar-user-info p {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.75rem;
+    color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.b2b-sidebar.collapsed .b2b-sidebar-user-info {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+}
+
+/* Navigation Menu */
+.b2b-sidebar-menu {
+    flex: 1;
+}
+
+.b2b-menu-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.b2b-menu-item {
+    margin-bottom: 0.25rem;
+}
+
+.b2b-menu-link {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-sm, 0.75rem) var(--spacing-md, 1.25rem);
+    text-decoration: none;
+    color: #6b7280;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0;
+    transition: all 0.2s;
+    gap: var(--spacing-sm, 0.75rem);
+    position: relative;
+    border-left: 3px solid transparent;
+}
+
+.b2b-menu-link:hover {
+    background: #f8fafc;
+    color: #374151;
+    border-left-color: #e5e7eb;
+}
+
+.b2b-menu-link.active {
+    background: #f0f9ff;
+    color: var(--color-primary);
+    border-left-color: var(--color-primary);
+}
+
+.b2b-menu-link.has-submenu::after {
+    content: '';
+    width: 16px;
+    height: 16px;
+    background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M9 18L15 12L9 6' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    margin-left: auto;
+    transition: transform 0.2s;
+}
+
+.b2b-menu-link.has-submenu.open::after {
+    transform: rotate(90deg);
+}
+
+.b2b-menu-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.b2b-menu-text {
+    transition: opacity 0.3s;
+}
+
+.b2b-sidebar.collapsed .b2b-menu-text {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+}
+
+.b2b-sidebar.collapsed .b2b-menu-link.has-submenu::after {
+    display: none;
+}
+
+/* Submenu */
+.b2b-submenu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background: #f8fafc;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.b2b-submenu.open {
+    max-height: 500px;
+}
+
+.b2b-submenu-link {
+    display: flex;
+    align-items: center;
+    padding: 0.625rem 1.25rem 0.625rem 3rem;
+    text-decoration: none;
+    color: #6b7280;
+    font-size: 0.8125rem;
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.b2b-submenu-link:hover {
+    background: #f1f5f9;
+    color: #374151;
+}
+
+.b2b-submenu-link.active {
+    background: #e0f2fe;
+    color: var(--color-primary);
+    border-left-color: var(--color-primary);
+}
+
+/* Sidebar Footer */
+.b2b-sidebar-footer {
+    padding: var(--spacing-sm, 1rem) var(--spacing-md, 1.25rem) 0;
+    border-top: 1px solid #e5e7eb;
+    margin-top: auto;
+}
+
+.b2b-sidebar-theme-toggle {
+    margin-bottom: var(--spacing-sm, 1rem);
+}
+
+.b2b-theme-btn {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: var(--spacing-sm, 0.75rem);
+    cursor: pointer;
+    color: #6b7280;
+    font-size: 0.875rem;
+    border-radius: var(--borderRadius, 0.5rem);
+    transition: all 0.2s;
+    gap: var(--spacing-sm, 0.75rem);
+}
+
+.b2b-theme-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.b2b-theme-icon-dark {
+    display: none;
+}
+
+.b2b-theme-text {
+    transition: opacity 0.3s;
+}
+
+.b2b-sidebar.collapsed .b2b-theme-text {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+}
+
+.b2b-sidebar-collapse {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.b2b-collapse-btn {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    border-radius: var(--borderRadius, 0.375rem);
+    transition: all 0.2s;
+}
+
+.b2b-collapse-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.b2b-sidebar.collapsed .b2b-collapse-btn {
+    transform: rotate(180deg);
+}
+
+/* Mobile Overlay */
+.b2b-sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s;
+}
+
+.b2b-sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .b2b-sidebar {
+        transform: translateX(-100%);
+        width: 280px;
+    }
+
+    .b2b-sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    .b2b-sidebar-close {
+        display: block;
+    }
+
+    .b2b-sidebar.collapsed {
+        width: 280px;
+        transform: translateX(-100%);
+    }
+
+    .b2b-sidebar.collapsed.mobile-open {
+        transform: translateX(0);
+    }
+
+    .b2b-sidebar.collapsed .b2b-sidebar-logo-text,
+    .b2b-sidebar.collapsed .b2b-sidebar-user-info,
+    .b2b-sidebar.collapsed .b2b-menu-text,
+    .b2b-sidebar.collapsed .b2b-theme-text {
+        opacity: 1;
+        width: auto;
+        overflow: visible;
+    }
+
+    .b2b-sidebar.collapsed .b2b-menu-link.has-submenu::after {
+        display: block;
+    }
+
+    .b2b-sidebar.collapsed .b2b-collapse-btn {
+        transform: rotate(0);
+    }
+}
+
+/* Dark Theme Support */
+[data-theme="dark"] .b2b-sidebar {
+    background: #1f2937;
+    border-right-color: #374151;
+}
+
+[data-theme="dark"] .b2b-sidebar-header {
+    border-bottom-color: #374151;
+}
+
+[data-theme="dark"] .b2b-sidebar-logo-text {
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .b2b-sidebar-user {
+    border-bottom-color: #374151;
+}
+
+[data-theme="dark"] .b2b-sidebar-user-info h4 {
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .b2b-sidebar-user-info p {
+    color: #d1d5db;
+}
+
+[data-theme="dark"] .b2b-menu-link {
+    color: #d1d5db;
+}
+
+[data-theme="dark"] .b2b-menu-link:hover {
+    background: #374151;
+    color: #f9fafb;
+    border-left-color: #4b5563;
+}
+
+[data-theme="dark"] .b2b-menu-link.active {
+    background: #1e40af;
+    color: #fbbf24;
+    border-left-color: #fbbf24;
+}
+
+[data-theme="dark"] .b2b-submenu {
+    background: #111827;
+}
+
+[data-theme="dark"] .b2b-submenu-link {
+    color: #d1d5db;
+}
+
+[data-theme="dark"] .b2b-submenu-link:hover {
+    background: #1f2937;
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .b2b-submenu-link.active {
+    background: #1e3a8a;
+    color: #fbbf24;
+    border-left-color: #fbbf24;
+}
+
+[data-theme="dark"] .b2b-sidebar-footer {
+    border-top-color: #374151;
+}
+
+[data-theme="dark"] .b2b-theme-btn:hover,
+[data-theme="dark"] .b2b-collapse-btn:hover {
+    background: #374151;
+    color: #f9fafb;
+}
+
+/* Scrollbar Styling */
+.b2b-sidebar-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.b2b-sidebar-content::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.b2b-sidebar-content::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 2px;
+}
+
+.b2b-sidebar-content::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+[data-theme="dark"] .b2b-sidebar-content::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+[data-theme="dark"] .b2b-sidebar-content::-webkit-scrollbar-thumb {
+    background: #4b5563;
+}
+
+[data-theme="dark"] .b2b-sidebar-content::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+</style>
+
+<script>
+class SidebarComponent {
+    constructor() {
+        this.sidebar = document.getElementById('mainSidebar');
+        this.sidebarClose = document.getElementById('sidebarClose');
+        this.sidebarCollapse = document.getElementById('sidebarCollapse');
+        this.sidebarOverlay = document.getElementById('sidebarOverlay');
+        this.themeToggle = document.getElementById('themeToggle');
+        this.sidebarMenu = document.getElementById('sidebarMenu');
+        
+        // YENİ: Config-based menu configuration
+        this.menuConfig = {
+            admin: [
+                {
+                    id: 'dashboard',
+                    title: 'Dashboard',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2"/><path d="M9 22V12H15V22" stroke="currentColor" stroke-width="2"/></svg>',
+                    url: '/admin/dashboard.html',
+                    active: true
+                },
+                {
+                    id: 'users',
+                    title: 'Kullanıcı Yönetimi',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z" stroke="currentColor" stroke-width="2"/><path d="M12 14C8.13401 14 5 17.134 5 21H19C19 17.134 15.866 14 12 14Z" stroke="currentColor" stroke-width="2"/></svg>',
+                    url: '/admin/users.html'
+                },
+                {
+                    id: 'products',
+                    title: 'Ürün Yönetimi',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 7L12 3L4 7M20 7L12 11M20 7V17L12 21M12 11L4 7M12 11V21M4 7V17L12 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+                    submenu: [
+                        { id: 'products-list', title: 'Tüm Ürünler', url: '/admin/products.html' },
+                        { id: 'categories', title: 'Kategoriler', url: '/admin/categories.html' },
+                        { id: 'inventory', title: 'Stok Yönetimi', url: '/admin/inventory.html' }
+                    ]
+                },
+                {
+                    id: 'orders',
+                    title: 'Siparişler',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 10H21M7 15H8M12 15H13M6 19H18C19.1046 19 20 18.1046 20 17V7C20 5.89543 19.1046 5 18 5H6C4.89543 5 4 5.89543 4 7V17C4 18.1046 4.89543 19 6 19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+                    url: '/admin/orders.html'
+                },
+                {
+                    id: 'reports',
+                    title: 'Raporlar',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 17L9 12M12 17L12 7M15 17L15 14M6 21H18C19.1046 21 20 20.1046 20 19V5C20 3.89543 19.1046 3 18 3H6C4.89543 3 4 3.89543 4 5V19C4 20.1046 4.89543 21 6 21Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+                    url: '/admin/reports.html'
+                },
+                {
+                    id: 'settings',
+                    title: 'Sistem Ayarları',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/><path d="M19.4 15C19.2669 15.3044 19.1772 15.6305 19.135 15.966L21 17V19L19.135 19.034C19.1772 19.3695 19.2669 19.6956 19.4 20L20 21L18 22L17.4 21.4C17.0956 21.5331 16.7695 21.6228 16.434 21.665L16 19.8H14L13.566 21.665C13.2305 21.6228 12.9044 21.5331 12.6 21.4L12 22L10 21L10.6 20C10.4669 19.6956 10.3772 19.3695 10.335 19.034L8.5 19V17L10.335 16.966C10.3772 16.6305 10.4669 16.3044 10.6 16L10 15L12 14L12.6 14.6C12.9044 14.4669 13.2305 14.3772 13.566 14.335L14 16.2H16L16.434 14.335C16.7695 14.3772 17.0956 14.4669 17.4 14.6L18 14L20 15L19.4 15Z" stroke="currentColor" stroke-width="2"/></svg>',
+                    url: '/admin/settings.html'
+                }
+            ],
+            sales: [
+                {
+                    id: 'dashboard',
+                    title: 'Dashboard',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2"/><path d="M9 22V12H15V22" stroke="currentColor" stroke-width="2"/></svg>',
+                    url: '/sales/dashboard.html',
+                    active: true
+                },
+                {
+                    id: 'customers',
+                    title: 'Müşterilerim',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="currentColor" stroke-width="2"/><path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="currentColor" stroke-width="2"/><path d="M23 21V19C22.9993 18.1137 22.7044 17.2528 22.1614 16.5523C21.6184 15.8519 20.8581 15.3516 20 15.13" stroke="currentColor" stroke-width="2"/><path d="M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89318 18.7122 8.75608 18.1676 9.45769C17.623 10.1593 16.8604 10.6597 16 10.88" stroke="currentColor" stroke-width="2"/></svg>',
+                    url: '/sales/customers.html'
+                },
+                {
+                    id: 'orders',
+                    title: 'Siparişlerim',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 10H21M7 15H8M12 15H13M6 19H18C19.1046 19 20 18.1046 20 17V7C20 5.89543 19.1046 5 18 5H6C4.89543 5 4 5.89543 4 7V17C4 18.1046 4.89543 19 6 19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+                    url: '/sales/orders.html'
+                },
+                {
+                    id: 'targets',
+                    title: 'Hedeflerim',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2"/><path d="M12 18C15.3137 18 18 15.3137 18 12C18 8.68629 15.3137 6 12 6C8.68629 6 6 8.68629 6 12C6 15.3137 8.68629 18 12 18Z" stroke="currentColor" stroke-width="2"/><path d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z" stroke="currentColor" stroke-width="2"/></svg>',
+                    url: '/sales/targets.html'
+                }
+            ],
+            customer: [
+                {
+                    id: 'dashboard',
+                    title: 'Dashboard',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2"/><path d="M9 22V12H15V22" stroke="currentColor" stroke-width="2"/></svg>',
+                    url: '/customer/dashboard.html',
+                    active: true
+                },
+                {
+                    id: 'catalog',
+                    title: 'Ürün Kataloğu',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 7L12 3L4 7M20 7L12 11M20 7V17L12 21M12 11L4 7M12 11V21M4 7V17L12 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+                    url: '/customer/catalog.html'
+                },
+                {
+                    id: 'orders',
+                    title: 'Siparişlerim',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 10H21M7 15H8M12 15H13M6 19H18C19.1046 19 20 18.1046 20 17V7C20 5.89543 19.1046 5 18 5H6C4.89543 5 4 5.89543 4 7V17C4 18.1046 4.89543 19 6 19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+                    url: '/customer/orders.html'
+                },
+                {
+                    id: 'profile',
+                    title: 'Profilim',
+                    icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 12C14.2091 12 16 10.2091 16 8C16 5.79086 14.2091 4 12 4C9.79086 4 8 5.79086 8 8C8 10.2091 9.79086 12 12 12Z" stroke="currentColor" stroke-width="2"/><path d="M6 20C6 17.7909 7.79086 16 10 16H14C16.2091 16 18 17.7909 18 20C18 21.1046 17.1046 22 16 22H8C6.89543 22 6 21.1046 6 20Z" stroke="currentColor" stroke-width="2"/></svg>',
+                    url: '/customer/profile.html'
+                }
+            ]
+        };
+
+        this.init();
+    }
+
+    init() {
+        this.loadUserData();
+        this.loadMenu();
+        this.setupEventListeners();
+        this.setupTheme();
+        this.setupConfigListener();
+    }
+
+    // YENİ: Config değişikliklerini dinle
+    setupConfigListener() {
+        window.addEventListener('b2bConfigChanged', (event) => {
+            this.updateCompanyName();
+        });
+    }
+
+    updateCompanyName() {
+        const logoText = document.querySelector('.b2b-sidebar-logo-text');
+        if (logoText) {
+            logoText.textContent = B2BConfig.system.companyName;
+        }
+    }
+
+    loadUserData() {
+        const userData = b2bUtils.getStorage(B2BConfig.storage.userData);
+        const userType = b2bUtils.getStorage(B2BConfig.storage.userType);
+        
+        if (userData) {
+            document.getElementById('sidebarUserName').textContent = userData.name || userData.fullName || 'Kullanıcı';
+            document.getElementById('sidebarUserRole').textContent = this.getRoleDisplayName(userType);
+            
+            if (userData.avatar) {
+                document.getElementById('sidebarUserAvatar').src = userData.avatar;
+            }
+        } else {
+            // Fallback: userType'dan bilgi al
+            const userConfig = B2BConfig.getUserTypeConfig(userType);
+            if (userConfig) {
+                document.getElementById('sidebarUserRole').textContent = userConfig.displayName;
+            }
+        }
+
+        // Şirket adını güncelle
+        this.updateCompanyName();
+    }
+
+    getRoleDisplayName(role) {
+        const userConfig = B2BConfig.getUserTypeConfig(role);
+        return userConfig ? userConfig.displayName : 'Kullanıcı';
+    }
+
+    loadMenu() {
+        const userType = b2bUtils.getUserType();
+        const menuItems = this.menuConfig[userType] || [];
+        const currentPath = window.location.pathname;
+        
+        this.sidebarMenu.innerHTML = '';
+        
+        menuItems.forEach(item => {
+            // Aktif menüyü belirle
+            const isActive = this.isMenuItemActive(item, currentPath);
+            const menuItem = this.createMenuItem(item, isActive);
+            this.sidebarMenu.appendChild(menuItem);
+        });
+    }
+
+    isMenuItemActive(item, currentPath) {
+        if (item.url && item.url === currentPath) return true;
+        
+        if (item.submenu) {
+            return item.submenu.some(subItem => subItem.url === currentPath);
+        }
+        
+        return false;
+    }
+
+    createMenuItem(item, isActive = false) {
+        const li = document.createElement('li');
+        li.className = 'b2b-menu-item';
+        
+        if (item.submenu) {
+            // Check if any submenu item is active
+            const hasActiveSubmenu = item.submenu.some(subItem => 
+                subItem.url === window.location.pathname
+            );
+            
+            li.innerHTML = `
+                <a href="#" class="b2b-menu-link has-submenu ${hasActiveSubmenu ? 'open' : ''}" data-menu="${item.id}">
+                    <span class="b2b-menu-icon">${item.icon}</span>
+                    <span class="b2b-menu-text">${item.title}</span>
+                </a>
+                <ul class="b2b-submenu ${hasActiveSubmenu ? 'open' : ''}" id="submenu-${item.id}">
+                    ${item.submenu.map(subItem => `
+                        <li class="b2b-menu-item">
+                            <a href="${subItem.url}" class="b2b-submenu-link ${subItem.url === window.location.pathname ? 'active' : ''}" data-menu="${subItem.id}">
+                                ${subItem.title}
+                            </a>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+        } else {
+            li.innerHTML = `
+                <a href="${item.url}" class="b2b-menu-link ${isActive ? 'active' : ''}" data-menu="${item.id}">
+                    <span class="b2b-menu-icon">${item.icon}</span>
+                    <span class="b2b-menu-text">${item.title}</span>
+                </a>
+            `;
+        }
+        
+        return li;
+    }
+
+    setupEventListeners() {
+        // Submenu toggle
+        this.sidebarMenu.addEventListener('click', (e) => {
+            const menuLink = e.target.closest('.b2b-menu-link.has-submenu');
+            if (menuLink) {
+                e.preventDefault();
+                this.toggleSubmenu(menuLink);
+            }
+        });
+
+        // Sidebar close (mobile)
+        this.sidebarClose.addEventListener('click', () => {
+            this.closeMobileSidebar();
+        });
+
+        // Sidebar collapse
+        this.sidebarCollapse.addEventListener('click', () => {
+            this.toggleSidebar();
+        });
+
+        // Overlay click
+        this.sidebarOverlay.addEventListener('click', () => {
+            this.closeMobileSidebar();
+        });
+
+        // Theme toggle
+        this.themeToggle.addEventListener('click', () => {
+            this.toggleTheme();
+        });
+
+        // Close sidebar when clicking on a menu link (mobile)
+        this.sidebarMenu.addEventListener('click', (e) => {
+            if (e.target.closest('.b2b-menu-link:not(.has-submenu)') && window.innerWidth <= 768) {
+                this.closeMobileSidebar();
+            }
+        });
+
+        // YENİ: Dashboard redirect
+        const dashboardLink = document.querySelector('[data-dashboard-redirect]');
+        if (dashboardLink) {
+            dashboardLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.redirectToDashboard();
+            });
+        }
+
+        // YENİ: Escape key ile sidebar kapatma
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && window.innerWidth <= 768) {
+                this.closeMobileSidebar();
+            }
+        });
+    }
+
+    toggleSubmenu(menuLink) {
+        const submenu = menuLink.nextElementSibling;
+        const isOpen = menuLink.classList.contains('open');
+        
+        // Close all other submenus
+        document.querySelectorAll('.b2b-menu-link.has-submenu.open').forEach(link => {
+            if (link !== menuLink) {
+                link.classList.remove('open');
+                link.nextElementSibling.classList.remove('open');
+            }
+        });
+        
+        // Toggle current submenu
+        menuLink.classList.toggle('open', !isOpen);
+        submenu.classList.toggle('open', !isOpen);
+    }
+
+    toggleSidebar() {
+        this.sidebar.classList.toggle('collapsed');
+        
+        // Save state
+        const isCollapsed = this.sidebar.classList.contains('collapsed');
+        b2bUtils.setStorage('sidebar_collapsed', isCollapsed);
+        
+        // YENİ: Config'e kaydet
+        if (B2BConfig.settings.display) {
+            B2BConfig.settings.display.sidebarCollapsed = isCollapsed;
+            B2BConfig.saveToStorage();
+        }
+    }
+
+    closeMobileSidebar() {
+        this.sidebar.classList.remove('mobile-open');
+        this.sidebarOverlay.classList.remove('show');
+        document.body.classList.remove('sidebar-open');
+    }
+
+    openMobileSidebar() {
+        this.sidebar.classList.add('mobile-open');
+        this.sidebarOverlay.classList.add('show');
+        document.body.classList.add('sidebar-open');
+    }
+
+    toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        document.documentElement.setAttribute('data-theme', newTheme);
+        b2bUtils.setStorage('theme', newTheme);
+        
+        // YENİ: Config'e kaydet
+        if (B2BConfig.settings.display) {
+            B2BConfig.settings.display.theme = newTheme;
+            B2BConfig.saveToStorage();
+        }
+        
+        this.updateThemeButton(newTheme);
+        
+        // YENİ: Theme değişikliği event'i tetikle
+        window.dispatchEvent(new CustomEvent('themeChanged', { 
+            detail: { theme: newTheme } 
+        }));
+    }
+
+    updateThemeButton(theme) {
+        const themeText = this.themeToggle.querySelector('.b2b-theme-text');
+        const lightIcon = this.themeToggle.querySelector('.b2b-theme-icon-light');
+        const darkIcon = this.themeToggle.querySelector('.b2b-theme-icon-dark');
+        
+        if (theme === 'dark') {
+            themeText.textContent = 'Açık Tema';
+            lightIcon.style.display = 'none';
+            darkIcon.style.display = 'block';
+        } else {
+            themeText.textContent = 'Koyu Tema';
+            lightIcon.style.display = 'block';
+            darkIcon.style.display = 'none';
+        }
+    }
+
+    setupTheme() {
+        // YENİ: Config'den theme ve sidebar state'ini al
+        const savedTheme = B2BConfig.settings.display?.theme || b2bUtils.getStorage('theme', 'light');
+        const savedSidebarState = B2BConfig.settings.display?.sidebarCollapsed || b2bUtils.getStorage('sidebar_collapsed', false);
+        
+        // Apply theme
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        this.updateThemeButton(savedTheme);
+        
+        // Apply sidebar state
+        if (savedSidebarState) {
+            this.sidebar.classList.add('collapsed');
+        }
+    }
+
+    redirectToDashboard() {
+        const userType = b2bUtils.getUserType();
+        const userConfig = B2BConfig.getUserTypeConfig(userType);
+        const dashboardPath = userConfig ? userConfig.dashboard : '/login.html';
+        b2bUtils.redirectTo(dashboardPath);
+    }
+
+    // YENİ: Public method for external access
+    toggleMobile() {
+        if (window.innerWidth <= 768) {
+            if (this.sidebar.classList.contains('mobile-open')) {
+                this.closeMobileSidebar();
+            } else {
+                this.openMobileSidebar();
+            }
+        }
+    }
+}
+
+// Initialize sidebar when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.sidebarComponent = new SidebarComponent();
+});
+
+// Global functions for mobile menu toggle
+window.toggleMobileSidebar = function() {
+    if (window.sidebarComponent) {
+        window.sidebarComponent.toggleMobile();
+    }
+};
+
+window.closeMobileSidebar = function() {
+    if (window.sidebarComponent) {
+        window.sidebarComponent.closeMobileSidebar();
+    }
+};
+
+// YENİ: Auto-close sidebar on mobile when resizing to desktop
+window.addEventListener('resize', () => {
+    if (window.innerWidth > 768 && window.sidebarComponent) {
+        window.sidebarComponent.closeMobileSidebar();
+    }
+});
+</script>

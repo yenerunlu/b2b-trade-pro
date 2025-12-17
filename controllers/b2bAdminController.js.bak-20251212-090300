@@ -1,0 +1,193 @@
+// /home/yunlu/b2b-app/controllers/b2bAdminController.js - BASE64 DESTEKLİ GÜNCELLENMİŞ VERSİYON
+const sql = require('mssql');
+const b2bConfig = {
+    server: '5.180.186.54',
+    database: 'B2B_TRADE_PRO',
+    user: 'sa',
+    password: 'Logo12345678',
+    options: {
+        encrypt: true,
+        trustServerCertificate: true,
+        enableArithAbort: true
+    },
+    pool: {
+        max: 10,
+        min: 0,
+        idleTimeoutMillis: 30000
+    }
+};
+
+class B2BAdminController {
+    constructor() {
+        this.b2bConfig = b2bConfig || {
+            server: '5.180.186.54',
+            database: 'B2B_TRADE_PRO',
+            user: 'sa',
+            password: 'Logo12345678',
+            options: {
+                encrypt: true,
+                trustServerCertificate: true,
+                enableArithAbort: true
+            },
+            pool: {
+                max: 10,
+                min: 0,
+                idleTimeoutMillis: 30000
+            }
+        };
+        
+        this.b2bPool = null;
+        this.cache = new Map();
+    }
+
+    // ====================================================
+    // 🚀 YENİ: KULLANICI VERİSİ DECODE HELPER
+    // ====================================================
+    decodeUserData(req) {
+        try {
+            const base64Data = req.headers['x-user-data-base64'];
+            if (base64Data) {
+                const decodedString = Buffer.from(base64Data, 'base64').toString('utf-8');
+                const userData = JSON.parse(decodedString);
+                console.log('✅ Admin: Base64 kullanıcı verisi decode edildi');
+                return userData;
+            }
+            
+            const userData = req.headers['x-user-data'];
+            if (userData) {
+                const parsedData = JSON.parse(userData);
+                console.log('✅ Admin: Standart kullanıcı verisi parse edildi');
+                return parsedData;
+            }
+            
+            console.log('⚠️ Admin: Kullanıcı verisi header\'ı bulunamadı');
+            return null;
+            
+        } catch (error) {
+            console.error('❌ Admin kullanıcı verisi decode hatası:', error.message);
+            return null;
+        }
+    }
+
+    // B2B veritabanı bağlantısı
+    async getB2BConnection() {
+        try {
+            if (!this.b2bPool || !this.b2bPool.connected) {
+                console.log("🔗 B2B_TRADE_PRO bağlanıyor...");
+                this.b2bPool = await sql.connect(this.b2bConfig);
+                console.log("✅ B2B bağlantısı başarılı");
+            }
+            return this.b2bPool;
+        } catch (error) {
+            console.error("❌ B2B bağlantı hatası:", error.message);
+            throw new Error(`B2B DB bağlantı hatası: ${error.message}`);
+        }
+    }
+
+    // Admin yetki kontrolü
+    checkAdminAuth(req) {
+        try {
+            const userData = this.decodeUserData(req) || 
+                           (req.session ? req.session.user : null);
+            
+            if (!userData) {
+                console.log("❌ Admin: User data bulunamadı");
+                return false;
+            }
+
+            const isAdmin = userData.user_type === 'admin' || 
+                          userData.user_type === '1' || 
+                          userData.user_type === 1 ||
+                          userData.kullanici_tipi === 'admin' ||
+                          userData.kullanici_tipi === 1;
+            
+            console.log(`🔐 Admin Auth kontrolü: user_type=${userData.user_type}, isAdmin=${isAdmin}`);
+            return isAdmin;
+        } catch (error) {
+            console.error("❌ Admin Auth kontrol hatası:", error);
+            return false;
+        }
+    }
+
+    // Cache temizleme
+    clearB2BCache(cacheKey = null) {
+        try {
+            if (cacheKey) {
+                if (this.cache.has(cacheKey)) {
+                    this.cache.delete(cacheKey);
+                    console.log(`🧹 Admin Cache temizlendi: ${cacheKey}`);
+                }
+            } else {
+                const previousSize = this.cache.size;
+                this.cache.clear();
+                console.log(`🧹 Admin Tüm cache temizlendi: ${previousSize} kayıt silindi`);
+            }
+        } catch (error) {
+            console.error('❌ Admin Cache temizleme hatası:', error);
+        }
+    }
+
+    // Log kaydı
+    async logAction(logType, message, userCode, ipAddress = '') {
+        try {
+            const pool = await this.getB2BConnection();
+            const query = `
+                INSERT INTO b2b_system_logs 
+                (log_type, module, message, user_code, ip_address, created_at)
+                VALUES 
+                (@logType, 'b2b_admin', @message, @userCode, @ipAddress, GETDATE())
+            `;
+            
+            await pool.request()
+                .input('logType', sql.VarChar(50), logType)
+                .input('message', sql.NVarChar(500), message)
+                .input('userCode', sql.VarChar(50), userCode)
+                .input('ipAddress', sql.VarChar(50), ipAddress)
+                .query(query);
+                
+            console.log(`📝 Admin Log kaydedildi: ${logType} - ${message}`);
+        } catch (error) {
+            console.error('❌ Admin Log kaydetme hatası:', error.message);
+        }
+    }
+
+    // Sistem istatistikleri
+    async getSystemStats() {
+        try {
+            const pool = await this.getB2BConnection();
+            
+            const queries = [
+                `SELECT COUNT(*) as campaign_count FROM b2b_campaign_items WHERE is_active = 1`,
+                `SELECT COUNT(DISTINCT customer_code) as customer_override_count FROM b2b_customer_overrides WHERE is_active = 1`,
+                `SELECT COUNT(*) as settings_count FROM b2b_default_settings`,
+                `SELECT COUNT(*) as log_count FROM b2b_system_logs WHERE created_at >= DATEADD(DAY, -7, GETDATE())`,
+                `SELECT COUNT(*) as active_customers FROM b2b_customer_overrides WHERE is_active = 1 GROUP BY customer_code`
+            ];
+
+            const results = await Promise.all(
+                queries.map(query => pool.request().query(query))
+            );
+
+            return {
+                activeCampaigns: results[0].recordset[0]?.campaign_count || 0,
+                customerOverrides: results[1].recordset[0]?.customer_override_count || 0,
+                totalSettings: results[2].recordset[0]?.settings_count || 0,
+                weeklyLogs: results[3].recordset[0]?.log_count || 0,
+                activeCustomers: results[4]?.recordset?.length || 0,
+                b2bDatabase: 'B2B_TRADE_PRO',
+                updatedAt: new Date().toISOString()
+            };
+
+        } catch (error) {
+            console.error('❌ Admin Sistem istatistikleri hatası:', error.message);
+            return {
+                activeCampaigns: 0,
+                customerOverrides: 0,
+                totalSettings: 0,
+                weeklyLogs: 0,
+                activeCustomers: 0,
+                b2bDatabase: 'B2B_TRADE_PRO',
+                error: error.message
+            };
+        }
+    }

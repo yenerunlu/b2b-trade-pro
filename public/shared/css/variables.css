@@ -1,0 +1,41 @@
+/* MERKEZİ TASARIM SİSTEMİ - Tüm paneller bu değişkenleri kullanır */
+:root {
+  /* Renkler */
+  --primary-color: #1e40af;
+  --primary-dark: #1e3a8a;
+  --secondary-color: #64748b;
+  --success-color: #16a34a;
+  --warning-color: #d97706;
+  --info-color: #2563eb;
+  --danger-color: #dc2626;
+  
+  /* Background renkleri */
+  --bg-primary: #f5f7fb;
+  --bg-white: #ffffff;
+  --bg-light: #f8fafc;
+  --bg-sidebar: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%);
+  
+  /* Border & Shadow */
+  --border-radius: 8px;
+  --border-radius-lg: 15px;
+  --shadow: 0 4px 15px rgba(0,0,0,0.08);
+  --shadow-hover: 0 8px 25px rgba(0,0,0,0.12);
+  
+  /* Spacing */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+  
+  /* Typography */
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 2.5rem;
+  
+  /* Transitions */
+  --transition: all 0.3s ease;
+}

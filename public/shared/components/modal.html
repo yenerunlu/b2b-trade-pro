@@ -1,0 +1,816 @@
+<!-- public/shared/components/modal.html -->
+<div class="b2b-modal" id="b2bModal" aria-hidden="true">
+    <div class="b2b-modal-backdrop" id="modalBackdrop"></div>
+    <div class="b2b-modal-container" id="modalContainer">
+        <div class="b2b-modal-content" id="modalContent">
+            <!-- Modal content will be dynamically inserted here -->
+        </div>
+    </div>
+</div>
+
+<style>
+.b2b-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.b2b-modal.show {
+    display: flex;
+}
+
+.b2b-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.b2b-modal-container {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    background: white;
+    border-radius: var(--borderRadius, 8px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    animation: modalSlideIn 0.3s ease;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.b2b-modal-container.small {
+    max-width: 400px;
+}
+
+.b2b-modal-container.medium {
+    max-width: 600px;
+}
+
+.b2b-modal-container.large {
+    max-width: 800px;
+}
+
+.b2b-modal-container.xlarge {
+    max-width: 1000px;
+}
+
+.b2b-modal-container.fullscreen {
+    max-width: 95vw;
+    max-height: 95vh;
+    width: 95vw;
+    height: 95vh;
+}
+
+.b2b-modal-content {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+}
+
+/* Modal Header */
+.b2b-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 1.5rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.b2b-modal-header.no-border {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.b2b-modal-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1.4;
+}
+
+.b2b-modal-close {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.b2b-modal-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+/* Modal Body */
+.b2b-modal-body {
+    padding: 1.5rem;
+    flex: 1;
+    overflow: auto;
+}
+
+.b2b-modal-body.no-padding {
+    padding: 0;
+}
+
+.b2b-modal-body.overflow-visible {
+    overflow: visible;
+}
+
+/* Modal Footer */
+.b2b-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.b2b-modal-footer.no-border {
+    border-top: none;
+    padding-top: 0;
+}
+
+.b2b-modal-footer.center {
+    justify-content: center;
+}
+
+.b2b-modal-footer.space-between {
+    justify-content: space-between;
+}
+
+/* Modal Types */
+.b2b-modal-success .b2b-modal-header {
+    border-bottom-color: var(--color-success);
+}
+
+.b2b-modal-warning .b2b-modal-header {
+    border-bottom-color: var(--color-warning);
+}
+
+.b2b-modal-error .b2b-modal-header {
+    border-bottom-color: var(--color-error);
+}
+
+.b2b-modal-info .b2b-modal-header {
+    border-bottom-color: var(--color-info);
+}
+
+/* Modal Loading */
+.b2b-modal-loading {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 10;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.b2b-modal-loading.show {
+    display: flex;
+}
+
+.b2b-modal-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.b2b-modal-loading-text {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+/* Confirmation Modal */
+.b2b-confirmation-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    margin: 0 auto 1.5rem;
+}
+
+.b2b-confirmation-icon.success {
+    background: #f0fdf4;
+    color: var(--color-success);
+}
+
+.b2b-confirmation-icon.warning {
+    background: #fffbeb;
+    color: var(--color-warning);
+}
+
+.b2b-confirmation-icon.error {
+    background: #fef2f2;
+    color: var(--color-error);
+}
+
+.b2b-confirmation-icon.info {
+    background: #f0f9ff;
+    color: var(--color-info);
+}
+
+.b2b-confirmation-content {
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.b2b-confirmation-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 0.5rem 0;
+}
+
+.b2b-confirmation-message {
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Form Modal */
+.b2b-form-modal .b2b-modal-body {
+    padding: 1.5rem;
+}
+
+.b2b-form-group {
+    margin-bottom: 1.5rem;
+}
+
+.b2b-form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.875rem;
+}
+
+.b2b-form-label.required::after {
+    content: '*';
+    color: var(--color-error);
+    margin-left: 0.25rem;
+}
+
+.b2b-form-input,
+.b2b-form-select,
+.b2b-form-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+.b2b-form-input:focus,
+.b2b-form-select:focus,
+.b2b-form-textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.b2b-form-input.error,
+.b2b-form-select.error,
+.b2b-form-textarea.error {
+    border-color: var(--color-error);
+}
+
+.b2b-form-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.b2b-form-help {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+}
+
+.b2b-form-error {
+    font-size: 0.75rem;
+    color: var(--color-error);
+    margin-top: 0.5rem;
+}
+
+/* Animation */
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .b2b-modal {
+        padding: 0.5rem;
+    }
+    
+    .b2b-modal-container {
+        max-height: 95vh;
+    }
+    
+    .b2b-modal-container.small,
+    .b2b-modal-container.medium,
+    .b2b-modal-container.large,
+    .b2b-modal-container.xlarge {
+        max-width: 100%;
+    }
+    
+    .b2b-modal-header {
+        padding: 1.25rem 1.25rem 0.75rem;
+    }
+    
+    .b2b-modal-body {
+        padding: 1.25rem;
+    }
+    
+    .b2b-modal-footer {
+        padding: 0.75rem 1.25rem 1.25rem;
+        flex-direction: column;
+    }
+    
+    .b2b-modal-footer .b2b-btn {
+        width: 100%;
+    }
+}
+
+/* Dark Theme */
+[data-theme="dark"] .b2b-modal-container {
+    background: #1f2937;
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .b2b-modal-header {
+    border-bottom-color: #374151;
+}
+
+[data-theme="dark"] .b2b-modal-title {
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .b2b-modal-close {
+    color: #9ca3af;
+}
+
+[data-theme="dark"] .b2b-modal-close:hover {
+    background: #374151;
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .b2b-modal-footer {
+    border-top-color: #374151;
+}
+
+[data-theme="dark"] .b2b-modal-loading {
+    background: rgba(31, 41, 55, 0.8);
+}
+
+[data-theme="dark"] .b2b-form-input,
+[data-theme="dark"] .b2b-form-select,
+[data-theme="dark"] .b2b-form-textarea {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .b2b-form-input:focus,
+[data-theme="dark"] .b2b-form-select:focus,
+[data-theme="dark"] .b2b-form-textarea:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+[data-theme="dark"] .b2b-form-label {
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .b2b-confirmation-title {
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .b2b-confirmation-message {
+    color: #d1d5db;
+}
+</style>
+
+<script>
+class ModalComponent {
+    constructor() {
+        this.modal = document.getElementById('b2bModal');
+        this.modalBackdrop = document.getElementById('modalBackdrop');
+        this.modalContainer = document.getElementById('modalContainer');
+        this.modalContent = document.getElementById('modalContent');
+        
+        this.defaultOptions = {
+            size: 'medium', // small, medium, large, xlarge, fullscreen
+            type: 'default', // default, success, warning, error, info
+            closable: true,
+            backdrop: true,
+            animation: true,
+            focus: true
+        };
+        
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        // Close modal on backdrop click
+        this.modalBackdrop.addEventListener('click', (e) => {
+            if (e.target === this.modalBackdrop) {
+                this.close();
+            }
+        });
+
+        // Close modal on ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.modal.classList.contains('show')) {
+                this.close();
+            }
+        });
+    }
+
+    // Show modal with content
+    show(content, options = {}) {
+        const config = { ...this.defaultOptions, ...options };
+        
+        // Set modal size
+        this.modalContainer.className = 'b2b-modal-container';
+        if (config.size !== 'medium') {
+            this.modalContainer.classList.add(config.size);
+        }
+        
+        // Set modal type
+        if (config.type !== 'default') {
+            this.modalContainer.classList.add(`b2b-modal-${config.type}`);
+        }
+        
+        // Set content
+        if (typeof content === 'string') {
+            this.modalContent.innerHTML = content;
+        } else if (content instanceof HTMLElement) {
+            this.modalContent.innerHTML = '';
+            this.modalContent.appendChild(content);
+        }
+        
+        // Show modal
+        this.modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        
+        // Focus management
+        if (config.focus) {
+            this.trapFocus();
+        }
+        
+        // Dispatch show event
+        this.dispatchEvent('modal:show');
+    }
+
+    // Close modal
+    close() {
+        this.modal.classList.remove('show');
+        document.body.style.overflow = '';
+        
+        // Remove type classes
+        this.modalContainer.className = 'b2b-modal-container';
+        
+        // Dispatch close event
+        this.dispatchEvent('modal:close');
+    }
+
+    // Show confirmation dialog
+    confirm(options) {
+        return new Promise((resolve) => {
+            const {
+                title = 'Emin misiniz?',
+                message = 'Bu işlem geri alınamaz.',
+                type = 'warning',
+                confirmText = 'Evet',
+                cancelText = 'İptal',
+                size = 'small'
+            } = options;
+
+            const content = `
+                <div class="b2b-modal-header no-border">
+                    <button type="button" class="b2b-modal-close" data-action="close">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="b2b-modal-body">
+                    <div class="b2b-confirmation-content">
+                        <div class="b2b-confirmation-icon ${type}">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                                ${this.getConfirmationIcon(type)}
+                            </svg>
+                        </div>
+                        <h3 class="b2b-confirmation-title">${title}</h3>
+                        <p class="b2b-confirmation-message">${message}</p>
+                    </div>
+                </div>
+                <div class="b2b-modal-footer no-border">
+                    <button type="button" class="b2b-btn b2b-btn-secondary" data-action="cancel">${cancelText}</button>
+                    <button type="button" class="b2b-btn b2b-btn-${type}" data-action="confirm">${confirmText}</button>
+                </div>
+            `;
+
+            this.show(content, { size, type, closable: true });
+
+            // Handle button clicks
+            this.modalContent.addEventListener('click', function handleClick(e) {
+                const action = e.target.closest('[data-action]')?.dataset.action;
+                
+                if (action === 'confirm') {
+                    resolve(true);
+                    this.close();
+                } else if (action === 'cancel' || action === 'close') {
+                    resolve(false);
+                    this.close();
+                }
+            }.bind(this));
+        });
+    }
+
+    // Show alert dialog
+    alert(options) {
+        return new Promise((resolve) => {
+            const {
+                title = 'Bilgi',
+                message = '',
+                type = 'info',
+                buttonText = 'Tamam',
+                size = 'small'
+            } = options;
+
+            const content = `
+                <div class="b2b-modal-header no-border">
+                    <button type="button" class="b2b-modal-close" data-action="close">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="b2b-modal-body">
+                    <div class="b2b-confirmation-content">
+                        <div class="b2b-confirmation-icon ${type}">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                                ${this.getConfirmationIcon(type)}
+                            </svg>
+                        </div>
+                        <h3 class="b2b-confirmation-title">${title}</h3>
+                        <p class="b2b-confirmation-message">${message}</p>
+                    </div>
+                </div>
+                <div class="b2b-modal-footer no-border">
+                    <button type="button" class="b2b-btn b2b-btn-primary" data-action="ok">${buttonText}</button>
+                </div>
+            `;
+
+            this.show(content, { size, type, closable: true });
+
+            this.modalContent.addEventListener('click', function handleClick(e) {
+                const action = e.target.closest('[data-action]')?.dataset.action;
+                
+                if (action === 'ok' || action === 'close') {
+                    resolve();
+                    this.close();
+                }
+            }.bind(this));
+        });
+    }
+
+    // Show form modal
+    form(options) {
+        return new Promise((resolve) => {
+            const {
+                title = 'Form',
+                fields = [],
+                submitText = 'Kaydet',
+                cancelText = 'İptal',
+                size = 'medium'
+            } = options;
+
+            const formFields = fields.map(field => `
+                <div class="b2b-form-group">
+                    <label class="b2b-form-label ${field.required ? 'required' : ''}">${field.label}</label>
+                    ${this.renderFormField(field)}
+                    ${field.help ? `<div class="b2b-form-help">${field.help}</div>` : ''}
+                    <div class="b2b-form-error" data-error="${field.name}" style="display: none;"></div>
+                </div>
+            `).join('');
+
+            const content = `
+                <div class="b2b-modal-header">
+                    <h2 class="b2b-modal-title">${title}</h2>
+                    <button type="button" class="b2b-modal-close" data-action="close">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <form class="b2b-form-modal">
+                    <div class="b2b-modal-body">
+                        ${formFields}
+                    </div>
+                    <div class="b2b-modal-footer">
+                        <button type="button" class="b2b-btn b2b-btn-secondary" data-action="cancel">${cancelText}</button>
+                        <button type="submit" class="b2b-btn b2b-btn-primary">${submitText}</button>
+                    </div>
+                </form>
+            `;
+
+            this.show(content, { size, closable: true });
+
+            const form = this.modalContent.querySelector('form');
+            
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const formData = this.getFormData(fields);
+                resolve(formData);
+                this.close();
+            });
+
+            this.modalContent.addEventListener('click', (e) => {
+                if (e.target.closest('[data-action="cancel"]') || e.target.closest('[data-action="close"]')) {
+                    resolve(null);
+                    this.close();
+                }
+            });
+        });
+    }
+
+    // Show loading state
+    showLoading(message = 'Yükleniyor...') {
+        const loadingHtml = `
+            <div class="b2b-modal-loading show">
+                <div class="b2b-modal-spinner"></div>
+                <div class="b2b-modal-loading-text">${message}</div>
+            </div>
+        `;
+        this.modalContent.insertAdjacentHTML('beforeend', loadingHtml);
+    }
+
+    // Hide loading state
+    hideLoading() {
+        const loading = this.modalContent.querySelector('.b2b-modal-loading');
+        if (loading) {
+            loading.remove();
+        }
+    }
+
+    // Utility methods
+    getConfirmationIcon(type) {
+        const icons = {
+            success: '<path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            warning: '<path d="M12 9V11M12 15H12.01M5.07183 19H18.9282C20.4678 19 21.4301 17.3333 20.6603 16L13.7321 4C12.9623 2.66667 11.0377 2.66667 10.2679 4L3.33975 16C2.56995 17.3333 3.53223 19 5.07183 19Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            error: '<path d="M10 14L12 12M12 12L14 10M12 12L10 10M12 12L14 14M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+            info: '<path d="M12 16V12M12 8H12.01M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+        };
+        return icons[type] || icons.info;
+    }
+
+    renderFormField(field) {
+        const commonAttrs = `
+            name="${field.name}"
+            placeholder="${field.placeholder || ''}"
+            ${field.required ? 'required' : ''}
+            ${field.value ? `value="${field.value}"` : ''}
+        `;
+
+        switch (field.type) {
+            case 'textarea':
+                return `<textarea class="b2b-form-textarea" ${commonAttrs}>${field.value || ''}</textarea>`;
+            case 'select':
+                const options = field.options?.map(opt => 
+                    `<option value="${opt.value}" ${opt.value === field.value ? 'selected' : ''}>${opt.label}</option>`
+                ).join('');
+                return `<select class="b2b-form-select" ${commonAttrs}>${options}</select>`;
+            case 'checkbox':
+                return `
+                    <label style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" ${commonAttrs} ${field.value ? 'checked' : ''}>
+                        <span>${field.checkboxLabel || ''}</span>
+                    </label>
+                `;
+            default:
+                return `<input type="${field.type || 'text'}" class="b2b-form-input" ${commonAttrs}>`;
+        }
+    }
+
+    getFormData(fields) {
+        const formData = {};
+        fields.forEach(field => {
+            const element = this.modalContent.querySelector(`[name="${field.name}"]`);
+            if (element) {
+                if (field.type === 'checkbox') {
+                    formData[field.name] = element.checked;
+                } else {
+                    formData[field.name] = element.value;
+                }
+            }
+        });
+        return formData;
+    }
+
+    trapFocus() {
+        const focusableElements = this.modal.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (firstElement) {
+            firstElement.focus();
+        }
+
+        this.modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                if (e.shiftKey) {
+                    if (document.activeElement === firstElement) {
+                        lastElement.focus();
+                        e.preventDefault();
+                    }
+                } else {
+                    if (document.activeElement === lastElement) {
+                        firstElement.focus();
+                        e.preventDefault();
+                    }
+                }
+            }
+        });
+    }
+
+    dispatchEvent(eventName, detail = {}) {
+        const event = new CustomEvent(eventName, { 
+            detail: { ...detail, modal: this }
+        });
+        document.dispatchEvent(event);
+    }
+}
+
+// Global modal instance
+const b2bModal = new ModalComponent();
+
+// Global functions for easy access
+window.showModal = (content, options) => b2bModal.show(content, options);
+window.closeModal = () => b2bModal.close();
+window.showConfirm = (options) => b2bModal.confirm(options);
+window.showAlert = (options) => b2bModal.alert(options);
+window.showForm = (options) => b2bModal.form(options);
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Modal is already initialized with the class
+});
+</script>

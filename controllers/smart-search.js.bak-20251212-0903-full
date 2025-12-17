@@ -1,0 +1,279 @@
+// /home/yunlu/b2b-app/controllers/smart-search.js
+// b2b_item_groups ve b2b_group_members tablolarını kullanan akıllı arama helper'ı
+
+const sql = require('mssql');
+const { b2bConfig, logoConfig } = require('../config/database');
+
+// Normalizasyon fonksiyonu
+function normalizeForSearch(input) {
+    if (!input) return '';
+    const turkishMap = {
+        'İ': 'I', 'ı': 'I', 'Ğ': 'G', 'ğ': 'G',
+        'Ü': 'U', 'ü': 'U', 'Ş': 'S', 'ş': 'S',
+        'Ö': 'O', 'ö': 'O', 'Ç': 'C', 'ç': 'C'
+    };
+    let result = input.toString();
+    Object.keys(turkishMap).forEach(key => {
+        const regex = new RegExp(key, 'g');
+        result = result.replace(regex, turkishMap[key]);
+    });
+    result = result.toUpperCase();
+    result = result.replace(/[^A-Z0-9]/g, '');
+    return result;
+}
+
+// Fallback (eski LIKE araması)
+async function fallbackSearch(query, customerCode, limit) {
+    console.log(`🔄 Fallback search: "${query}"`);
+    try {
+        const pool = await sql.connect(logoConfig);
+        const request = pool.request();
+        request.input('q', sql.NVarChar(100), `%${query}%`);
+        request.input('limit', sql.Int, limit);
+
+        const result = await request.query(`
+            SELECT TOP (@limit)
+                LOGICALREF,
+                CODE,
+                NAME,
+                NAME2,
+                PRODUCERCODE,
+                STGRPCODE
+            FROM LG_013_ITEMS
+            WHERE (CODE LIKE @q
+                OR NAME LIKE @q
+                OR NAME2 LIKE @q
+                OR PRODUCERCODE LIKE @q)
+              AND ACTIVE = 0
+              AND CARDTYPE = 1
+            ORDER BY CODE
+        `);
+
+        return {
+            success: true,
+            type: 'FALLBACK_SEARCH',
+            query,
+            normalized_query: normalizeForSearch(query),
+            total_items: result.recordset.length,
+            items: result.recordset,
+            search_metadata: {
+                search_type: 'like_fallback',
+                response_time_ms: 0,
+                cache_hit: false,
+                note: 'Grup tablosunda eşleşme bulunamadı, LIKE araması kullanıldı'
+            }
+        };
+    } catch (error) {
+        console.error('❌ Fallback search error:', error);
+        throw error;
+    }
+}
+
+// Akıllı arama fonksiyonu
+async function smartSearch(query, customerCode = null, limit = 50) {
+    const startTime = Date.now();
+    const normalizedQuery = normalizeForSearch(query);
+
+    try {
+        if (!query || query.trim().length < 2) {
+            return {
+                success: false,
+                message: 'En az 2 karakter girin'
+            };
+        }
+
+        // KURAL: 4 veya daha az karakter -> OEM öncelikli arama, aksi halde direkt grup araması
+        if (normalizedQuery.length <= 4) {
+            console.log(`🔍 Kısa kod (${normalizedQuery}): OEM öncelikli arama`);
+
+            // Önce LOGOGO3'te OEM kodunda tam eşleşme ara
+            const logoPool = await sql.connect(logoConfig);
+            const oemRequest = logoPool.request();
+            oemRequest.input('norm', sql.NVarChar(100), normalizedQuery);
+
+            const oemResult = await oemRequest.query(`
+                SELECT TOP 20
+                    LOGICALREF,
+                    CODE,
+                    NAME,
+                    PRODUCERCODE,
+                    STGRPCODE
+                FROM LG_013_ITEMS
+                WHERE dbo.NormalizeOEMCode(PRODUCERCODE) = @norm
+                  AND PRODUCERCODE IS NOT NULL
+                  AND LEN(PRODUCERCODE) > 0
+                ORDER BY CODE
+            `);
+
+            if (oemResult.recordset.length > 0) {
+                console.log(`✅ ${oemResult.recordset.length} OEM eşleşmesi bulundu`);
+
+                // Bu malzemelerin gruplarını B2B_TRADE_PRO'da bul
+                const logicalrefs = oemResult.recordset.map(row => row.LOGICALREF);
+                if (logicalrefs.length > 0) {
+                    const b2bPool = await sql.connect(b2bConfig);
+                    const groupRequest = b2bPool.request();
+                    // Basit çözüm: IN (...) listesi
+                    groupRequest.input('refs', sql.NVarChar(sql.MAX), logicalrefs.join(','));
+
+                    const groupResult = await groupRequest.query(`
+                        SELECT DISTINCT g.*
+                        FROM B2B_TRADE_PRO.dbo.b2b_item_groups g
+                        JOIN B2B_TRADE_PRO.dbo.b2b_group_members m ON g.group_id = m.group_id
+                        WHERE g.is_active = 1
+                          AND m.logo_logicalref IN (
+                              SELECT TRY_CAST(value AS INT)
+                              FROM STRING_SPLIT(@refs, ',')
+                          )
+                        ORDER BY g.item_count
+                    `);
+
+                    if (groupResult.recordset.length > 0) {
+                        const groups = groupResult.recordset;
+                        const b2bPool2 = await sql.connect(b2bConfig);
+
+                        const detailedGroups = await Promise.all(
+                            groups.map(async (group) => {
+                                const itemsResult = await b2bPool2.request()
+                                    .input('groupId', sql.VarChar(20), group.group_id)
+                                    .query(`
+                                        SELECT TOP 20
+                                            m.item_code,
+                                            m.manufacturer_code,
+                                            m.normalized_item_code,
+                                            m.char_index_item,
+                                            m.logo_logicalref
+                                        FROM B2B_TRADE_PRO.dbo.b2b_group_members m
+                                        WHERE m.group_id = @groupId
+                                        ORDER BY m.item_code
+                                    `);
+
+                                return {
+                                    group_id: group.group_id,
+                                    char_index: group.char_index,
+                                    item_count: group.item_count,
+                                    normalized_codes: group.normalized_codes,
+                                    items: itemsResult.recordset
+                                };
+                            })
+                        );
+
+                        return {
+                            success: true,
+                            type: 'OEM_MATCH',
+                            query,
+                            normalized_query: normalizedQuery,
+                            match_count: oemResult.recordset.length,
+                            group_count: groups.length,
+                            groups: detailedGroups,
+                            search_metadata: {
+                                search_type: 'oem_priority',
+                                response_time_ms: Date.now() - startTime,
+                                cache_hit: false
+                            }
+                        };
+                    }
+                }
+
+                console.log('⚠️ OEM için grup bulunamadı, karakter aramasına geçiliyor');
+            } else {
+                console.log('⚠️ OEM eşleşmesi bulunamadı, karakter aramasına geçiliyor');
+            }
+        }
+
+        // KARAKTER BAZLI ARAMA (5+ karakter veya OEM bulunamadı)
+        const b2bPoolMain = await sql.connect(b2bConfig);
+        const searchRequest = b2bPoolMain.request();
+        // Hem orijinal sorguyu hem normalize edilmiş halini gönderiyoruz,
+        // ancak eşleşme kontrolünde normalize edilmiş değer kullanılmalı
+        searchRequest.input('query', sql.NVarChar(100), query);
+        searchRequest.input('normalizedQuery', sql.NVarChar(100), normalizedQuery);
+        searchRequest.input('limit', sql.Int, limit);
+
+        console.log(`🔍 Karakter bazlı arama: "${normalizedQuery}"`);
+
+        const searchResult = await searchRequest.query(`
+            SELECT TOP (@limit)
+                g.group_id,
+                g.char_index,
+                g.normalized_codes,
+                g.item_count,
+                g.original_codes_json,
+                CASE 
+                    WHEN REPLACE(g.char_index, ' ', '') = @normalizedQuery THEN 100
+                    WHEN REPLACE(g.hash_key, ' ', '') = @normalizedQuery THEN 98
+                    WHEN REPLACE(g.char_index, ' ', '') LIKE @normalizedQuery + '%' THEN 95
+                    WHEN REPLACE(g.hash_key, ' ', '') LIKE @normalizedQuery + '%' THEN 93
+                    ELSE 90 - LEN(REPLACE(g.char_index, ' ', ''))
+                END as relevance_score
+            FROM B2B_TRADE_PRO.dbo.b2b_item_groups g
+            WHERE g.is_active = 1
+              AND (
+                    REPLACE(g.char_index, ' ', '') LIKE @normalizedQuery + '%'
+                 OR REPLACE(g.hash_key,   ' ', '') LIKE @normalizedQuery + '%'
+              )
+            ORDER BY relevance_score DESC, g.item_count ASC
+        `);
+
+        console.log('🧪 DEBUG smart-search char query:', {
+            originalQuery: query,
+            normalizedQuery,
+            rowCount: searchResult.recordset.length
+        });
+
+        if (searchResult.recordset.length === 0) {
+            return await fallbackSearch(query, customerCode, limit);
+        }
+
+        const groups = searchResult.recordset;
+        const b2bPool2 = await sql.connect(b2bConfig);
+
+        const groupsWithItems = await Promise.all(
+            groups.map(async (group) => {
+                const itemsResult = await b2bPool2.request()
+                    .input('groupId', sql.VarChar(20), group.group_id)
+                    .query(`
+                        SELECT TOP 20
+                            m.item_code,
+                            m.manufacturer_code,
+                            m.normalized_item_code,
+                            m.char_index_item,
+                            m.logo_logicalref
+                        FROM B2B_TRADE_PRO.dbo.b2b_group_members m
+                        WHERE m.group_id = @groupId
+                        ORDER BY m.item_code
+                    `);
+
+                return {
+                    group_id: group.group_id,
+                    char_index: group.char_index,
+                    item_count: group.item_count,
+                    normalized_codes: group.normalized_codes,
+                    original_codes: JSON.parse(group.original_codes_json || '[]'),
+                    relevance_score: group.relevance_score,
+                    items: itemsResult.recordset
+                };
+            })
+        );
+
+        return {
+            success: true,
+            type: 'GROUP_MATCH',
+            query,
+            normalized_query: normalizedQuery,
+            total_groups: groups.length,
+            total_items: groupsWithItems.reduce((sum, g) => sum + g.item_count, 0),
+            groups: groupsWithItems,
+            search_metadata: {
+                search_type: normalizedQuery.length <= 4 ? 'short_code_fallback' : 'character_match',
+                response_time_ms: Date.now() - startTime,
+                cache_hit: false
+            }
+        };
+    } catch (error) {
+        console.error('❌ Smart search error:', error);
+        return await fallbackSearch(query, customerCode, limit);
+    }
+}
+
+module.exports = { smartSearch, normalizeForSearch };

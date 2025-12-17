@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B2B Sistemi</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+        h1 { color: #333; margin-bottom: 1rem; font-size: 2.5rem; }
+        p { color: #666; margin-bottom: 2rem; font-size: 1.1rem; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; padding: 1rem 2rem;
+            border-radius: 10px; font-size: 1.1rem; font-weight: 600;
+            cursor: pointer; text-decoration: none; display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        .btn:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏢 B2B Ticaret Sistemi</h1>
+        <p>Profesyonel iş çözümleriniz için güvenli giriş noktası</p>
+        <a href="/login.html" class="btn">🔐 Giriş Yap</a>
+    </div>
+
+    <script>
+        // Eğer zaten giriş yapılmışsa direkt yönlendir
+        document.addEventListener('DOMContentLoaded', function() {
+            const userRole = localStorage.getItem('userRole');
+            if (userRole) {
+                const redirectMap = {
+                    'admin': '/admin/dashboard.html',
+                    'customer': '/customer/dashboard.html',
+                    'sales': '/sales/dashboard.html'
+                };
+                const redirectUrl = redirectMap[userRole];
+                if (redirectUrl) {
+                    window.location.href = redirectUrl;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

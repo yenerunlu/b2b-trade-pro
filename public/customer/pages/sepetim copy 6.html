@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B2B Trade Pro | Sepetim</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --primary-light: #dbeafe;
+            --secondary: #f59e0b;
+            --success: #10b981;
+            --success-dark: #059669;
+            --success-light: #d1fae5;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --gray-light: #e2e8f0;
+            --gray-lighter: #f1f5f9;
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+            --shadow: 0 4px 20px rgba(0,0,0,0.08);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.15);
+            --shadow-xl: 0 20px 40px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+            --transition-fast: all 0.15s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: #334155;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1.5rem 0;
+            box-shadow: var(--shadow);
+            z-index: 100;
+        }
+
+        .logo {
+            padding: 0 1.5rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .logo span {
+            color: var(--secondary);
+        }
+
+        .customer-info {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 1rem;
+        }
+
+        .customer-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .customer-code {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0 1rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            border-radius: var(--border-radius);
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* HEADER */
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+        }
+
+        .welcome-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .welcome-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        .welcome-text h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .welcome-text p {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .cart-indicator {
+            position: relative;
+            color: white;
+            border-radius: var(--border-radius);
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            box-shadow: var(--shadow);
+            background: linear-gradient(135deg, var(--success), var(--success-dark));
+        }
+
+        .cart-indicator:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: white;
+            color: var(--dark);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 2px solid var(--success);
+        }
+
+        /* PAGE CONTENT - YENİ LAYOUT */
+        .page-content {
+            flex: 1;
+            padding: 2rem;
+            display: flex;
+            gap: 2rem;
+            max-width: 100%;
+            height: calc(100vh - 140px);
+        }
+
+        /* SOL TARAF - TABLO (%75) */
+        .cart-table-section {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            min-height: 0;
+        }
+
+        .cart-container {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* SAĞ TARAF - SİPARİŞ ÖZETİ (%25) */
+        .order-summary-section {
+            flex: 1;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* CART HEADER */
+        .cart-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem 2rem;
+            background: linear-gradient(135deg, var(--light), var(--gray-lighter));
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .cart-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .cart-title-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        .cart-title-text h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .cart-title-text p {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .cart-stats {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-top: 0.25rem;
+        }
+
+        /* GENİŞ TABLO TASARIMI */
+        .cart-table-container {
+            overflow-x: auto;
+            flex: 1;
+        }
+
+        .cart-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1100px;
+        }
+
+        .cart-table thead {
+            background: linear-gradient(135deg, var(--primary-light), #e0f2fe);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .cart-table th {
+            padding: 1rem 0.75rem;
+            text-align: left;
+            font-weight: 700;
+            color: var(--primary-dark);
+            border-bottom: 3px solid var(--primary);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-right: 2px solid var(--gray-light);
+            white-space: nowrap;
+        }
+
+        .cart-table th:last-child {
+            border-right: none;
+        }
+
+        .cart-table td {
+            padding: 1rem 0.75rem;
+            border-bottom: 2px solid var(--gray-lighter);
+            vertical-align: middle;
+            border-right: 2px solid var(--gray-lighter);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: none !important;
+        }
+
+        .cart-table td.empty-state {
+            width: 100vw;
+            max-width: 100%;
+        }
+
+        .cart-table td:last-child {
+            border-right: none;
+        }
+
+        .cart-table tbody tr {
+            transition: var(--transition-fast);
+        }
+
+        .cart-table tbody tr:hover {
+            background: var(--gray-lighter);
+        }
+
+        /* TABLO HÜCRE STİLLERİ */
+        .select-cell {
+            text-align: center;
+            width: 40px;
+        }
+
+        .select-cell input {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .product-image {
+            width: 50px;
+            height: 50px;
+            border-radius: var(--border-radius-sm);
+            background: linear-gradient(135deg, var(--gray-lighter), var(--gray-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray);
+            font-size: 1.1rem;
+        }
+
+        .product-code {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 0.85rem;
+        }
+
+        .product-name {
+            font-weight: 600;
+            color: var(--dark);
+            line-height: 1.3;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+
+        .product-oem {
+            color: var(--gray);
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+
+        .manufacturer-badge {
+            background: var(--primary);
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .discount-badge {
+            background: linear-gradient(135deg, var(--warning), #d97706);
+            color: white;
+            padding: 0.3rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .price-info {
+            text-align: center;
+        }
+
+        .original-price {
+            text-decoration: line-through;
+            color: var(--gray);
+            font-size: 0.8rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .current-price {
+            font-weight: 700;
+            color: var(--success);
+            font-size: 0.9rem;
+        }
+
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.3rem;
+        }
+
+        .qty-btn {
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--gray-light);
+            background: white;
+            border-radius: var(--border-radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            color: var(--dark);
+            font-size: 0.8rem;
+        }
+
+        .qty-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .qty-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .qty-input {
+            width: 45px;
+            height: 28px;
+            border: 1px solid var(--gray-light);
+            border-radius: var(--border-radius-sm);
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .qty-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        .item-total {
+            font-weight: 700;
+            color: var(--dark);
+            font-size: 0.9rem;
+            text-align: right;
+        }
+
+        .item-actions {
+            text-align: center;
+            width: 50px;
+        }
+
+        .remove-btn {
+            background: none;
+            border: none;
+            color: var(--gray);
+            cursor: pointer;
+            padding: 0.4rem;
+            border-radius: var(--border-radius-sm);
+            transition: var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .remove-btn:hover {
+            color: var(--danger);
+            background: #fee2e2;
+        }
+
+        /* BATCH ACTIONS */
+        .batch-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            background: var(--light);
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .select-all {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .select-all input {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+        }
+
+        .select-all label {
+            font-weight: 600;
+            color: var(--dark);
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .batch-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: var(--border-radius-sm);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            font-size: 0.8rem;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            padding: 3rem 2rem;
+            text-align: center;
+            color: var(--gray);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: none;
+            margin: 0 auto;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-sizing: border-box;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: var(--gray-light);
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+            font-weight: 600;
+        }
+
+        .empty-state p {
+            margin-bottom: 1.5rem;
+            max-width: 350px;
+            font-size: 0.85rem;
+        }
+
+        /* ORDER SUMMARY */
+        .order-summary {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            border: 1px solid var(--gray-light);
+            overflow: hidden;
+            height: fit-content;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .summary-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 1.25rem 1.5rem;
+        }
+
+        .summary-header h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .summary-content {
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--gray-lighter);
+        }
+
+        .summary-label {
+            color: var(--gray);
+            font-size: 0.85rem;
+        }
+
+        .summary-value {
+            font-weight: 500;
+            color: var(--dark);
+            font-size: 0.85rem;
+        }
+
+        .summary-total .summary-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary-dark);
+        }
+
+        .summary-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            margin-top: 0.5rem;
+            border-top: 2px solid var(--primary);
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary-dark);
+            background: linear-gradient(135deg, #eff6ff, #f0f9ff);
+            margin: 0.5rem -1.5rem -1.5rem;
+            padding: 1rem 1.5rem;
+        }
+
+        /* TASARRUF KARTI */
+        .savings-card {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            border: 1px solid var(--success);
+            border-radius: var(--border-radius-sm);
+            padding: 1rem;
+            margin: 1rem 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .savings-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .savings-icon {
+            font-size: 1.25rem;
+            color: var(--success);
+            position: relative;
+            z-index: 2;
+        }
+
+        .savings-title {
+            font-weight: 600;
+            color: var(--success-dark);
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .savings-amount {
+            color: var(--success);
+            font-weight: 900;
+            font-size: 1.8rem;
+            margin: 0.5rem 0;
+            text-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+            position: relative;
+            z-index: 2;
+            animation: price-pulse 2s ease-in-out infinite;
+            letter-spacing: 1px;
+        }
+
+        @keyframes price-pulse {
+            0%, 100% {
+                transform: scale(1);
+                text-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+            }
+            50% {
+                transform: scale(1.05);
+                text-shadow: 0 4px 20px rgba(16, 185, 129, 0.5);
+            }
+        }
+
+        .savings-note {
+            font-size: 0.75rem;
+            color: var(--gray);
+            line-height: 1.3;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .savings-action {
+            display: flex;
+            justify-content: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .savings-action .checkout-btn {
+            margin: 0 auto;
+        }
+
+        .checkout-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: auto;
+        }
+
+        .checkout-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 1.25rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+
+        .checkout-btn.primary {
+            background: linear-gradient(135deg, var(--success), var(--success-dark));
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .checkout-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .checkout-btn.warning {
+            background: linear-gradient(135deg, var(--warning), #d97706);
+            color: white;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .checkout-btn.warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+        }
+
+        .checkout-btn.secondary {
+            background: white;
+            color: var(--dark);
+            border: 1px solid var(--gray-light);
+            font-size: 0.85rem;
+            padding: 0.75rem 1rem;
+        }
+
+        .checkout-btn.secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .checkout-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .tax-info {
+            text-align: right;
+            font-size: 0.75rem;
+            color: var(--gray);
+            margin-top: 0.25rem;
+            font-style: italic;
+        }
+
+        /* SİPARİŞ NOTU */
+        .order-notes-container {
+            margin: 0.5rem 0;
+        }
+
+        .order-notes-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+
+        .order-notes {
+            width: 100%;
+            min-height: 60px;
+            max-height: 80px;
+            padding: 0.75rem;
+            border: 2px solid var(--gray-light);
+            border-radius: var(--border-radius-sm);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            resize: vertical;
+            transition: var(--transition);
+            background: white;
+        }
+
+        .order-notes:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .order-notes::placeholder {
+            color: var(--gray);
+            font-style: italic;
+        }
+
+        /* LOADING */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            flex: 1;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* NOTIFICATION */
+        .notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, var(--success), var(--success-dark));
+            color: white;
+            padding: 1.5rem 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-xl);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            gap: 1rem;
+            font-weight: 600;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1400px) {
+            .page-content {
+                padding: 1rem;
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .order-summary-section {
+                max-width: 100%;
+            }
+            
+            .cart-table-section {
+                min-width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+            }
+            
+            .nav-menu {
+                flex-direction: row;
+                overflow-x: auto;
+                padding: 0 1rem 1rem;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+            
+            .cart-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+            
+            .cart-stats {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="logo">
+                <h1><i class="fas fa-store"></i> B2B<span>TRADE</span></h1>
+            </div>
+            <div class="customer-info">
+                <div class="customer-name" id="customer-name">Yükleniyor...</div>
+                <div class="customer-code" id="customer-code">Müşteri Kodu: Yükleniyor...</div>
+            </div>
+            <nav class="nav-menu">
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-home"></i> Anasayfa
+                </a>
+                <a href="sepetim.html" class="nav-item active">
+                    <i class="fas fa-shopping-cart"></i> Sepetim
+                </a>
+                <a href="kampanya-sepeti.html" class="nav-item">
+                    <i class="fas fa-tags"></i> Kampanya Sepetim
+                </a>
+                <a href="sanal-pos.html" class="nav-item">
+                    <i class="fas fa-credit-card"></i> Sanal Pos Ödeme
+                </a>
+                <a href="cari-hesap.html" class="nav-item">
+                    <i class="fas fa-file-invoice-dollar"></i> Cari Hesabım
+                </a>
+                <a href="siparis-gecmisi.html" class="nav-item">
+                    <i class="fas fa-clipboard-list"></i> Sipariş Geçmişim
+                </a>
+                <a href="iade-islemleri.html" class="nav-item">
+                    <i class="fas fa-undo-alt"></i> İade İşlemlerim
+                </a>
+                <a href="musteri-hizmetleri.html" class="nav-item">
+                    <i class="fas fa-headset"></i> Müşteri Hizmetleri
+                </a>
+                <a href="hesap-ayarlari.html" class="nav-item">
+                    <i class="fas fa-user-cog"></i> Hesap Ayarları
+                </a>
+                <a href="#" class="nav-item" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- HEADER -->
+            <header class="header">
+                <div class="welcome-section">
+                    <div class="welcome-icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="welcome-text">
+                        <h1 id="welcome-title">Sepet Yönetimi</h1>
+                        <p id="welcome-subtitle">Sepetinizdeki ürünleri inceleyin ve siparişinizi tamamlayın</p>
+                    </div>
+                </div>
+
+                <!-- CART HEADER -->
+                <div class="cart-header">
+                    <div class="cart-stats">
+                        <div class="stat-item">
+                            <span class="stat-value" id="total-items">0</span>
+                            <span class="stat-label">Toplam Ürün</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="total-price">₺0.00</span>
+                            <span class="stat-label">Ara Toplam</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="total-saving">₺0.00</span>
+                            <span class="stat-label">Toplam Tasarruf</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <a href="dashboard.html" class="cart-indicator">
+                        <i class="fas fa-arrow-left"></i> Ürünlere Dön
+                    </a>
+                </div>
+            </header>
+
+            <!-- PAGE CONTENT -->
+            <div class="page-content">
+                <!-- SOL TARAF - TABLO (%75) -->
+                <div class="cart-table-section">
+                    <div class="cart-container">
+                        <!-- BATCH ACTIONS -->
+                        <div class="batch-actions">
+                            <div class="select-all">
+                                <input type="checkbox" id="select-all-items" onchange="toggleSelectAll()">
+                                <label for="select-all-items">Tümünü Seç</label>
+                            </div>
+                            <div class="batch-buttons">
+                                <button class="btn btn-danger" id="delete-selected" onclick="deleteSelectedItems()" disabled>
+                                    <i class="fas fa-trash"></i>
+                                    Seçilenleri Sil
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- CART TABLE -->
+                        <div class="cart-table-container">
+                            <table class="cart-table">
+                                <thead>
+                                    <tr>
+                                        <th class="select-cell">Seç</th>
+                                        <th>Resim</th>
+                                        <th>Malzeme Kodu</th>
+                                        <th>Malzeme Açıklaması</th>
+                                        <th>OEM Kodu</th>
+                                        <th>Üretici</th>
+                                        <th>İndirim</th>
+                                        <th>İskonto</th>
+                                        <th>Fiyat</th>
+                                        <th>Miktar</th>
+                                        <th>Toplam</th>
+                                        <th class="item-actions">İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cart-items-container">
+                                    <!-- Cart items will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SAĞ TARAF - SİPARİŞ ÖZETİ (%25) -->
+                <div class="order-summary-section">
+                    <div class="order-summary">
+                        <div class="summary-header">
+                            <h3><i class="fas fa-receipt"></i> Sipariş Özeti</h3>
+                        </div>
+                        
+                        <div class="summary-content">
+                            <div class="summary-row">
+                                <span class="summary-label">Ara Toplam</span>
+                                <span class="summary-value" id="subtotal">₺0.00</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Ürün İndirimleri</span>
+                                <span class="summary-value" id="product-discount">-₺0.00</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Kampanya İndirimi</span>
+                                <span class="summary-value" id="campaign-discount">-₺0.00</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span class="summary-label">Peşin İndirimi (%3)</span>
+                                <span class="summary-value" id="cash-discount">-₺0.00</span>
+                            </div>
+                            
+                            <!-- TASARRUF KARTI -->
+                            <div class="savings-card">
+                                <div class="savings-header">
+                                    <i class="fas fa-gem savings-icon"></i>
+                                    <span class="savings-title">Peşin Alırsan Kazancınız</span>
+                                </div>
+                                <div class="savings-amount" id="total-savings">₺0.00</div>
+                                <div class="savings-note">Peşin ödeme ile bu tutarda ek tasarruf elde edersiniz</div>
+                                <div class="savings-action">
+                                    <button class="checkout-btn warning" id="buy-now" onclick="buyNow()" disabled>
+                                        <i class="fas fa-credit-card"></i>
+                                        HEMEN AL
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- SİPARİŞ NOTU ALANI -->
+                            <div class="order-notes-container">
+                                <label for="order-notes" class="order-notes-label">
+                                    <i class="fas fa-sticky-note"></i> Sipariş Notunuz
+                                </label>
+                                <textarea 
+                                    id="order-notes" 
+                                    class="order-notes" 
+                                    placeholder="Sipariş notunuz..."
+                                    rows="2"
+                                ></textarea>
+                            </div>
+                            
+                            <div class="summary-total">
+                                <span class="summary-label">TOPLAM TUTAR</span>
+                                <span class="summary-value" id="total">₺0.00</span>
+                            </div>
+                            <div class="tax-info">KDV Dahil</div>
+                            
+                            <div class="checkout-actions">
+                                <button class="checkout-btn primary" id="send-order" onclick="createOrder()" disabled>
+                                    <i class="fas fa-paper-plane"></i>
+                                    SIPARIŞ GÖNDER
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- NOTIFICATION -->
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notification-text">Ürün sepete eklendi!</span>
+    </div>
+
+    <script>
+        // ====================================================
+        // 🚀 UYGULAMA STATE
+        // ====================================================
+        let cart = JSON.parse(localStorage.getItem('b2b_cart')) || [];
+        let selectedItems = new Set();
+        let currentUser = null;
+
+        // ====================================================
+        // 🚀 SEÇİM HAFIZA SİSTEMİ
+        // ====================================================
+        const SELECTION_MEMORY_KEY = 'b2b_selection_memory';
+
+        function loadSelectionMemory() {
+            const stored = localStorage.getItem(SELECTION_MEMORY_KEY);
+            if (stored) {
+                const storedSelections = JSON.parse(stored);
+                selectedItems = new Set(storedSelections.filter(index => index < cart.length));
+                updateBatchActions();
+                renderCart();
+            }
+        }
+
+        function saveSelectionMemory() {
+            const selectedIndices = Array.from(selectedItems);
+            localStorage.setItem(SELECTION_MEMORY_KEY, JSON.stringify(selectedIndices));
+        }
+
+        function selectAllForNewItems() {
+            selectedItems = new Set([...Array(cart.length).keys()]);
+            saveSelectionMemory();
+            updateBatchActions();
+            renderCart();
+        }
+
+        function clearSelectionMemory() {
+            localStorage.removeItem(SELECTION_MEMORY_KEY);
+        }
+
+        // ====================================================
+        // 🚀 DOM ELEMENTS
+        // ====================================================
+        const cartItemsContainer = document.getElementById('cart-items-container');
+        const selectAllCheckbox = document.getElementById('select-all-items');
+        const deleteSelectedBtn = document.getElementById('delete-selected');
+        const sendOrderBtn = document.getElementById('send-order');
+        const buyNowBtn = document.getElementById('buy-now');
+        const subtotalEl = document.getElementById('subtotal');
+        const productDiscountEl = document.getElementById('product-discount');
+        const campaignDiscountEl = document.getElementById('campaign-discount');
+        const cashDiscountEl = document.getElementById('cash-discount');
+        const totalEl = document.getElementById('total');
+        const totalSavingsEl = document.getElementById('total-savings');
+        const totalItemsEl = document.getElementById('total-items');
+        const totalPriceEl = document.getElementById('total-price');
+        const totalSavingEl = document.getElementById('total-saving');
+        const notificationContainer = document.getElementById('notification');
+        const notificationText = document.getElementById('notification-text');
+        const orderNotesTextarea = document.getElementById('order-notes');
+        
+        // Dinamik müşteri bilgisi elementleri
+        const customerNameEl = document.getElementById('customer-name');
+        const customerCodeEl = document.getElementById('customer-code');
+        const customerAddressEl = document.getElementById('customer-address');
+        const customerPhoneEl = document.getElementById('customer-phone');
+        const customerContactEl = document.getElementById('customer-contact');
+        const customerDetailsEl = document.getElementById('customer-details');
+        const welcomeTitleEl = document.getElementById('welcome-title');
+        const welcomeSubtitleEl = document.getElementById('welcome-subtitle');
+
+        // ====================================================
+        // 🚀 UYGULAMA BAŞLATMA
+        // ====================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        async function initializeApp() {
+            try {
+                // 1. Önce kullanıcı bilgilerini yükle
+                await loadUserData();
+                
+                // 2. Müşteri bilgilerini göster
+                displayCustomerInfo();
+                
+                // 3. Sepeti yükle
+                await loadCart();
+                
+                // 4. Event listener'ları kur
+                setupEventListeners();
+            } catch (error) {
+                console.error('Uygulama başlatma hatası:', error);
+                showError('Uygulama başlatılamadı: ' + error.message);
+            }
+        }
+
+        // ====================================================
+        // 🚀 KULLANICI BİLGİLERİNİ YÜKLE
+        // ====================================================
+        async function loadUserData() {
+            try {
+                // LocalStorage'dan kullanıcı bilgilerini al
+                const userDataString = localStorage.getItem('b2b_user_data');
+                
+                if (!userDataString) {
+                    // Kullanıcı giriş yapmamış, login sayfasına yönlendir
+                    window.location.href = '/';
+                    return;
+                }
+
+                const userData = JSON.parse(userDataString);
+                currentUser = userData;
+                
+                console.log('👤 Sepet: Kullanıcı bilgileri yüklendi:', currentUser);
+
+                // Logo'dan detaylı müşteri bilgilerini getir
+                await loadCustomerDetailsFromLogo();
+                
+            } catch (error) {
+                console.error('Kullanıcı bilgisi yükleme hatası:', error);
+                throw new Error('Kullanıcı bilgileri alınamadı');
+            }
+        }
+
+        // ====================================================
+        // 🚀 LOGO'DAN MÜŞTERİ DETAYLARINI GETİR
+        // ====================================================
+        async function loadCustomerDetailsFromLogo() {
+            try {
+                if (!currentUser || !currentUser.cari_kodu) {
+                    console.warn('Müşteri kodu bulunamadı');
+                    return;
+                }
+
+                const customerCode = currentUser.cari_kodu;
+                
+                // Logo API'den müşteri detaylarını al
+                const response = await fetch(`/api/logo/data?action=customer-info&customerCode=${encodeURIComponent(customerCode)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success && result.data.length > 0) {
+                    const customerDetails = result.data[0];
+                    
+                    // CurrentUser objesini güncelle
+                    currentUser.musteri_adi = customerDetails.MusteriAdi || currentUser.musteri_adi;
+                    currentUser.adres1 = customerDetails.Adres1 || currentUser.adres;
+                    currentUser.adres2 = customerDetails.Adres2 || '';
+                    currentUser.ilce = customerDetails.Ilce || '';
+                    currentUser.sehir = customerDetails.Sehir || '';
+                    currentUser.telefon = customerDetails.Telefon || '';
+                    currentUser.yetkili = customerDetails.Yetkili || '';
+                    currentUser.ozel_kod = customerDetails.OzelKod || '';
+                    currentUser.bolge_kodu = customerDetails.BolgeKodu || '';
+                    
+                    // LocalStorage'ı güncelle
+                    localStorage.setItem('b2b_user_data', JSON.stringify(currentUser));
+                    
+                    console.log('✅ Sepet: Logo müşteri detayları yüklendi:', customerDetails);
+                } else {
+                    console.warn('Sepet: Logo müşteri detayları bulunamadı');
+                }
+            } catch (error) {
+                console.error('Sepet: Logo müşteri detayları yükleme hatası:', error);
+            }
+        }
+
+        // ====================================================
+        // 🚀 MÜŞTERİ BİLGİLERİNİ GÖSTER
+        // ====================================================
+        function displayCustomerInfo() {
+            if (!currentUser) {
+                customerNameEl.textContent = 'Müşteri Bulunamadı';
+                customerCodeEl.textContent = 'Müşteri Kodu: -';
+                return;
+            }
+
+            // Müşteri adı
+            const customerName = currentUser.musteri_adi || currentUser.kullanici || 'Müşteri';
+            customerNameEl.textContent = customerName;
+            
+            // Müşteri kodu
+            const customerCode = currentUser.cari_kodu || currentUser.kullanici || '-';
+            customerCodeEl.textContent = `Müşteri Kodu: ${customerCode}`;
+            
+            // Hoş geldiniz mesajı
+            welcomeTitleEl.textContent = `${customerName} - Sepetiniz`;
+            welcomeSubtitleEl.textContent = `${customerCode} - Logo entegrasyonlu sepet yönetimi`;
+            
+        }
+
+        // ====================================================
+        // 🚀 SEPET YÖNETİMİ
+        // ====================================================
+        async function loadCart() {
+            try {
+                showLoading();
+                
+                // LocalStorage'dan sepeti yükle
+                const savedCart = localStorage.getItem('b2b_cart');
+                if (savedCart) {
+                    cart = JSON.parse(savedCart);
+                }
+                
+                renderCart();
+                updateCartSummary();
+                loadSelectionMemory();
+                
+            } catch (error) {
+                console.error('Sepet yükleme hatası:', error);
+                showError('Sepet yüklenirken hata oluştu');
+            }
+        }
+
+        function renderCart() {
+            if (cart.length === 0) {
+                cartItemsContainer.innerHTML = `
+                    <tr>
+                        <td colspan="12" class="empty-state">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-shopping-cart"></i>
+                            </div>
+                            <h3>Sepetiniz Boş</h3>
+                            <p>Henüz sepete ürün eklemediniz. Hemen alışverişe başlayın!</p>
+                            <a href="dashboard.html" class="checkout-btn primary" style="text-decoration: none; display: inline-flex; width: auto; padding: 0.75rem 1.5rem; margin-top: 1rem;">
+                                <i class="fas fa-store"></i>
+                                Ürün Kataloğuna Git
+                            </a>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            cartItemsContainer.innerHTML = '';
+            
+            cart.forEach((item, index) => {
+                const hasDiscount = item.discountRate && item.discountRate > 0;
+                const discountedPrice = hasDiscount ? item.price * (1 - item.discountRate / 100) : item.price;
+                const totalPrice = discountedPrice * item.quantity;
+                const originalTotal = item.price * item.quantity;
+                
+                const row = document.createElement('tr');
+
+                row.innerHTML = `
+                    <td class="select-cell">
+                        <input type="checkbox" onchange="toggleSelection(${index})" ${selectedItems.has(index) ? 'checked' : ''}>
+                    </td>
+                    <td>
+                        <div class="product-image">
+                            <i class="fas fa-box"></i>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="product-code">${item.code}</div>
+                    </td>
+                    <td>
+                        <div class="product-name" title="${item.name}">${item.name}</div>
+                    </td>
+                    <td>${item.oemCode || ''}</td>
+                    <td>
+                        <span class="manufacturer-badge">${item.manufacturer}</span>
+                    </td>
+                    <td>
+                        ${hasDiscount ? `<span class="discount-badge">%${item.discountRate}</span>` : '-'}
+                    </td>
+                    <td>-</td>
+                    <td class="price-info">
+                        ${hasDiscount ? `<div class="original-price">${formatPrice(item.price, item.currency || 160)}</div>` : ''}
+                        <div class="current-price">${formatPrice(discountedPrice, item.currency || 160)}</div>
+                    </td>
+                    <td>
+                        <div class="quantity-control">
+                            <button class="qty-btn" onclick="updateQuantity(${index}, -1)" ${item.quantity <= 1 ? 'disabled' : ''}>
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <input type="number" class="qty-input" value="${item.quantity}" min="1" max="999"
+                                   onchange="updateQuantityInput(${index}, this.value)">
+                            <button class="qty-btn" onclick="updateQuantity(${index}, 1)">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="item-total">${formatPrice(totalPrice, item.currency || 160)}</td>
+                    <td class="item-actions">
+                        <button class="remove-btn" onclick="removeItemDirect(${index})" title="Ürünü Kaldır">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </td>
+                `;
+                
+                cartItemsContainer.appendChild(row);
+            });
+        }
+
+        function toggleSelection(index) {
+            if (selectedItems.has(index)) {
+                selectedItems.delete(index);
+            } else {
+                selectedItems.add(index);
+            }
+            updateBatchActions();
+            saveSelectionMemory();
+        }
+
+        function toggleSelectAll() {
+            if (selectAllCheckbox.checked) {
+                selectedItems = new Set([...Array(cart.length).keys()]);
+            } else {
+                selectedItems.clear();
+            }
+            updateBatchActions();
+            renderCart();
+            saveSelectionMemory();
+        }
+
+        function updateBatchActions() {
+            const selectedCount = selectedItems.size;
+            deleteSelectedBtn.disabled = selectedCount === 0;
+            selectAllCheckbox.checked = selectedCount === cart.length && cart.length > 0;
+        }
+
+        async function updateQuantity(index, change) {
+            const newQty = cart[index].quantity + change;
+            if (newQty >= 1 && newQty <= 999) {
+                await updateCartItem(index, newQty);
+            }
+        }
+
+        async function updateQuantityInput(index, value) {
+            const qty = parseInt(value) || 1;
+            if (qty >= 1 && qty <= 999) {
+                await updateCartItem(index, qty);
+            } else {
+                renderCart();
+            }
+        }
+
+        async function updateCartItem(index, newQuantity) {
+            try {
+                cart[index].quantity = newQuantity;
+                saveCartToStorage();
+                renderCart();
+                updateCartSummary();
+                updateCartUI();
+                showNotification('Miktar güncellendi');
+            } catch (error) {
+                console.error('Miktar güncelleme hatası:', error);
+                showError('Miktar güncellenirken hata oluştu');
+            }
+        }
+
+        async function removeItemDirect(index) {
+            try {
+                const removedItem = cart[index];
+                cart.splice(index, 1);
+                selectedItems.delete(index);
+                
+                // Seçim indekslerini güncelle
+                const updatedSelections = new Set();
+                selectedItems.forEach(i => {
+                    if (i > index) updatedSelections.add(i - 1);
+                    else if (i < index) updatedSelections.add(i);
+                });
+                selectedItems = updatedSelections;
+                
+                saveCartToStorage();
+                saveSelectionMemory();
+                renderCart();
+                updateCartSummary();
+                updateCartUI();
+            } catch (error) {
+                console.error('Ürün silme hatası:', error);
+                showError('Ürün silinirken hata oluştu');
+            }
+        }
+
+        async function deleteSelectedItems() {
+            if (selectedItems.size === 0) return;
+            
+            try {
+                const indices = Array.from(selectedItems).sort((a, b) => b - a);
+                
+                for (const index of indices) {
+                    cart.splice(index, 1);
+                }
+                
+                selectedItems.clear();
+                saveCartToStorage();
+                saveSelectionMemory();
+                renderCart();
+                updateCartSummary();
+                updateCartUI();
+            } catch (error) {
+                console.error('Toplu silme hatası:', error);
+                showError('Ürünler silinirken hata oluştu');
+            }
+        }
+
+        function saveCartToStorage() {
+            localStorage.setItem('b2b_cart', JSON.stringify(cart));
+        }
+
+        function updateCartUI() {
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            const totalValue = cart.reduce((sum, item) => {
+                const discountedPrice = item.discountRate ? item.price * (1 - item.discountRate / 100) : item.price;
+                return sum + (discountedPrice * item.quantity);
+            }, 0);
+
+            totalItemsEl.textContent = totalItems;
+            totalPriceEl.textContent = formatPrice(totalValue, 160);
+
+            if (window.parent && window.parent.updateCartCount) {
+                window.parent.updateCartCount(totalItems);
+            }
+        }
+
+        // ====================================================
+        // 🚀 SIPARIŞ İŞLEMLERİ
+        // ====================================================
+        async function createOrder() {
+            // Sepet boş kontrolü
+            if (cart.length === 0) {
+                showNotification('Sepetiniz boş! Lütfen önce ürün ekleyin.', 'error');
+                return;
+            }
+
+            // Seçili ürün kontrolü
+            if (selectedItems.size === 0) {
+                showNotification('Lütfen sipariş vermek istediğiniz ürünleri seçin.', 'error');
+                return;
+            }
+
+            // Müşteri kodu kontrolü
+            if (!currentUser || !currentUser.cari_kodu) {
+                showNotification('Müşteri bilgileriniz bulunamadı. Lütfen tekrar giriş yapın.', 'error');
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                sendOrderBtn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; border-width: 2px;"></div> Logo\'ya Gönderiliyor...';
+                sendOrderBtn.disabled = true;
+
+                // Sipariş notunu al
+                const orderNotes = document.getElementById('order-notes').value.trim();
+
+                // Sadece seçili ürünleri gönder
+                const selectedIndices = Array.from(selectedItems);
+                const selectedCartItems = selectedIndices.map(index => cart[index]);
+
+                // B2B sipariş numarası oluştur
+                const b2bOrderNo = 'B2B-' + Date.now();
+
+                // Logo API'ye uygun sipariş formatını hazırla
+                const orderData = {
+                    customerCode: currentUser.cari_kodu,
+                    items: selectedCartItems.map(item => ({
+                        itemCode: item.code,
+                        quantity: item.quantity,
+                        unitPrice: item.price,
+                        unitCode: item.unitCode || 'ADET'
+                    })),
+                    orderNote: orderNotes || "",
+                    b2bOrderNo: b2bOrderNo
+                };
+
+                console.log('Logo API Gönderilen Veri:', orderData);
+
+                // Logo API'ye sipariş gönder
+                const response = await fetch('/api/logo/create-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(orderData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP hatası! durum: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('Logo API Cevabı:', result);
+
+                if (result.success) {
+                    showNotification(`Sipariş oluşturuldu! Sipariş No: ${result.orderNo}`, 'success');
+                    
+                    // Başarılı sipariş sonrası SADECE SEÇİLİ ÜRÜNLERİ sepetten kaldır
+                    const sortedIndices = selectedIndices.sort((a, b) => b - a);
+                    sortedIndices.forEach(index => {
+                        cart.splice(index, 1);
+                    });
+                    
+                    selectedItems.clear();
+                    saveCartToStorage();
+                    clearSelectionMemory();
+                    renderCart();
+                    updateCartSummary();
+                    updateCartUI();
+                    
+                    // 2 saniye sonra sipariş geçmişine yönlendir
+                    setTimeout(() => {
+                        window.location.href = 'siparis-gecmisi.html';
+                    }, 2000);
+                } else {
+                    throw new Error(result.message || 'Sipariş oluşturulamadı');
+                }
+
+            } catch (error) {
+                console.error('Sipariş oluşturma hatası:', error);
+                
+                let errorMessage = `Sipariş gönderilemedi: ${error.message}`;
+                
+                if (error.message.includes('Unexpected token')) {
+                    errorMessage = 'API yanıtı beklenmeyen formatta. Lütfen sistem yöneticinizle iletişime geçin.';
+                } else if (error.message.includes('HTTP hatası')) {
+                    errorMessage = 'Sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.';
+                } else if (error.message.includes('Network Error')) {
+                    errorMessage = 'Ağ bağlantı hatası. Lütfen internet bağlantınızı kontrol edin.';
+                }
+                
+                showError(errorMessage);
+            } finally {
+                sendOrderBtn.innerHTML = '<i class="fas fa-paper-plane"></i> SIPARIŞ GÖNDER';
+                sendOrderBtn.disabled = cart.length === 0;
+            }
+        }
+
+        async function buyNow() {
+            // Sepet boş kontrolü
+            if (cart.length === 0) {
+                showNotification('Sepetiniz boş! Lütfen önce ürün ekleyin.', 'error');
+                return;
+            }
+
+            // Seçili ürün kontrolü
+            if (selectedItems.size === 0) {
+                showNotification('Lütfen ödeme yapmak istediğiniz ürünleri seçin.', 'error');
+                return;
+            }
+
+            try {
+                buyNowBtn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; border-width: 2px;"></div> Yönlendiriliyor...';
+                buyNowBtn.disabled = true;
+
+                setTimeout(() => {
+                    window.location.href = 'sanal-pos.html';
+                }, 1000);
+
+            } catch (error) {
+                console.error('Hemen al hatası:', error);
+                showError(`Ödeme sayfasına yönlendirilemedi: ${error.message}`);
+                buyNowBtn.innerHTML = '<i class="fas fa-credit-card"></i> HEMEN AL';
+                buyNowBtn.disabled = cart.length === 0;
+            }
+        }
+
+        function updateCartSummary() {
+            let subtotal = 0;
+            let productDiscount = 0;
+            let campaignDiscount = 0;
+            
+            cart.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                subtotal += itemTotal;
+                
+                // Ürün indirimleri
+                if (item.discountRate && item.discountRate > 0) {
+                    productDiscount += itemTotal * (item.discountRate / 100);
+                }
+                
+                // Kampanya indirimi
+                if (item.discountRate && item.discountRate > 20) {
+                    campaignDiscount += itemTotal * 0.05;
+                }
+            });
+            
+            const subtotalAfterDiscount = subtotal - productDiscount - campaignDiscount;
+            const cashDiscount = subtotalAfterDiscount * 0.03;
+            const totalAfterCashDiscount = subtotalAfterDiscount - cashDiscount;
+            const tax = totalAfterCashDiscount * 0.20;
+            const total = totalAfterCashDiscount + tax;
+
+            // Toplam tasarruf
+            const totalSaving = productDiscount + campaignDiscount + cashDiscount;
+
+            subtotalEl.textContent = formatPrice(subtotal, 160);
+            productDiscountEl.textContent = `-${formatPrice(productDiscount, 160)}`;
+            campaignDiscountEl.textContent = `-${formatPrice(campaignDiscount, 160)}`;
+            cashDiscountEl.textContent = `-${formatPrice(cashDiscount, 160)}`;
+            totalEl.textContent = formatPrice(total, 160);
+            totalSavingsEl.textContent = formatPrice(totalSaving, 160);
+            totalSavingEl.textContent = formatPrice(totalSaving, 160);
+
+            sendOrderBtn.disabled = cart.length === 0;
+            buyNowBtn.disabled = cart.length === 0;
+        }
+
+        // ====================================================
+        // 🚀 YARDIMCI FONKSİYONLAR
+        // ====================================================
+        function formatPrice(price, currencyCode) {
+            const symbols = {
+                1: '$',
+                20: '€',
+                17: '£',
+                160: '₺'
+            };
+            const symbol = symbols[currencyCode] || '₺';
+            return `${parseFloat(price).toFixed(2)} ${symbol}`;
+        }
+
+        function showLoading() {
+            cartItemsContainer.innerHTML = `
+                <tr>
+                    <td colspan="12" class="loading">
+                        <div class="spinner"></div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function showError(message) {
+            cartItemsContainer.innerHTML = `
+                <tr>
+                    <td colspan="12" class="empty-state">
+                        <div class="empty-state-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h3>Hata Oluştu</h3>
+                        <p style="font-size: 0.85rem;">${message}</p>
+                        <button class="checkout-btn primary" onclick="loadCart()" style="text-decoration: none; display: inline-flex; width: auto; padding: 0.75rem 1.5rem; margin-top: 1rem;">
+                            <i class="fas fa-redo"></i>
+                            Tekrar Dene
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function showNotification(message, type = 'success') {
+            notificationText.textContent = message;
+            
+            if (type === 'error') {
+                notificationContainer.style.background = 'linear-gradient(135deg, var(--danger), #dc2626)';
+            } else {
+                notificationContainer.style.background = 'linear-gradient(135deg, var(--success), var(--success-dark))';
+            }
+            
+            notificationContainer.style.display = 'flex';
+            
+            setTimeout(() => {
+                notificationContainer.style.display = 'none';
+            }, 2000);
+        }
+
+        function setupEventListeners() {
+            document.getElementById('logout-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                    localStorage.removeItem('b2b_cart');
+                    localStorage.removeItem('b2b_user_data');
+                    localStorage.removeItem('b2b_user_type');
+                    localStorage.removeItem('b2b_session_id');
+                    localStorage.removeItem(SELECTION_MEMORY_KEY);
+                    sessionStorage.clear();
+                    window.location.href = '/';
+                }
+            });
+        }
+
+        // Dashboard'dan ürün eklemek için global fonksiyon
+        window.addToCart = function(product) {
+            const existingItemIndex = cart.findIndex(item => item.code === product.code);
+            let isNewItem = false;
+            
+            if (existingItemIndex > -1) {
+                cart[existingItemIndex].quantity += product.quantity || 1;
+            } else {
+                cart.push({
+                    code: product.code,
+                    name: product.name,
+                    price: product.price || 0,
+                    manufacturer: product.manufacturer || '',
+                    oemCode: product.oemCode || '',
+                    discountRate: product.discountRate || 0,
+                    quantity: product.quantity || 1,
+                    currency: product.currency || 160,
+                    addedAt: new Date().toISOString(),
+                    customerCode: currentUser ? currentUser.cari_kodu : 'UNKNOWN'
+                });
+                isNewItem = true;
+            }
+            
+            saveCartToStorage();
+            updateCartUI();
+            showNotification(`${product.name} sepete eklendi!`);
+            
+            if (isNewItem) {
+                selectAllForNewItems();
+            }
+            
+            if (window.location.pathname.includes('sepetim.html')) {
+                renderCart();
+                updateCartSummary();
+            }
+        };
+    </script>
+</body>
+</html>

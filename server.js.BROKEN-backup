@@ -1,0 +1,927 @@
+cd /home/yunlu
+
+# Önce yedek al
+cp server.js server.js.wrong-backup
+
+# Şimdi DOĞRU Server.js'i oluştur
+cat > server.js << 'EOF'
+const express = require('express');
+const path = require('path');
+const sql = require('mssql');
+const rateLimit = require('express-rate-limit');
+
+const app = express();
+const port = 8080;
+
+// ====================================================
+// 🚀 0.0 - TEMEL KONFİGÜRASYON
+// ====================================================
+
+// ====================================================
+// 🚀 0.1 - CACHE MEKANİZMASI
+// ====================================================
+const cache = new Map();
+const CACHE_DURATION = {
+    PRODUCTS: 15 * 60 * 1000,
+    PRICES: 10 * 60 * 1000,
+    CUSTOMER_INFO: 30 * 60 * 1000,
+    STOCK: 2 * 60 * 1000,
+    ORDERS: 5 * 60 * 1000,
+    SUMMARY: 5 * 60 * 1000
+};
+
+const getCacheKey = (action, params) => {
+    return `${action}_${JSON.stringify(params)}`;
+};
+
+const setCache = (key, data, duration) => {
+    cache.set(key, {
+        data,
+        timestamp: Date.now(),
+        duration
+    });
+};
+
+const getCache = (key) => {
+    const cached = cache.get(key);
+    if (!cached) return null;
+    
+    const isExpired = Date.now() - cached.timestamp > cached.duration;
+    if (isExpired) {
+        cache.delete(key);
+        return null;
+    }
+    
+    return cached.data;
+};
+
+// ====================================================
+// 🚀 0.2 - RATE LIMITING
+// ====================================================
+const generalLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 100,
+    message: {
+        success: false,
+        error: 'Çok fazla istek gönderildi. Lütfen 1 dakika sonra tekrar deneyin.'
+    }
+});
+
+const searchLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 50,
+    message: {
+        success: false, 
+        error: 'Arama limitine ulaştınız. Lütfen 1 dakika sonra tekrar deneyin.'
+    }
+});
+
+const stockLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 30,
+    message: {
+        success: false,
+        error: 'Stok sorgulama limitine ulaştınız. Lütfen 1 dakika sonra tekrar deneyin.'
+    }
+});
+
+// ====================================================
+// 🚀 0.3 - ÖZEL HATA SINIFLARI
+// ====================================================
+class LogoAPIError extends Error {
+    constructor(message, action, details = null) {
+        super(message);
+        this.name = 'LogoAPIError';
+        this.action = action;
+        this.details = details;
+        this.timestamp = new Date().toISOString();
+    }
+}
+
+class ValidationError extends LogoAPIError {
+    constructor(message, action, field) {
+        super(message, action, { field });
+        this.name = 'ValidationError';
+    }
+}
+
+// ====================================================
+// 🚀 0.4 - LOGGING SİSTEMİ
+// ====================================================
+const logger = {
+    info: (message, data = {}) => {
+        console.log(`📗 [INFO] ${new Date().toISOString()} - ${message}`, data);
+    },
+    error: (message, error = {}) => {
+        console.error(`📕 [ERROR] ${new Date().toISOString()} - ${message}`, {
+            error: error.message,
+            stack: error.stack,
+            action: error.action,
+            details: error.details
+        });
+    },
+    warn: (message, data = {}) => {
+        console.warn(`📙 [WARN] ${new Date().toISOString()} - ${message}`, data);
+    }
+};
+
+// ====================================================
+// 🚀 0.5 - MIDDLEWARE AYARLARI
+// ====================================================
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    next();
+});
+
+app.use(express.json());
+app.use(express.static('public'));
+
+// ====================================================
+// 🚀 1.0 - LOGO DATABASE BAĞLANTISI
+// ====================================================
+const logoConfig = {
+    server: 'IRAZOTOMOTIV',
+    database: 'LOGOGO3',
+    user: 'sa',
+    password: 'Logo12345678',
+    options: {
+        encrypt: false,
+        trustServerCertificate: true,
+        connectTimeout: 30000,
+        requestTimeout: 30000
+    },
+    pool: {
+        max: 10,
+        min: 0,
+        idleTimeoutMillis: 30000
+    }
+};
+
+const getLogoConnection = async () => {
+    try {
+        const pool = await sql.connect(logoConfig);
+        logger.info('Logo DB bağlantısı başarılı');
+        return pool;
+    } catch (err) {
+        logger.error('Logo DB bağlantı hatası', err);
+        throw new LogoAPIError('Database bağlantı hatası', 'connection', {
+            code: err.code,
+            originalError: err.message
+        });
+    }
+};
+
+// ====================================================
+// 🚀 1.1 - SIPARIŞ KONFİGÜRASYONU
+// ====================================================
+const ORDER_CONFIG = {
+    DEFAULT_STATUS: 4,
+    DEFAULT_TRCODE: 1,
+    DEFAULT_GENEXCTYP: 1,
+    DEFAULT_LINEEXCTYP: 0,
+    DEFAULT_UOMREF: 1,
+    DEFAULT_VAT: 18
+};
+
+// ====================================================
+// 🚀 2.0 - AUTHENTICATION ENDPOINT'LERİ  
+// ====================================================
+app.post('/api/auth/login', (req, res) => {
+    const { kullanici, sifre } = req.body;
+    logger.info('Login denendi', { kullanici, sifre });
+    
+    const userCode = kullanici.toUpperCase();
+    let rol = 'musteri';
+    let redirect = 'customer';
+    
+    if (userCode === 'ADMIN') {
+        rol = 'admin';
+        redirect = 'admin';
+    } else if (userCode === 'PLASIYER') {
+        rol = 'plasiyer'; 
+        redirect = 'sales';
+    }
+    
+    logger.info('Login başarılı', { userCode, rol });
+    
+    res.json({
+        success: true,
+        message: 'Demo giriş başarılı!',
+        user: {
+            kullanici: userCode,
+            rol: rol,
+            cari_kodu: userCode
+        },
+        redirect: redirect
+    });
+});
+
+// ====================================================
+// 🚀 2.0 - MERKEZİ API ENDPOINT
+// ====================================================
+app.get('/api/logo/data', generalLimiter, async (req, res) => {
+    const startTime = Date.now();
+    
+    try {
+        const { action, search, page = 1, limit = 50, customerCode, itemCode } = req.query;
+        
+        if (!action) {
+            throw new ValidationError('Action parametresi gereklidir', 'validation', 'action');
+        }
+
+        const cacheKey = getCacheKey(action, { search, page, limit, customerCode, itemCode });
+        const cacheConfig = getCacheConfig(action);
+        
+        if (cacheConfig) {
+            const cachedData = getCache(cacheKey);
+            if (cachedData) {
+                return res.json({
+                    ...cachedData,
+                    cached: true,
+                    responseTime: Date.now() - startTime
+                });
+            }
+        }
+
+        const pool = await getLogoConnection();
+        let result;
+        const offset = (page - 1) * limit;
+
+        logger.info('API isteği başlatıldı', { action, search, page, limit, customerCode, itemCode });
+
+        if (action === 'products') {
+            const query = `
+                SELECT 
+                    I.LOGICALREF as id,
+                    I.CODE as MalzemeKodu,
+                    I.NAME as MalzemeAdi,
+                    I.PRODUCERCODE as OEMKodu,
+                    I.STGRPCODE as Uretici,
+                    I.SPECODE as AracModeli,
+                    I.SPECODE2 as MerkezRaf,
+                    I.SPECODE3 as BostanciRaf,
+                    I.SPECODE4 as IkitelliRaf,
+                    I.ACTIVE as Aktif,
+                    
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 0 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) as MerkezStok,
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 1 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) as IkitelliStok,
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 2 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) as BostanciStok,
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 3 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) as DepoStok,
+                    ISNULL(SUM(S.ONHAND - S.RESERVED), 0) as ToplamStok
+                    
+                FROM LG_013_ITEMS I
+                LEFT JOIN LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
+                WHERE I.ACTIVE = 0
+                GROUP BY I.LOGICALREF, I.CODE, I.NAME, I.PRODUCERCODE, I.STGRPCODE, 
+                         I.SPECODE, I.SPECODE2, I.SPECODE3, I.SPECODE4, I.ACTIVE
+                ORDER BY I.CODE
+                OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY
+            `;
+            result = await pool.request().query(query);
+        }
+        else if (action === 'product-search') {
+            if (!search || search.trim().length < 2) {
+                throw new ValidationError('Arama terimi en az 2 karakter olmalıdır', 'product-search', 'search');
+            }
+
+            const query = `
+                SELECT 
+                    I.LOGICALREF as id,
+                    I.CODE as MalzemeKodu,
+                    I.NAME as MalzemeAdi,
+                    I.PRODUCERCODE as OEMKodu,
+                    I.STGRPCODE as Uretici,
+                    I.SPECODE as AracModeli,
+                    
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 0 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) as MerkezStok,
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 1 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) as IkitelliStok,
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 2 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) as BostanciStok,
+                    ISNULL(SUM(S.ONHAND - S.RESERVED), 0) as ToplamStok
+                    
+                FROM LG_013_ITEMS I
+                LEFT JOIN LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
+                WHERE I.ACTIVE = 0
+                AND (I.CODE LIKE '%' + @search + '%' OR I.PRODUCERCODE LIKE '%' + @search + '%')
+                GROUP BY I.LOGICALREF, I.CODE, I.NAME, I.PRODUCERCODE, I.STGRPCODE, I.SPECODE
+                ORDER BY I.CODE
+                OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY
+            `;
+            result = await pool.request()
+                .input('search', sql.VarChar, search.trim())
+                .query(query);
+        }
+        else if (action === 'prices') {
+            const query = `
+                SELECT 
+                    I.CODE as MalzemeKodu,
+                    I.NAME as MalzemeAdi,
+                    P.PRICE as BirimFiyat,
+                    P.CURRENCY as DovizKodu,
+                    CASE P.CURRENCY 
+                        WHEN 1 THEN 'USD'
+                        WHEN 20 THEN 'EUR' 
+                        WHEN 17 THEN 'GBP'
+                        WHEN 160 THEN 'TL'
+                    END as DovizAdi,
+                    P.PTYPE as FiyatTipi
+                    
+                FROM LG_013_ITEMS I
+                INNER JOIN LG_013_PRCLIST P ON P.CARDREF = I.LOGICALREF
+                WHERE P.ACTIVE = 0 
+                AND P.PRIORITY = 0
+                AND I.ACTIVE = 0
+                ORDER BY I.CODE
+            `;
+            result = await pool.request().query(query);
+        }
+        else if (action === 'stock') {
+            if (!itemCode) {
+                throw new ValidationError('Malzeme kodu gereklidir', 'stock', 'itemCode');
+            }
+
+            const query = `
+                SELECT 
+                    I.CODE as MalzemeKodu,
+                    I.NAME as MalzemeAdi,
+                    SUM(CASE WHEN S.INVENNO = 0 THEN S.ONHAND - S.RESERVED ELSE 0 END) as MerkezStok,
+                    SUM(CASE WHEN S.INVENNO = 1 THEN S.ONHAND - S.RESERVED ELSE 0 END) as IkitelliStok,
+                    SUM(CASE WHEN S.INVENNO = 2 THEN S.ONHAND - S.RESERVED ELSE 0 END) as BostanciStok,
+                    SUM(S.ONHAND - S.RESERVED) as ToplamStok
+                    
+                FROM LG_013_ITEMS I
+                LEFT JOIN LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
+                WHERE I.CODE = @itemCode
+                GROUP BY I.CODE, I.NAME
+            `;
+            result = await pool.request()
+                .input('itemCode', sql.VarChar, itemCode)
+                .query(query);
+        }
+        else if (action === 'customer-info') {
+            if (!customerCode) {
+                throw new ValidationError('Müşteri kodu gereklidir', 'customer-info', 'customerCode');
+            }
+
+            const query = `
+                SELECT 
+                    LOGICALREF as MusteriRef,
+                    CODE as CariKodu,
+                    DEFINITION_ as MusteriAdi,
+                    ADDR1 as Adres1,
+                    ADDR2 as Adres2,
+                    TOWN as Ilce,
+                    CITY as Sehir,
+                    TELNRS1 as Telefon,
+                    INCHARGE as Yetkili,
+                    SPECODE as OzelKod,
+                    CYPHCODE as BolgeKodu
+                    
+                FROM LG_013_CLCARD 
+                WHERE CODE = @customerCode
+            `;
+            result = await pool.request()
+                .input('customerCode', sql.VarChar, customerCode)
+                .query(query);
+        }
+        else if (action === 'summary') {
+            if (!customerCode) {
+                throw new ValidationError('Müşteri kodu gereklidir', 'summary', 'customerCode');
+            }
+
+            const customerResult = await pool.request()
+                .input('customerCode', sql.VarChar, customerCode)
+                .query('SELECT LOGICALREF FROM LG_013_CLCARD WHERE CODE = @customerCode');
+
+            if (customerResult.recordset.length === 0) {
+                throw new LogoAPIError('Müşteri bulunamadı', 'summary', { customerCode });
+            }
+
+            const customerRef = customerResult.recordset[0].LOGICALREF;
+
+            const query = `
+                SELECT 
+                    SUM(CASE WHEN DEBIT > 0 THEN DEBIT ELSE 0 END) as ToplamBorc,
+                    SUM(CASE WHEN CREDIT > 0 THEN CREDIT ELSE 0 END) as ToplamAlacak,
+                    SUM(DEBIT - CREDIT) as Bakiye,
+                    MAX(DATE_) as SonIslemTarihi,
+                    COUNT(*) as IslemSayisi
+                    
+                FROM LG_013_01_CLFLINE 
+                WHERE CLIENTREF = @customerRef
+                AND DATE_ >= DATEADD(MONTH, -3, GETDATE())
+            `;
+            result = await pool.request()
+                .input('customerRef', sql.Int, customerRef)
+                .query(query);
+        }
+        else if (action === 'orders') {
+            if (!customerCode) {
+                throw new ValidationError('Müşteri kodu gereklidir', 'orders', 'customerCode');
+            }
+
+            const customerResult = await pool.request()
+                .input('customerCode', sql.VarChar, customerCode)
+                .query('SELECT LOGICALREF FROM LG_013_CLCARD WHERE CODE = @customerCode');
+
+            if (customerResult.recordset.length === 0) {
+                throw new LogoAPIError('Müşteri bulunamadı', 'orders', { customerCode });
+            }
+
+            const customerRef = customerResult.recordset[0].LOGICALREF;
+
+            const query = `
+                SELECT 
+                    O.LOGICALREF as SiparisRef,
+                    O.FICHENO as SiparisNo,
+                    O.DATE_ as SiparisTarihi,
+                    C.DEFINITION_ as MusteriAdi,
+                    OL.AMOUNT as Miktar,
+                    I.CODE as MalzemeKodu,
+                    I.NAME as MalzemeAdi,
+                    O.SOURCEINDEX as AmbarKodu,
+                    CASE 
+                        WHEN OL.CLOSED = 1 THEN 'Tamamlandı'
+                        WHEN OL.CLOSED = 0 THEN 'Açık'
+                        ELSE 'Bilinmiyor'
+                    END as Durum
+                    
+                FROM LG_013_01_ORFICHE O
+                INNER JOIN LG_013_01_ORFLINE OL ON OL.ORDFICHEREF = O.LOGICALREF
+                INNER JOIN LG_013_ITEMS I ON I.LOGICALREF = OL.STOCKREF
+                INNER JOIN LG_013_CLCARD C ON C.LOGICALREF = O.CLIENTREF
+                WHERE O.CLIENTREF = @customerRef
+                AND O.TRCODE = 12
+                ORDER BY O.DATE_ DESC
+                OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY
+            `;
+            result = await pool.request()
+                .input('customerRef', sql.Int, customerRef)
+                .query(query);
+        }
+        // ⭐ YENİ EKLENDİ: min-quantities endpoint'i
+        else if (action === 'min-quantities') {
+            // Boş data döndür
+            result = { recordset: [] };
+        }
+        // ⭐ YENİ EKLENDİ: discounts endpoint'i
+        else if (action === 'discounts') {
+            // Boş data döndür
+            result = { recordset: [] };
+        }
+        else {
+            throw new ValidationError('Geçersiz action parametresi', 'validation', 'action');
+        }
+
+        const responseData = {
+            success: true,
+            action: action,
+            data: result.recordset,
+            total: result.recordset.length,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            timestamp: new Date().toISOString(),
+            responseTime: Date.now() - startTime
+        };
+
+        if (cacheConfig) {
+            try {
+                setCache(cacheKey, responseData, cacheConfig.duration);
+            } catch (cacheError) {
+                logger.warn('Cache kaydetme hatası', cacheError);
+            }
+        }
+
+        logger.info('API isteği başarılı', { 
+            action, 
+            responseTime: responseData.responseTime,
+            recordCount: result.recordset.length 
+        });
+
+        res.json(responseData);
+
+    } catch (error) {
+        const responseTime = Date.now() - startTime;
+        logger.error('API isteği hatası', error);
+        
+        const errorResponse = {
+            success: false,
+            error: error.message,
+            action: req.query.action,
+            timestamp: new Date().toISOString(),
+            responseTime: responseTime
+        };
+
+        if (error.details) {
+            errorResponse.details = error.details;
+        }
+
+        let statusCode = 500;
+        if (error instanceof ValidationError) statusCode = 400;
+        if (error instanceof LogoAPIError && error.message.includes('bulunamadı')) statusCode = 404;
+
+        res.status(statusCode).json(errorResponse);
+    }
+});
+
+// ====================================================
+// 🚀 3.0 - YENİ SIPARIŞ OLUŞTURMA ENDPOINT'İ - TAM DÜZELTİLMİŞ!
+// ====================================================
+app.post('/api/logo/create-order', generalLimiter, async (req, res) => {
+    const startTime = Date.now();
+    let pool;
+
+    try {
+        const { customerCode, items, orderNote, b2bOrderNo } = req.body;
+
+        // Validation
+        if (!customerCode || !items || !Array.isArray(items) || items.length === 0) {
+            throw new ValidationError('Müşteri kodu ve malzeme listesi gereklidir', 'create-order', 'customerCode/items');
+        }
+
+        console.log('🚀 YENİ SIPARIŞ İSTEĞİ:', { customerCode, itemCount: items.length, b2bOrderNo });
+
+        pool = await getLogoConnection();
+
+        // ====================================================
+        // 🚀 3.1 - CARİ HESAP KONTROLÜ
+        // ====================================================
+        const customerResult = await pool.request()
+            .input('customerCode', sql.VarChar, customerCode)
+            .query('SELECT LOGICALREF, CODE, DEFINITION_, CYPHCODE FROM LG_013_CLCARD WHERE CODE = @customerCode AND ACTIVE = 0');
+
+        if (customerResult.recordset.length === 0) {
+            throw new LogoAPIError('Müşteri bulunamadı veya aktif değil', 'create-order', { customerCode });
+        }
+
+        const customer = customerResult.recordset[0];
+        const customerRef = customer.LOGICALREF;
+
+        // ====================================================
+        // 🚀 3.2 - YENİ FİŞ NUMARASI OLUŞTUR (DÜZELTİLDİ!)
+        // ====================================================
+        const lastOrderResult = await pool.request()
+            .query("SELECT MAX(CAST(SUBSTRING(FICHENO, 5, 6) AS INT)) as lastNum FROM LG_013_01_ORFICHE WHERE FICHENO LIKE 'SIP-%'");
+
+        // DEBUG: Konsola yazdır
+        console.log('🔍 Last order result:', lastOrderResult.recordset[0]);
+        console.log('🔍 Last num from DB:', lastOrderResult.recordset[0].lastNum);
+
+        // NULL kontrolü
+        let lastNum = 0;
+        if (lastOrderResult.recordset[0].lastNum !== null && 
+            lastOrderResult.recordset[0].lastNum !== undefined) {
+            lastNum = lastOrderResult.recordset[0].lastNum;
+        }
+
+        console.log('🔍 Using last num:', lastNum);
+        const orderNo = `SIP-${String(lastNum + 1).padStart(6, '0')}`;
+        console.log('🎯 Yeni Sipariş No:', orderNo);
+
+        // ====================================================
+        // 🚀 3.3 - TUTAR HESAPLAMALARI
+        // ====================================================
+        const netTotal = items.reduce((sum, item) => sum + (item.quantity * (item.unitPrice || 100)), 0);
+        const totalVat = netTotal * 0.18;
+        const grossTotal = netTotal + totalVat;
+
+        console.log('💰 Tutar Hesaplamaları:', { netTotal, totalVat, grossTotal });
+
+        // ====================================================
+        // 🚀 3.4 - ORFICHE BAŞLIK KAYDI OLUŞTUR - DÜZELTİLMİŞ!
+        // ====================================================
+        const orficheQuery = `
+            INSERT INTO LG_013_01_ORFICHE (
+                TRCODE, FICHENO, DATE_, TIME_, DOCODE, 
+                CLIENTREF, SOURCEINDEX, SOURCECOSTGRP, STATUS,
+                CAPIBLOCK_CREATEDBY, CAPIBLOCK_CREADEDDATE, CAPIBLOCK_CREATEDHOUR, CAPIBLOCK_CREATEDMIN,
+                GENEXCTYP, LINEEXCTYP, SITEID, RECSTATUS, ORGLOGOID,
+                TRCURR, TRRATE, TRNET, UPDCURR,
+                TOTALDISCOUNTS, TOTALDISCOUNTED, TOTALVAT, GROSSTOTAL, NETTOTAL,
+                PAYDEFREF, TEXTINC, SPECODE, CYPHCODE,
+                GENEXP1, GENEXP2
+            )
+            OUTPUT INSERTED.LOGICALREF
+            VALUES (
+                @trCode, @ficheNo, @date, @time, @docode,
+                @clientRef, @sourceIndex, @sourceCostGrp, @status,
+                @createdBy, @createdDate, @createdHour, @createdMin,
+                @genExcTyp, @lineExcTyp, @siteId, @recStatus, @orgLogoId,
+                @trCurr, @trRate, @trNet, @updCurr,
+                @totalDiscounts, @totalDiscounted, @totalVat, @grossTotal, @netTotal,
+                @paydefRef, @textInc, @specode, @cyphcode,
+                @genexp1, @genexp2
+            )
+        `;
+
+        const currentDate = new Date();
+        const timeStr = currentDate.getHours().toString().padStart(2, '0') + 
+                       currentDate.getMinutes().toString().padStart(2, '0');
+
+        const orficheResult = await pool.request()
+            .input('trCode', sql.SmallInt, 1) // TRCODE: 1 (Sipariş)
+            .input('ficheNo', sql.VarChar, orderNo)
+            .input('date', sql.DateTime, currentDate)
+            .input('time', sql.Int, parseInt(timeStr))
+            .input('docode', sql.VarChar, orderNo)
+            .input('clientRef', sql.Int, customerRef)
+            .input('sourceIndex', sql.SmallInt, 1) // IKITELLI ambarı
+            .input('sourceCostGrp', sql.SmallInt, 1)
+            .input('status', sql.SmallInt, 4) // STATUS: 4 (Onaylı)
+            .input('createdBy', sql.SmallInt, 29)
+            .input('createdDate', sql.DateTime, currentDate)
+            .input('createdHour', sql.SmallInt, currentDate.getHours())
+            .input('createdMin', sql.SmallInt, currentDate.getMinutes())
+            .input('genExcTyp', sql.SmallInt, 1) // GENEXCTYP: 1
+            .input('lineExcTyp', sql.SmallInt, 0) // LINEEXCTYP: 0
+            .input('siteId', sql.SmallInt, 0)
+            .input('recStatus', sql.SmallInt, 2)
+            .input('orgLogoId', sql.VarChar, null)
+            .input('trCurr', sql.SmallInt, 160) // ⭐ DÜZELTİLDİ: 160 = TL
+            .input('trRate', sql.Float, 0.0)
+            .input('trNet', sql.Float, netTotal)
+            .input('updCurr', sql.SmallInt, 0)
+            .input('totalDiscounts', sql.Float, 0.0)
+            .input('totalDiscounted', sql.Float, 0.0)
+            .input('totalVat', sql.Float, totalVat)
+            .input('grossTotal', sql.Float, grossTotal)
+            .input('netTotal', sql.Float, netTotal)
+            .input('paydefRef', sql.Int, 15)
+            .input('textInc', sql.SmallInt, 0)
+            .input('specode', sql.VarChar, 'B2B_SIPARIS')
+            .input('cyphcode', sql.VarChar, 'ONLINE')
+            .input('genexp1', sql.VarChar, b2bOrderNo || 'B2B_ORDER')
+            .input('genexp2', sql.VarChar, orderNote || 'Web Sipariş')
+            .query(orficheQuery);
+
+        const orderRef = orficheResult.recordset[0].LOGICALREF;
+
+        console.log('✅ ORFICHE kaydı başarılı. Ref:', orderRef);
+
+        // ====================================================
+        // 🚀 3.5 - ORFLINE MALZEME KAYITLARI - KRİTİK DÜZELTMELER!
+        // ====================================================
+        console.log('📦 ORFLINE kayıtları başlıyor...', items.length, 'ürün');
+        
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const lineNo = (i + 1) * 10;
+
+            console.log(`   ${i + 1}. ürün:`, item.itemCode, 'x', item.quantity);
+            
+            // Stok kartı kontrolü
+            const itemResult = await pool.request()
+                .input('itemCode', sql.VarChar, item.itemCode)
+                .query('SELECT LOGICALREF, CODE, NAME FROM LG_013_ITEMS WHERE CODE = @itemCode AND ACTIVE = 0');
+
+            if (itemResult.recordset.length === 0) {
+                throw new LogoAPIError('Malzeme bulunamadı: ' + item.itemCode, 'create-order', { itemCode: item.itemCode });
+            }
+
+            const product = itemResult.recordset[0];
+            const amount = item.quantity * (item.unitPrice || 100);
+            const vatAmount = amount * 0.18;
+            const total = amount + vatAmount;
+
+            console.log(`   💰 ${item.itemCode} tutarları:`, { amount, vatAmount, total });
+
+            // ORFLINE kaydı - TÜM KRİTİK AYARLAR DOĞRU!
+            const orflineQuery = `
+                INSERT INTO LG_013_01_ORFLINE (
+                    ORDFICHEREF, STOCKREF, LINETYPE, DETLINE, LINENO_, TRCODE, DATE_, TIME_,
+                    AMOUNT, PRICE, TOTAL, VAT, VATAMNT, VATMATRAH, UOMREF, 
+                    SOURCEINDEX, STATUS, CLIENTREF, SHIPPEDAMOUNT, CLOSED,
+                    TRCURR, PRCURR, PRRATE
+                )
+                VALUES (
+                    @orderRef, @stockRef, @lineType, @detLine, @lineNo, @trCode, @date, @time,
+                    @amount, @price, @total, @vat, @vatAmount, @vatMatrah, @uomRef,
+                    @sourceIndex, @status, @clientRef, @shippedAmount, @closed,
+                    @trCurr, @prCurr, @prRate
+                )
+            `;
+
+            await pool.request()
+                .input('orderRef', sql.Int, orderRef)
+                .input('stockRef', sql.Int, product.LOGICALREF)
+                .input('lineType', sql.SmallInt, 0) // LINETYPE: 0 (Malzeme)
+                .input('detLine', sql.SmallInt, 1)  // ⭐ DÜZELTİLDİ: DETLINE: 1 (Detay satırı) - KRİTİK!
+                .input('lineNo', sql.Int, lineNo)
+                .input('trCode', sql.SmallInt, 1) // TRCODE: 1 (Sipariş)
+                .input('date', sql.DateTime, currentDate)
+                .input('time', sql.Int, parseInt(timeStr))
+                .input('amount', sql.Float, amount)
+                .input('price', sql.Float, item.unitPrice || 100)
+                .input('total', sql.Float, total)
+                .input('vat', sql.Float, 18) // VAT: 18%
+                .input('vatAmount', sql.Float, vatAmount)
+                .input('vatMatrah', sql.Float, amount)
+                .input('uomRef', sql.Int, 1) // UOMREF: 1 (Adet)
+                .input('sourceIndex', sql.SmallInt, 1) // SOURCEINDEX: 1 (IKITELLI)
+                .input('status', sql.SmallInt, 4) // STATUS: 4
+                .input('clientRef', sql.Int, customerRef)
+                .input('shippedAmount', sql.Float, 0) // SHIPPEDAMOUNT: 0 - KRİTİK!
+                .input('closed', sql.SmallInt, 0)     // CLOSED: 0 - KRİTİK!
+                .input('trCurr', sql.SmallInt, 160)   // ⭐ DÜZELTİLDİ: TRCURR: 160 (TL)
+                .input('prCurr', sql.SmallInt, 160)   // ⭐ DÜZELTİLDİ: PRCURR: 160 (TL)
+                .input('prRate', sql.Float, 0.0)      // PRRATE: 0
+                .query(orflineQuery);
+
+            console.log(`   ✅ ${i + 1}. ORFLINE kaydı başarılı`);
+
+            // ====================================================
+            // 🚀 3.6 - STLINE REZERVASYON KAYDI - DÜZELTİLMİŞ!
+            // ====================================================
+            const stlineQuery = `
+                INSERT INTO LG_013_01_STLINE (
+                    STOCKREF, LINETYPE, DATE_, FTIME, 
+                    IOCODE, SOURCETYPE, SOURCEINDEX, SOURCEWSREF,
+                    STFICHEREF, UOMREF, AMOUNT, PRICE, 
+                    TRCODE, CLIENTREF, ORDFICHEREF,
+                    STATUS, SITEID, RECSTATUS, ORGLOGOID
+                )
+                VALUES (
+                    @stockRef, @lineType, @date, @ftime,
+                    @ioCode, @sourceType, @sourceIndex, @sourceWsRef,
+                    @stFicheRef, @uomRef, @amount, @price,
+                    @trCode, @clientRef, @orderRef,
+                    @status, @siteId, @recStatus, @orgLogoId
+                )
+            `;
+
+            await pool.request()
+                .input('stockRef', sql.Int, product.LOGICALREF)
+                .input('lineType', sql.SmallInt, 0)
+                .input('date', sql.DateTime, currentDate)
+                .input('ftime', sql.Int, parseInt(timeStr))
+                .input('ioCode', sql.SmallInt, 1)    // IOCODE: 1 (Giriş)
+                .input('sourceType', sql.SmallInt, 2) // SOURCETYPE: 2 - KRİTİK!
+                .input('sourceIndex', sql.SmallInt, 1) // SOURCEINDEX: 1 (IKITELLI)
+                .input('sourceWsRef', sql.Int, 0)
+                .input('stFicheRef', sql.Int, 0)
+                .input('uomRef', sql.Int, 1) // UOMREF: 1 (Adet)
+                .input('amount', sql.Float, item.quantity)
+                .input('price', sql.Float, item.unitPrice || 100)
+                .input('trCode', sql.SmallInt, 1) // TRCODE: 1 (Sipariş)
+                .input('clientRef', sql.Int, customerRef)
+                .input('orderRef', sql.Int, orderRef)
+                .input('status', sql.SmallInt, 0)
+                .input('siteId', sql.SmallInt, 0)
+                .input('recStatus', sql.SmallInt, 0)
+                .input('orgLogoId', sql.VarChar, null)
+                .query(stlineQuery);
+
+            console.log(`   ✅ ${i + 1}. STLINE kaydı başarılı`);
+        }
+
+        console.log('🎉 TÜM SIPARIŞ BAŞARILI! No:', orderNo, 'Ref:', orderRef);
+        
+        res.json({
+            success: true,
+            orderNo: orderNo,
+            orderRef: orderRef,
+            message: 'Sipariş başarıyla oluşturuldu! 🎉',
+            amounts: {
+                netTotal: netTotal,
+                totalVat: totalVat,
+                grossTotal: grossTotal
+            },
+            timestamp: new Date().toISOString(),
+            responseTime: Date.now() - startTime
+        });
+
+    } catch (error) {
+        console.error('❌ SIPARIŞ HATASI:', error);
+        
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            action: 'create-order',
+            timestamp: new Date().toISOString(),
+            responseTime: Date.now() - startTime
+        });
+    }
+});
+
+// ====================================================
+// 🚀 3.1 - ESKİ /orders ENDPOINT'İ İÇİN YÖNLENDİRME
+// ====================================================
+app.post('/api/logo/orders', generalLimiter, async (req, res) => {
+    console.log('🔄 /orders endpoint çağrıldı, /create-order yönlendiriliyor...');
+    
+    try {
+        // Doğrudan /create-order endpoint'ine yönlendir
+        req.url = '/api/logo/create-order';
+        return app._router.handle(req, res);
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Endpoint yönlendirme hatası: ' + error.message
+        });
+    }
+});
+
+// ====================================================
+// 🚀 4.0 - CACHE KONFİGÜRASYONU
+// ====================================================
+function getCacheConfig(action) {
+    const configs = {
+        'products': { duration: CACHE_DURATION.PRODUCTS },
+        'prices': { duration: CACHE_DURATION.PRICES },
+        'customer-info': { duration: CACHE_DURATION.CUSTOMER_INFO },
+        'stock': { duration: CACHE_DURATION.STOCK },
+        'orders': { duration: CACHE_DURATION.ORDERS },
+        'summary': { duration: CACHE_DURATION.SUMMARY },
+        'min-quantities': { duration: 5 * 60 * 1000 },
+        'discounts': { duration: 5 * 60 * 1000 }
+    };
+    return configs[action] || null;
+}
+
+// ====================================================
+// 🚀 5.0 - ANA SAYFA ROUTE
+// ====================================================
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// ====================================================
+// 🚀 6.0 - HEALTH CHECK
+// ====================================================
+app.get('/health', async (req, res) => {
+    try {
+        const pool = await getLogoConnection();
+        const result = await pool.request().query('SELECT 1 as status');
+        
+        res.json({
+            status: 'OK',
+            database: 'connected',
+            timestamp: new Date().toISOString(),
+            cacheSize: cache.size
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'ERROR',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// ====================================================
+// 🚀 7.0 - CACHE TEMİZLEME ENDPOINT'İ
+// ====================================================
+app.delete('/api/cache/clear', (req, res) => {
+    const previousSize = cache.size;
+    cache.clear();
+    
+    logger.info('Cache temizlendi', { previousSize });
+    
+    res.json({
+        success: true,
+        message: 'Cache başarıyla temizlendi',
+        clearedEntries: previousSize,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// ====================================================
+// 🚀 8.0 - SUNUCU BAŞLATMA
+// ====================================================
+app.listen(port, '192.168.219.128', () => {
+    console.log(`=========================================`);
+    console.log(`🚀 🚀 🚀 TAM DÜZELTİLMİŞ SERVER AKTİF! 🚀 🚀 🚀`);
+    console.log(`=========================================`);
+    console.log(`📍 http://192.168.219.128:${port}`);
+    console.log(`🎯 SIPARIŞ ENDPOINT: /api/logo/create-order`);
+    console.log(`✅ KRİTİK DÜZELTMELER:`);
+    console.log(`   ✅ DETLINE = 1 (Malzemeler görünür)`);
+    console.log(`   ✅ TRCURR = 160 (TL)`);
+    console.log(`   ✅ PRCURR = 160 (TL)`);
+    console.log(`   ✅ Fiş No: SIP-000089'dan başlayacak`);
+    console.log(`   ✅ min-quantities endpoint eklendi`);
+    console.log(`   ✅ discounts endpoint eklendi`);
+    console.log(`   ✅ /orders -> /create-order yönlendirme`);
+    console.log(`=========================================`);
+});
+
+// ====================================================
+// 🚀 9.0 - PROCESS SONLANDIRMA YÖNETİMİ
+// ====================================================
+process.on('SIGINT', () => {
+    logger.info('Sunucu kapatılıyor...', { cacheSize: cache.size });
+    console.log('🛑 Sunucu kapatılıyor...');
+    process.exit(0);
+});
+
+process.on('uncaughtException', (error) => {
+    logger.error('Beklenmeyen hata', error);
+    console.log('❌ Kritik hata:', error.message);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Handle edilmemiş promise', { reason, promise });
+    console.log('❌ Handle edilmemiş promise:', reason);
+});
+EOF

@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Siparişlerim | B2B Trade Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #f59e0b;
+            --success: #10b981;
+            --success-dark: #059669;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --gray-light: #e2e8f0;
+            --border-radius: 12px;
+            --shadow: 0 4px 20px rgba(0,0,0,0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        /* LAYOUT */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1.5rem 0;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            transition: var(--transition);
+        }
+
+        .logo {
+            padding: 0 1.5rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 1rem;
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo span {
+            color: var(--secondary);
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0 1rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            border-radius: var(--border-radius);
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* HEADER */
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            z-index: 10;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-details {
+            text-align: right;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .user-code {
+            font-size: 0.875rem;
+            color: var(--gray);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            margin-right: 2rem;
+        }
+
+        .cart-indicator {
+            position: relative;
+            background: linear-gradient(135deg, var(--success), var(--success-dark));
+            color: white;
+            border-radius: var(--border-radius);
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            text-decoration: none;
+        }
+
+        .cart-indicator:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .campaign-indicator {
+            position: relative;
+            background: linear-gradient(135deg, var(--secondary), #d97706);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+
+        .campaign-indicator:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+        }
+
+        /* PAGE CONTENT */
+        .page-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            color: var(--gray);
+            font-size: 1rem;
+        }
+
+        /* STATS CARDS */
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            text-align: center;
+            transition: var(--transition);
+            border-left: 4px solid var(--primary);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .stat-card.warning {
+            border-left-color: var(--warning);
+        }
+
+        .stat-card.success {
+            border-left-color: var(--success);
+        }
+
+        .stat-card.danger {
+            border-left-color: var(--danger);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+            opacity: 0.8;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            color: var(--gray);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* FILTERS SECTION */
+        .filters-section {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .filters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .filters-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .filter-select, .filter-input {
+            padding: 0.75rem;
+            border: 1px solid var(--gray-light);
+            border-radius: var(--border-radius);
+            background: white;
+            font-size: 0.875rem;
+            transition: var(--transition);
+        }
+
+        .filter-select:focus, .filter-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--dark);
+            border: 1px solid var(--gray-light);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-light);
+        }
+
+        /* ORDERS SECTION */
+        .orders-section {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .results-count {
+            color: var(--gray);
+            font-size: 0.875rem;
+        }
+
+        /* ORDERS TABLE */
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+
+        .orders-table th {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: white;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .orders-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .orders-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .order-id {
+            color: var(--primary);
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .order-id:hover {
+            text-decoration: underline;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-confirmed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-shipped {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-delivered {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-cancelled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            padding: 0.5rem;
+            border: none;
+            border-radius: 4px;
+            background: transparent;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-btn.view {
+            color: var(--primary);
+        }
+
+        .action-btn.view:hover {
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .action-btn.cancel {
+            color: var(--danger);
+        }
+
+        .action-btn.cancel:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .action-btn.invoice {
+            color: var(--success);
+        }
+
+        .action-btn.invoice:hover {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        /* ORDER DETAILS MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--gray-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray);
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            color: var(--danger);
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .order-details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .order-detail-group h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .order-items {
+            margin-top: 2rem;
+        }
+
+        .order-items h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--dark);
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border: 1px solid var(--gray-light);
+            border-radius: var(--border-radius);
+            margin-bottom: 0.5rem;
+        }
+
+        .item-info {
+            flex: 1;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .item-code {
+            color: var(--gray);
+            font-size: 0.875rem;
+        }
+
+        .item-quantity {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .item-total {
+            font-weight: 700;
+            color: var(--dark);
+            font-size: 1.125rem;
+        }
+
+        .order-summary {
+            background: var(--light);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+        }
+
+        .summary-row.total {
+            font-weight: 700;
+            font-size: 1.125rem;
+            border-top: 1px solid var(--gray-light);
+            margin-top: 0.5rem;
+            padding-top: 1rem;
+        }
+
+        /* PAGINATION */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .pagination-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--gray-light);
+            background: white;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: var(--light);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-pages {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .page-number {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--gray-light);
+            background: white;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .page-number.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .page-number:hover:not(.active) {
+            background: var(--light);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .app-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+            }
+            
+            .nav-menu {
+                flex-direction: row;
+                overflow-x: auto;
+                padding: 0 1rem 1rem;
+            }
+            
+            .nav-item {
+                white-space: nowrap;
+            }
+            
+            .order-details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+            
+            .header-actions {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .stats-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .filters-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .orders-table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            .order-actions {
+                flex-direction: column;
+            }
+            
+            .pagination {
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .page-content {
+                padding: 1rem;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 1rem;
+            }
+            
+            .modal-body {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="logo">
+                <h1><i class="fas fa-store"></i> B2B<span>TRADE</span></h1>
+            </div>
+            <nav class="nav-menu">
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-home"></i> Anasayfa
+                </a>
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-boxes"></i> Alınan Malzemeler
+                </a>
+                <a href="siparislerim.html" class="nav-item active">
+                    <i class="fas fa-clipboard-list"></i> Siparişlerim
+                </a>
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-file-invoice-dollar"></i> Cari Borç
+                </a>
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-credit-card"></i> Sanal Pos Ödeme
+                </a>
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-user"></i> Profilim
+                </a>
+                <a href="#" class="nav-item" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- HEADER -->
+            <header class="header">
+                <div class="user-info">
+                    <div class="user-details">
+                        <div class="user-name">Ahmet Yılmaz</div>
+                        <div class="user-code">Müşteri Kodu: S6064</div>
+                    </div>
+                    <div class="user-avatar">AY</div>
+                </div>
+                <div class="header-actions">
+                    <a href="sepetim.html" class="cart-indicator">
+                        <i class="fas fa-shopping-cart"></i> Sepetim
+                        <span class="cart-count">3</span>
+                    </a>
+                    <a href="kampanyasepeti.html" class="campaign-indicator">
+                        <i class="fas fa-tags"></i> Kampanya Sepeti
+                        <span class="cart-count">2</span>
+                    </a>
+                </div>
+            </header>
+
+            <!-- PAGE CONTENT -->
+            <div class="page-content">
+                <div class="page-header">
+                    <h1 class="page-title">Siparişlerim</h1>
+                    <p class="page-subtitle">Tüm sipariş geçmişiniz ve detayları</p>
+                </div>
+
+                <!-- STATS CARDS -->
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-icon">📦</div>
+                        <div class="stat-value">24</div>
+                        <div class="stat-label">Toplam Sipariş</div>
+                    </div>
+                    <div class="stat-card warning">
+                        <div class="stat-icon">⏳</div>
+                        <div class="stat-value">3</div>
+                        <div class="stat-label">Bekleyen Sipariş</div>
+                    </div>
+                    <div class="stat-card success">
+                        <div class="stat-icon">🚚</div>
+                        <div class="stat-value">18</div>
+                        <div class="stat-label">Teslim Edilen</div>
+                    </div>
+                    <div class="stat-card danger">
+                        <div class="stat-icon">❌</div>
+                        <div class="stat-value">2</div>
+                        <div class="stat-label">İptal Edilen</div>
+                    </div>
+                </div>
+
+                <!-- FILTERS SECTION -->
+                <div class="filters-section">
+                    <div class="filters-header">
+                        <h2 class="filters-title">Sipariş Filtreleri</h2>
+                    </div>
+                    <div class="filters-grid">
+                        <div class="filter-group">
+                            <label class="filter-label">Sipariş Durumu</label>
+                            <select class="filter-select" id="status-filter">
+                                <option value="">Tüm Durumlar</option>
+                                <option value="pending">Beklemede</option>
+                                <option value="confirmed">Onaylandı</option>
+                                <option value="shipped">Kargoda</option>
+                                <option value="delivered">Teslim Edildi</option>
+                                <option value="cancelled">İptal Edildi</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Tarih Aralığı</label>
+                            <input type="date" class="filter-input" id="date-from">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">&nbsp;</label>
+                            <input type="date" class="filter-input" id="date-to">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Sipariş No</label>
+                            <input type="text" class="filter-input" id="order-search" placeholder="Sipariş no girin...">
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn btn-primary" onclick="applyFilters()">
+                            <i class="fas fa-filter"></i> Filtrele
+                        </button>
+                        <button class="btn btn-secondary" onclick="clearFilters()">
+                            <i class="fas fa-times"></i> Temizle
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ORDERS SECTION -->
+                <div class="orders-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Sipariş Listesi</h2>
+                        <div class="results-count" id="results-count">7 sipariş bulundu</div>
+                    </div>
+                    
+                    <!-- ORDERS TABLE -->
+                    <table class="orders-table" id="orders-table">
+                        <thead>
+                            <tr>
+                                <th>Sipariş No</th>
+                                <th>Tarih</th>
+                                <th>Toplam Tutar</th>
+                                <th>Durum</th>
+                                <th>Kargo Takip</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table-body">
+                            <!-- Orders will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+
+                    <!-- PAGINATION -->
+                    <div class="pagination">
+                        <button class="pagination-btn" id="prev-page" disabled>
+                            <i class="fas fa-chevron-left"></i> Önceki
+                        </button>
+                        <div class="pagination-pages" id="pagination-pages">
+                            <!-- Page numbers will be populated by JavaScript -->
+                        </div>
+                        <button class="pagination-btn" id="next-page">
+                            Sonraki <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ORDER DETAILS MODAL -->
+    <div class="modal" id="order-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Sipariş Detayları</h2>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Order details will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample orders data
+        const orders = [
+            {
+                id: 1,
+                orderId: "SIP-2023-001",
+                date: "2023-10-15",
+                status: "delivered",
+                total: 5450.50,
+                customer: "Ahmet Yılmaz",
+                customerCode: "S6064",
+                shippingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                billingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                paymentMethod: "Kredi Kartı",
+                shippingMethod: "Standart Kargo",
+                trackingNumber: "TRK123456789",
+                items: [
+                    { id: 1, code: "A-1038", name: "VW UST TABLA Q7 2010 U TABLA SOL-SAG", quantity: 2, price: 1999.00, total: 3998.00 },
+                    { id: 2, code: "B-2047", name: "BMW FREN BALATASI X5 2015 ÖN FREN SİSTEMİ", quantity: 1, price: 1572.50, total: 1572.50 }
+                ],
+                subtotal: 5570.50,
+                tax: 1002.69,
+                shipping: 0,
+                discount: 122.69,
+                finalTotal: 5450.50
+            },
+            {
+                id: 2,
+                orderId: "SIP-2023-002",
+                date: "2023-10-10",
+                status: "shipped",
+                total: 2280.00,
+                customer: "Ahmet Yılmaz",
+                customerCode: "S6064",
+                shippingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                billingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                paymentMethod: "Havale/EFT",
+                shippingMethod: "Express Kargo",
+                trackingNumber: "TRK987654321",
+                items: [
+                    { id: 6, code: "F-6093", name: "HONDA FAR LAMBASI CIVIC 2021 ÖN SOL FAR", quantity: 1, price: 2280.00, total: 2280.00 }
+                ],
+                subtotal: 2280.00,
+                tax: 410.40,
+                shipping: 25.00,
+                discount: 0,
+                finalTotal: 2715.40
+            },
+            {
+                id: 3,
+                orderId: "SIP-2023-003",
+                date: "2023-10-05",
+                status: "confirmed",
+                total: 3444.00,
+                customer: "Ahmet Yılmaz",
+                customerCode: "S6064",
+                shippingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                billingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                paymentMethod: "Kredi Kartı",
+                shippingMethod: "Standart Kargo",
+                trackingNumber: "",
+                items: [
+                    { id: 7, code: "G-7014", name: "FORD DİREKSİYON KUTUSU FOCUS 2017 DİREKSİYON SİSTEMİ", quantity: 1, price: 3444.00, total: 3444.00 }
+                ],
+                subtotal: 3444.00,
+                tax: 619.92,
+                shipping: 0,
+                discount: 0,
+                finalTotal: 4063.92
+            },
+            {
+                id: 4,
+                orderId: "SIP-2023-004",
+                date: "2023-09-28",
+                status: "pending",
+                total: 1150.00,
+                customer: "Ahmet Yılmaz",
+                customerCode: "S6064",
+                shippingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                billingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                paymentMethod: "Kredi Kartı",
+                shippingMethod: "Standart Kargo",
+                trackingNumber: "",
+                items: [
+                    { id: 5, code: "E-5078", name: "TOYOTA AKÜ COROLLA 2019 12V 60AH AKÜ", quantity: 1, price: 1150.00, total: 1150.00 }
+                ],
+                subtotal: 1150.00,
+                tax: 207.00,
+                shipping: 0,
+                discount: 0,
+                finalTotal: 1357.00
+            },
+            {
+                id: 5,
+                orderId: "SIP-2023-005",
+                date: "2023-09-20",
+                status: "cancelled",
+                total: 456.00,
+                customer: "Ahmet Yılmaz",
+                customerCode: "S6064",
+                shippingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                billingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                paymentMethod: "Kredi Kartı",
+                shippingMethod: "Standart Kargo",
+                trackingNumber: "",
+                items: [
+                    { id: 3, code: "C-3056", name: "MERCEDES BUJI SETI C180 2018 4'LÜ BUJI TAKIMI", quantity: 1, price: 456.00, total: 456.00 }
+                ],
+                subtotal: 456.00,
+                tax: 82.08,
+                shipping: 0,
+                discount: 0,
+                finalTotal: 538.08
+            },
+            {
+                id: 6,
+                orderId: "SIP-2023-006",
+                date: "2023-09-15",
+                status: "delivered",
+                total: 281.60,
+                customer: "Ahmet Yılmaz",
+                customerCode: "S6064",
+                shippingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                billingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                paymentMethod: "Havale/EFT",
+                shippingMethod: "Standart Kargo",
+                trackingNumber: "TRK456789123",
+                items: [
+                    { id: 4, code: "D-4012", name: "AUDI YAĞ FİLTRESİ A4 2020 MOTOR YAĞ FİLTRESİ", quantity: 1, price: 281.60, total: 281.60 }
+                ],
+                subtotal: 281.60,
+                tax: 50.69,
+                shipping: 0,
+                discount: 0,
+                finalTotal: 332.29
+            },
+            {
+                id: 7,
+                orderId: "SIP-2023-007",
+                date: "2023-09-10",
+                status: "delivered",
+                total: 1572.50,
+                customer: "Ahmet Yılmaz",
+                customerCode: "S6064",
+                shippingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                billingAddress: "İstanbul, Kadıköy, Caferağa Mah. Moda Cd. No:123",
+                paymentMethod: "Kredi Kartı",
+                shippingMethod: "Standart Kargo",
+                trackingNumber: "TRK789123456",
+                items: [
+                    { id: 2, code: "B-2047", name: "BMW FREN BALATASI X5 2015 ÖN FREN SİSTEMİ", quantity: 1, price: 1572.50, total: 1572.50 }
+                ],
+                subtotal: 1572.50,
+                tax: 283.05,
+                shipping: 0,
+                discount: 0,
+                finalTotal: 1855.55
+            }
+        ];
+
+        // Application state
+        let currentPage = 1;
+        const itemsPerPage = 5;
+        let filteredOrders = [...orders];
+
+        // DOM Elements
+        const ordersTableBody = document.getElementById('orders-table-body');
+        const resultsCount = document.getElementById('results-count');
+        const orderModal = document.getElementById('order-modal');
+        const modalBody = document.getElementById('modal-body');
+        const modalClose = document.getElementById('modal-close');
+        const prevPageBtn = document.getElementById('prev-page');
+        const nextPageBtn = document.getElementById('next-page');
+        const paginationPages = document.getElementById('pagination-pages');
+
+        // Initialize the application
+        function init() {
+            renderOrders();
+            setupEventListeners();
+        }
+
+        // Set up event listeners
+        function setupEventListeners() {
+            // Modal close
+            modalClose.addEventListener('click', closeModal);
+            
+            // Click outside modal to close
+            orderModal.addEventListener('click', (e) => {
+                if (e.target === orderModal) {
+                    closeModal();
+                }
+            });
+            
+            // Pagination
+            prevPageBtn.addEventListener('click', goToPrevPage);
+            nextPageBtn.addEventListener('click', goToNextPage);
+            
+            // Logout
+            document.getElementById('logout-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                logout();
+            });
+        }
+
+        // Render orders
+        function renderOrders() {
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const currentOrders = filteredOrders.slice(startIndex, endIndex);
+            
+            ordersTableBody.innerHTML = '';
+            
+            if (currentOrders.length === 0) {
+                ordersTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 2rem; color: var(--gray);">
+                            <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; display: block; opacity: 0.5;"></i>
+                            <p>Filtrelerinize uygun sipariş bulunamadı.</p>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                currentOrders.forEach(order => {
+                    const row = document.createElement('tr');
+                    
+                    // Format date
+                    const orderDate = new Date(order.date);
+                    const formattedDate = orderDate.toLocaleDateString('tr-TR');
+                    
+                    // Status badge
+                    let statusText = '';
+                    let statusClass = '';
+                    
+                    switch(order.status) {
+                        case 'pending':
+                            statusText = 'Beklemede';
+                            statusClass = 'status-pending';
+                            break;
+                        case 'confirmed':
+                            statusText = 'Onaylandı';
+                            statusClass = 'status-confirmed';
+                            break;
+                        case 'shipped':
+                            statusText = 'Kargoda';
+                            statusClass = 'status-shipped';
+                            break;
+                        case 'delivered':
+                            statusText = 'Teslim Edildi';
+                            statusClass = 'status-delivered';
+                            break;
+                        case 'cancelled':
+                            statusText = 'İptal Edildi';
+                            statusClass = 'status-cancelled';
+                            break;
+                    }
+                    
+                    row.innerHTML = `
+                        <td>
+                            <a href="#" class="order-id" onclick="viewOrderDetails(${order.id})">${order.orderId}</a>
+                        </td>
+                        <td>${formattedDate}</td>
+                        <td>${order.finalTotal.toFixed(2)} ₺</td>
+                        <td>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </td>
+                        <td>
+                            ${order.trackingNumber ? 
+                                `<a href="#" class="order-id">${order.trackingNumber}</a>` : 
+                                '-'
+                            }
+                        </td>
+                        <td>
+                            <div class="order-actions">
+                                <button class="action-btn view" onclick="viewOrderDetails(${order.id})" title="Detayları Gör">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                ${order.status === 'pending' ? `
+                                <button class="action-btn cancel" onclick="cancelOrder(${order.id})" title="Siparişi İptal Et">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                ` : ''}
+                                <button class="action-btn invoice" onclick="downloadInvoice(${order.id})" title="Fatura İndir">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    
+                    ordersTableBody.appendChild(row);
+                });
+            }
+            
+            // Update results count
+            resultsCount.textContent = `${filteredOrders.length} sipariş bulundu`;
+            
+            // Update pagination
+            updatePagination();
+        }
+
+        // Update pagination
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+            
+            // Update buttons
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+            
+            // Update page numbers
+            paginationPages.innerHTML = '';
+            
+            for (let i = 1; i <= totalPages; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = `page-number ${i === currentPage ? 'active' : ''}`;
+                pageBtn.textContent = i;
+                pageBtn.addEventListener('click', () => {
+                    currentPage = i;
+                    renderOrders();
+                });
+                paginationPages.appendChild(pageBtn);
+            }
+        }
+
+        // Pagination functions
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderOrders();
+            }
+        }
+
+        function goToNextPage() {
+            const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderOrders();
+            }
+        }
+
+        // View order details
+        function viewOrderDetails(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            
+            if (!order) return;
+            
+            // Format date
+            const orderDate = new Date(order.date);
+            const formattedDate = orderDate.toLocaleDateString('tr-TR');
+            
+            // Status text
+            let statusText = '';
+            switch(order.status) {
+                case 'pending': statusText = 'Beklemede'; break;
+                case 'confirmed': statusText = 'Onaylandı'; break;
+                case 'shipped': statusText = 'Kargoda'; break;
+                case 'delivered': statusText = 'Teslim Edildi'; break;
+                case 'cancelled': statusText = 'İptal Edildi'; break;
+            }
+            
+            modalBody.innerHTML = `
+                <div class="order-details-grid">
+                    <div class="order-detail-group">
+                        <h3>Sipariş Bilgileri</h3>
+                        <div class="detail-item">
+                            <span class="detail-label">Sipariş No:</span>
+                            <span class="detail-value">${order.orderId}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Sipariş Tarihi:</span>
+                            <span class="detail-value">${formattedDate}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Durum:</span>
+                            <span class="detail-value">${statusText}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Ödeme Yöntemi:</span>
+                            <span class="detail-value">${order.paymentMethod}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Kargo Yöntemi:</span>
+                            <span class="detail-value">${order.shippingMethod}</span>
+                        </div>
+                        ${order.trackingNumber ? `
+                        <div class="detail-item">
+                            <span class="detail-label">Takip No:</span>
+                            <span class="detail-value">${order.trackingNumber}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="order-detail-group">
+                        <h3>Müşteri Bilgileri</h3>
+                        <div class="detail-item">
+                            <span class="detail-label">Müşteri:</span>
+                            <span class="detail-value">${order.customer}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Müşteri Kodu:</span>
+                            <span class="detail-value">${order.customerCode}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Teslimat Adresi:</span>
+                            <span class="detail-value">${order.shippingAddress}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Fatura Adresi:</span>
+                            <span class="detail-value">${order.billingAddress}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="order-items">
+                    <h3>Sipariş Kalemleri</h3>
+                    ${order.items.map(item => `
+                        <div class="order-item">
+                            <div class="item-info">
+                                <div class="item-name">${item.name}</div>
+                                <div class="item-code">${item.code}</div>
+                            </div>
+                            <div class="item-quantity">${item.quantity} adet</div>
+                            <div class="item-total">${item.total.toFixed(2)} ₺</div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div class="order-summary">
+                    <h3>Sipariş Özeti</h3>
+                    <div class="summary-row">
+                        <span>Ara Toplam:</span>
+                        <span>${order.subtotal.toFixed(2)} ₺</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>KDV (%18):</span>
+                        <span>${order.tax.toFixed(2)} ₺</span>
+                    </div>
+                    ${order.discount > 0 ? `
+                    <div class="summary-row">
+                        <span>İndirim:</span>
+                        <span>-${order.discount.toFixed(2)} ₺</span>
+                    </div>
+                    ` : ''}
+                    ${order.shipping > 0 ? `
+                    <div class="summary-row">
+                        <span>Kargo:</span>
+                        <span>${order.shipping.toFixed(2)} ₺</span>
+                    </div>
+                    ` : ''}
+                    <div class="summary-row total">
+                        <span>Genel Toplam:</span>
+                        <span>${order.finalTotal.toFixed(2)} ₺</span>
+                    </div>
+                </div>
+            `;
+            
+            orderModal.style.display = 'flex';
+        }
+
+        // Close modal
+        function closeModal() {
+            orderModal.style.display = 'none';
+        }
+
+        // Cancel order
+        function cancelOrder(orderId) {
+            if (confirm('Bu siparişi iptal etmek istediğinizden emin misiniz?')) {
+                // In a real app, this would be an API call
+                const order = orders.find(o => o.id === orderId);
+                if (order) {
+                    order.status = 'cancelled';
+                    renderOrders();
+                    alert('Sipariş iptal edildi.');
+                }
+            }
+        }
+
+        // Download invoice
+        function downloadInvoice(orderId) {
+            // In a real app, this would generate/download the invoice
+            alert('Fatura indiriliyor...');
+        }
+
+        // Apply filters
+        function applyFilters() {
+            const statusFilter = document.getElementById('status-filter').value;
+            const dateFrom = document.getElementById('date-from').value;
+            const dateTo = document.getElementById('date-to').value;
+            const orderSearch = document.getElementById('order-search').value.toLowerCase();
+            
+            filteredOrders = orders.filter(order => {
+                // Status filter
+                if (statusFilter && order.status !== statusFilter) {
+                    return false;
+                }
+                
+                // Date filter
+                if (dateFrom && order.date < dateFrom) {
+                    return false;
+                }
+                
+                if (dateTo && order.date > dateTo) {
+                    return false;
+                }
+                
+                // Order ID search
+                if (orderSearch && !order.orderId.toLowerCase().includes(orderSearch)) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            currentPage = 1;
+            renderOrders();
+        }
+
+        // Clear filters
+        function clearFilters() {
+            document.getElementById('status-filter').value = '';
+            document.getElementById('date-from').value = '';
+            document.getElementById('date-to').value = '';
+            document.getElementById('order-search').value = '';
+            
+            filteredOrders = [...orders];
+            currentPage = 1;
+            renderOrders();
+        }
+
+        // Logout
+        function logout() {
+            if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                localStorage.clear();
+                window.location.href = '/login.html';
+            }
+        }
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

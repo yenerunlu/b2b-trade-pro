@@ -1,0 +1,14 @@
+{
+  "name": "b2b-grouping-job",
+  "version": "1.0.0",
+  "description": "B2B Trade Pro Gruplama Sistemi",
+  "main": "nightly-grouping.js",
+  "scripts": {
+    "test": "node nightly-grouping.js test",
+    "incremental": "node nightly-grouping.js incremental",
+    "full": "node nightly-grouping.js full"
+  },
+  "dependencies": {
+    "mssql": "^9.1.1"
+  }
+}

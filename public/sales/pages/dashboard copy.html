@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Plasiyer Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #fff8f0; }
+        .header { background: orange; color: white; padding: 20px; margin-bottom: 20px; }
+        .btn { background: red; color: white; padding: 10px; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Plasiyer Paneli</h1>
+        <button class="btn" onclick="logout()">Çıkış</button>
+    </div>
+    
+    <p>Plasiyer dashboard test sayfası</p>
+    <p id="salesInfo">Plasiyer bilgisi yükleniyor...</p>
+
+    <script>
+        // Çok basit kontrol
+        const userData = localStorage.getItem('b2b_user_data');
+        
+        if (!userData) {
+            alert('Giriş yok! Login sayfasına yönlendiriliyor...');
+            window.location.href = '/login.html';
+        } else {
+            const user = JSON.parse(userData);
+            document.getElementById('salesInfo').textContent = 
+                `Hoş geldiniz: ${user.kullanici} (Plasiyer)`;
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/login.html';
+        }
+    </script>
+</body>
+</html>

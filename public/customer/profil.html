@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B2B Trade Pro | Profilim</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- ORTAK CSS DOSYALARI -->
+    <link rel="stylesheet" href="styles/style.css">
+    <style>
+        /* PROFİL SAYFASINA ÖZEL STİLLER */
+        .profile-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        /* PROFİL KARTI */
+        .profile-card {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0 auto 1.5rem;
+            border: 4px solid white;
+            box-shadow: var(--shadow);
+        }
+
+        .profile-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-code {
+            color: var(--gray);
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            background: var(--light);
+            border-radius: var(--border-radius);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--gray);
+        }
+
+        /* AYARLAR BÖLÜMÜ */
+        .settings-section {
+            margin-bottom: 2rem;
+        }
+
+        .settings-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--gray-light);
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .tab-button {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            color: var(--gray);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab-button:hover {
+            color: var(--primary);
+        }
+
+        .tab-button.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* FORM GRUPLARI */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--gray-light);
+        }
+
+        /* ADRES LİSTESİ */
+        .address-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .address-card {
+            border: 1px solid var(--gray-light);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .address-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+
+        .address-card.selected {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.05);
+        }
+
+        .address-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .address-title {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .address-type {
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .address-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .address-details {
+            color: var(--gray);
+            line-height: 1.6;
+        }
+
+        /* SİPARİŞ GEÇMİŞİ */
+        .order-history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-light);
+            transition: var(--transition);
+        }
+
+        .order-history-item:hover {
+            background: #f8fafc;
+        }
+
+        .order-info {
+            flex: 1;
+        }
+
+        .order-number {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .order-date {
+            color: var(--gray);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .order-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .order-total {
+            font-weight: 700;
+            color: var(--success);
+            font-size: 1.125rem;
+        }
+
+        /* BİLDİRİM AYARLARI */
+        .notification-settings {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .notification-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border: 1px solid var(--gray-light);
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+        }
+
+        .notification-item:hover {
+            border-color: var(--primary);
+        }
+
+        .notification-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .notification-desc {
+            color: var(--gray);
+            font-size: 0.875rem;
+        }
+
+        /* SWITCH BUTON */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--success);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        /* GÜVENLİK AYARLARI */
+        .security-settings {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .security-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border: 1px solid var(--gray-light);
+            border-radius: var(--border-radius);
+        }
+
+        .security-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .security-title {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .security-desc {
+            color: var(--gray);
+            font-size: 0.875rem;
+        }
+
+        .last-updated {
+            color: var(--gray);
+            font-size: 0.75rem;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .profile-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .profile-stats {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .profile-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .settings-tabs {
+                flex-direction: column;
+            }
+            
+            .tab-button {
+                border-bottom: none;
+                border-left: 3px solid transparent;
+                justify-content: flex-start;
+            }
+            
+            .tab-button.active {
+                border-left-color: var(--primary);
+                border-bottom-color: transparent;
+            }
+            
+            .order-history-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="logo">
+                <h1><i class="fas fa-store"></i> B2B<span>TRADE</span></h1>
+            </div>
+            <nav class="nav-menu">
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-home"></i> Anasayfa
+                </a>
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-boxes"></i> Alınan Malzemeler
+                </a>
+                <a href="siparislerim.html" class="nav-item">
+                    <i class="fas fa-clipboard-list"></i> Siparişlerim
+                </a>
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-file-invoice-dollar"></i> Cari Borç
+                </a>
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-credit-card"></i> Sanal Pos Ödeme
+                </a>
+                <a href="profil.html" class="nav-item active">
+                    <i class="fas fa-user"></i> Profilim
+                </a>
+                <a href="#" class="nav-item" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- HEADER -->
+            <header class="header">
+                <div class="user-info">
+                    <div class="user-details">
+                        <div class="user-name">Ahmet Yılmaz</div>
+                        <div class="user-code">Müşteri Kodu: S6064</div>
+                    </div>
+                    <div class="user-avatar">AY</div>
+                </div>
+                <div class="header-actions">
+                    <a href="siparislerim.html" class="cart-indicator">
+                        <i class="fas fa-shopping-cart"></i> Sepetim
+                        <span class="cart-count">2</span>
+                    </a>
+                    <a href="kampanyasepeti.html" class="campaign-indicator">
+                        <i class="fas fa-tags"></i> Kampanya Sepeti
+                        <span class="cart-count">3</span>
+                    </a>
+                </div>
+            </header>
+
+            <!-- PAGE CONTENT -->
+            <div class="page-content">
+                <div class="page-header">
+                    <h1 class="page-title">Profilim</h1>
+                    <p class="page-subtitle">Hesap bilgilerinizi yönetin ve tercihlerinizi düzenleyin</p>
+                </div>
+
+                <div class="profile-container">
+                    <!-- PROFİL KARTI -->
+                    <div class="card profile-card">
+                        <div class="profile-avatar">AY</div>
+                        <h2 class="profile-name">Ahmet Yılmaz</h2>
+                        <div class="profile-code">Müşteri Kodu: S6064</div>
+                        <div class="badge badge-success" style="margin-bottom: 1rem;">
+                            <i class="fas fa-star"></i> Premium Müşteri
+                        </div>
+                        
+                        <div class="profile-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">24</div>
+                                <div class="stat-label">Toplam Sipariş</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">₺48,560</div>
+                                <div class="stat-label">Toplam Harcama</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">12</div>
+                                <div class="stat-label">Aktif Sipariş</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">%98</div>
+                                <div class="stat-label">Tamamlanma</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AYARLAR BÖLÜMÜ -->
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="settings-tabs">
+                                <button class="tab-button active" data-tab="profile">
+                                    <i class="fas fa-user-edit"></i> Profil Bilgileri
+                                </button>
+                                <button class="tab-button" data-tab="address">
+                                    <i class="fas fa-map-marker-alt"></i> Adreslerim
+                                </button>
+                                <button class="tab-button" data-tab="orders">
+                                    <i class="fas fa-clipboard-list"></i> Sipariş Geçmişi
+                                </button>
+                                <button class="tab-button" data-tab="notifications">
+                                    <i class="fas fa-bell"></i> Bildirimler
+                                </button>
+                                <button class="tab-button" data-tab="security">
+                                    <i class="fas fa-shield-alt"></i> Güvenlik
+                                </button>
+                            </div>
+
+                            <!-- PROFİL BİLGİLERİ TAB -->
+                            <div class="tab-content active" id="profile-tab">
+                                <h3 class="card-title" style="margin-bottom: 1.5rem;">Profil Bilgileri</h3>
+                                <form id="profile-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Ad</label>
+                                            <input type="text" class="form-input" value="Ahmet" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Soyad</label>
+                                            <input type="text" class="form-input" value="Yılmaz" required>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">E-posta</label>
+                                            <input type="email" class="form-input" value="ahmet.yilmaz@firma.com" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Telefon</label>
+                                            <input type="tel" class="form-input" value="+90 532 123 45 67" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Firma Adı</label>
+                                        <input type="text" class="form-input" value="Yılmaz Otomotiv Ltd. Şti." required>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Vergi Dairesi</label>
+                                            <input type="text" class="form-input" value="İstanbul Vergi Dairesi">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Vergi No</label>
+                                            <input type="text" class="form-input" value="1234567890">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-actions">
+                                        <button type="button" class="btn btn-secondary">İptal</button>
+                                        <button type="submit" class="btn btn-primary">Değişiklikleri Kaydet</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- ADRESLERİM TAB -->
+                            <div class="tab-content" id="address-tab">
+                                <div class="card-header" style="padding: 0; margin-bottom: 1.5rem;">
+                                    <h3 class="card-title">Adreslerim</h3>
+                                    <button class="btn btn-primary" id="add-address-btn">
+                                        <i class="fas fa-plus"></i> Yeni Adres Ekle
+                                    </button>
+                                </div>
+                                
+                                <div class="address-list">
+                                    <div class="address-card selected">
+                                        <div class="address-header">
+                                            <div>
+                                                <div class="address-title">Merkez Ofis</div>
+                                                <span class="address-type">Fatura Adresi</span>
+                                            </div>
+                                            <div class="address-actions">
+                                                <button class="btn btn-secondary btn-small">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-danger btn-small">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="address-details">
+                                            İkitelli Organize Sanayi Bölgesi<br>
+                                            Demirciler Sanayi Sitesi C Blok No:15<br>
+                                            34490 Başakşehir/İstanbul<br>
+                                            Tel: +90 212 123 45 67
+                                        </div>
+                                    </div>
+
+                                    <div class="address-card">
+                                        <div class="address-header">
+                                            <div>
+                                                <div class="address-title">Şube - Bostancı</div>
+                                                <span class="address-type">Teslimat Adresi</span>
+                                            </div>
+                                            <div class="address-actions">
+                                                <button class="btn btn-secondary btn-small">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-danger btn-small">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="address-details">
+                                            Bostancı Mahallesi, Kayışdağı Caddesi<br>
+                                            No:25/3 D:5<br>
+                                            34744 Kadıköy/İstanbul<br>
+                                            Tel: +90 216 234 56 78
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SİPARİŞ GEÇMİŞİ TAB -->
+                            <div class="tab-content" id="orders-tab">
+                                <h3 class="card-title" style="margin-bottom: 1.5rem;">Son Siparişlerim</h3>
+                                <div class="order-history">
+                                    <div class="order-history-item">
+                                        <div class="order-info">
+                                            <div class="order-number">ORD-2024-001</div>
+                                            <div class="order-date">15 Ocak 2024</div>
+                                            <span class="order-status status-completed">Tamamlandı</span>
+                                        </div>
+                                        <div class="order-total">₺4,850.50</div>
+                                    </div>
+                                    <div class="order-history-item">
+                                        <div class="order-info">
+                                            <div class="order-number">ORD-2024-002</div>
+                                            <div class="order-date">12 Ocak 2024</div>
+                                            <span class="order-status status-pending">Beklemede</span>
+                                        </div>
+                                        <div class="order-total">₺3,200.75</div>
+                                    </div>
+                                    <div class="order-history-item">
+                                        <div class="order-info">
+                                            <div class="order-number">ORD-2024-003</div>
+                                            <div class="order-date">10 Ocak 2024</div>
+                                            <span class="order-status status-completed">Tamamlandı</span>
+                                        </div>
+                                        <div class="order-total">₺2,890.00</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- BİLDİRİMLER TAB -->
+                            <div class="tab-content" id="notifications-tab">
+                                <h3 class="card-title" style="margin-bottom: 1.5rem;">Bildirim Ayarları</h3>
+                                <div class="notification-settings">
+                                    <div class="notification-item">
+                                        <div class="notification-info">
+                                            <div class="notification-title">E-posta Bildirimleri</div>
+                                            <div class="notification-desc">Sipariş durumu ve kampanyalar hakkında e-posta alın</div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="notification-item">
+                                        <div class="notification-info">
+                                            <div class="notification-title">SMS Bildirimleri</div>
+                                            <div class="notification-desc">Önemli sipariş güncellemeleri için SMS alın</div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="notification-item">
+                                        <div class="notification-info">
+                                            <div class="notification-title">Kampanya Bildirimleri</div>
+                                            <div class="notification-desc">Özel kampanya ve indirimlerden haberdar olun</div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="notification-item">
+                                        <div class="notification-info">
+                                            <div class="notification-title">Stok Bildirimleri</div>
+                                            <div class="notification-desc">Takip ettiğiniz ürünler stoka girdiğinde bildirim alın</div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- GÜVENLİK TAB -->
+                            <div class="tab-content" id="security-tab">
+                                <h3 class="card-title" style="margin-bottom: 1.5rem;">Güvenlik Ayarları</h3>
+                                <div class="security-settings">
+                                    <div class="security-item">
+                                        <div class="security-info">
+                                            <div class="security-title">Şifre Değiştir</div>
+                                            <div class="security-desc">Hesap şifrenizi güncelleyin</div>
+                                            <div class="last-updated">Son güncelleme: 3 ay önce</div>
+                                        </div>
+                                        <button class="btn btn-primary">Değiştir</button>
+                                    </div>
+                                    <div class="security-item">
+                                        <div class="security-info">
+                                            <div class="security-title">İki Faktörlü Kimlik Doğrulama</div>
+                                            <div class="security-desc">Hesabınızı daha güvenli hale getirin</div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="security-item">
+                                        <div class="security-info">
+                                            <div class="security-title">Oturum Yönetimi</div>
+                                            <div class="security-desc">Aktif oturumlarınızı görüntüleyin ve yönetin</div>
+                                        </div>
+                                        <button class="btn btn-secondary">Yönet</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- BİLDİRİM -->
+    <div class="notification" id="notification" style="display: none;">
+        <i class="fas fa-check-circle"></i>
+        <span id="notification-text">Profil bilgileriniz güncellendi!</span>
+    </div>
+
+    <!-- ORTAK JAVASCRIPT -->
+    <script src="js/main.js"></script>
+    <script src="js/profile.js"></script>
+    
+    <!-- SAYFAYA ÖZEL JAVASCRIPT -->
+    <script>
+        // Sadece bu sayfaya özel JavaScript kodları
+        document.addEventListener('DOMContentLoaded', function() {
+            // Sayfa özel başlatma kodları
+            if (typeof ProfilePage !== 'undefined') {
+                ProfilePage.init();
+            }
+        });
+    </script>
+</body>
+</html>

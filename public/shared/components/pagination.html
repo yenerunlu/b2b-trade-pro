@@ -1,0 +1,752 @@
+<!-- public/shared/components/pagination.html -->
+<div class="b2b-pagination" id="b2bPagination">
+    <div class="b2b-pagination-info">
+        <span id="paginationInfo">Toplam 0 kayıttan 0-0 arası gösteriliyor</span>
+    </div>
+    
+    <div class="b2b-pagination-controls">
+        <button class="b2b-pagination-btn b2b-pagination-first" id="firstPage" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M11 17L6 12L11 7M18 17L13 12L18 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        
+        <button class="b2b-pagination-btn b2b-pagination-prev" id="prevPage" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+
+        <div class="b2b-pagination-pages" id="paginationPages">
+            <!-- Page numbers will be dynamically added here -->
+        </div>
+
+        <button class="b2b-pagination-btn b2b-pagination-next" id="nextPage" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        
+        <button class="b2b-pagination-btn b2b-pagination-last" id="lastPage" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M13 17L18 12L13 7M6 17L11 12L6 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+    </div>
+
+    <div class="b2b-pagination-size">
+        <label for="paginationSize">Sayfa başına:</label>
+        <select class="b2b-pagination-size-select" id="paginationSize">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+        </select>
+    </div>
+
+    <div class="b2b-pagination-jump">
+        <label for="pageJump">Sayfaya git:</label>
+        <input type="number" class="b2b-pagination-jump-input" id="pageJump" min="1" value="1">
+        <button class="b2b-pagination-jump-btn" id="jumpToPage">Git</button>
+    </div>
+</div>
+
+<style>
+.b2b-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: #fafafa;
+    border-top: 1px solid #e5e7eb;
+    border-radius: 0 0 var(--borderRadius, 8px) var(--borderRadius, 8px);
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.875rem;
+}
+
+.b2b-pagination-info {
+    color: #6b7280;
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.b2b-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.b2b-pagination-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    color: #374151;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.b2b-pagination-btn:hover:not(:disabled) {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+    color: #1f2937;
+}
+
+.b2b-pagination-btn:disabled {
+    background: #f9fafb;
+    color: #d1d5db;
+    cursor: not-allowed;
+    border-color: #e5e7eb;
+}
+
+.b2b-pagination-btn.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.b2b-pagination-btn.active:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+}
+
+.b2b-pagination-pages {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0 0.5rem;
+}
+
+.b2b-pagination-ellipsis {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.b2b-pagination-size {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #374151;
+}
+
+.b2b-pagination-size-select {
+    padding: 0.375rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    background: white;
+    color: #374151;
+    cursor: pointer;
+}
+
+.b2b-pagination-size-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.b2b-pagination-jump {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #374151;
+}
+
+.b2b-pagination-jump-input {
+    width: 60px;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    text-align: center;
+    background: white;
+    color: #374151;
+}
+
+.b2b-pagination-jump-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.b2b-pagination-jump-btn {
+    padding: 0.375rem 0.75rem;
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: 0.375rem;
+    color: white;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.b2b-pagination-jump-btn:hover:not(:disabled) {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+}
+
+.b2b-pagination-jump-btn:disabled {
+    background: #9ca3af;
+    border-color: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* Compact variant */
+.b2b-pagination.compact {
+    padding: 0.75rem 1rem;
+}
+
+.b2b-pagination.compact .b2b-pagination-info {
+    font-size: 0.8125rem;
+}
+
+.b2b-pagination.compact .b2b-pagination-btn {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.8125rem;
+}
+
+.b2b-pagination.compact .b2b-pagination-ellipsis {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.8125rem;
+}
+
+/* Minimal variant */
+.b2b-pagination.minimal {
+    background: transparent;
+    border-top: none;
+    padding: 0.5rem 0;
+    justify-content: center;
+}
+
+.b2b-pagination.minimal .b2b-pagination-info,
+.b2b-pagination.minimal .b2b-pagination-size,
+.b2b-pagination.minimal .b2b-pagination-jump {
+    display: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .b2b-pagination {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 0.75rem;
+    }
+    
+    .b2b-pagination-controls {
+        order: 1;
+    }
+    
+    .b2b-pagination-info {
+        order: 2;
+    }
+    
+    .b2b-pagination-size {
+        order: 3;
+    }
+    
+    .b2b-pagination-jump {
+        order: 4;
+    }
+    
+    .b2b-pagination.compact .b2b-pagination-pages {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .b2b-pagination-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .b2b-pagination-pages {
+        margin: 0.25rem 0;
+    }
+    
+    .b2b-pagination-size,
+    .b2b-pagination-jump {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+}
+
+/* Dark Theme */
+[data-theme="dark"] .b2b-pagination {
+    background: #111827;
+    border-top-color: #374151;
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .b2b-pagination-info {
+    color: #d1d5db;
+}
+
+[data-theme="dark"] .b2b-pagination-btn {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .b2b-pagination-btn:hover:not(:disabled) {
+    background: #4b5563;
+    border-color: #6b7280;
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .b2b-pagination-btn:disabled {
+    background: #1f2937;
+    color: #6b7280;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .b2b-pagination-ellipsis {
+    color: #9ca3af;
+}
+
+[data-theme="dark"] .b2b-pagination-size-select {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .b2b-pagination-size-select:focus {
+    border-color: var(--color-primary);
+}
+
+[data-theme="dark"] .b2b-pagination-jump-input {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .b2b-pagination-jump-input:focus {
+    border-color: var(--color-primary);
+}
+</style>
+
+<script>
+class PaginationComponent {
+    constructor(containerId, options = {}) {
+        this.container = document.getElementById(containerId);
+        this.options = {
+            totalItems: 0,
+            pageSize: 25,
+            currentPage: 1,
+            visiblePages: 5,
+            onPageChange: null,
+            onPageSizeChange: null,
+            showInfo: true,
+            showSizeSelector: true,
+            showJump: true,
+            variant: 'default', // 'default', 'compact', 'minimal'
+            ...options
+        };
+
+        this.state = {
+            totalItems: this.options.totalItems,
+            pageSize: this.options.pageSize,
+            currentPage: this.options.currentPage,
+            totalPages: Math.ceil(this.options.totalItems / this.options.pageSize)
+        };
+
+        this.init();
+    }
+
+    init() {
+        this.render();
+        this.setupEventListeners();
+        this.update();
+    }
+
+    render() {
+        this.container.className = `b2b-pagination ${this.options.variant !== 'default' ? this.options.variant : ''}`;
+        this.container.innerHTML = this.getTemplate();
+    }
+
+    getTemplate() {
+        return `
+            ${this.options.showInfo ? `
+                <div class="b2b-pagination-info">
+                    <span id="paginationInfo">${this.getInfoText()}</span>
+                </div>
+            ` : ''}
+            
+            <div class="b2b-pagination-controls">
+                <button class="b2b-pagination-btn b2b-pagination-first" id="firstPage" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M11 17L6 12L11 7M18 17L13 12L18 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                
+                <button class="b2b-pagination-btn b2b-pagination-prev" id="prevPage" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+
+                <div class="b2b-pagination-pages" id="paginationPages">
+                    ${this.renderPageNumbers()}
+                </div>
+
+                <button class="b2b-pagination-btn b2b-pagination-next" id="nextPage" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                
+                <button class="b2b-pagination-btn b2b-pagination-last" id="lastPage" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M13 17L18 12L13 7M6 17L11 12L6 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+
+            ${this.options.showSizeSelector ? `
+                <div class="b2b-pagination-size">
+                    <label for="paginationSize">Sayfa başına:</label>
+                    <select class="b2b-pagination-size-select" id="paginationSize">
+                        <option value="10" ${this.state.pageSize === 10 ? 'selected' : ''}>10</option>
+                        <option value="25" ${this.state.pageSize === 25 ? 'selected' : ''}>25</option>
+                        <option value="50" ${this.state.pageSize === 50 ? 'selected' : ''}>50</option>
+                        <option value="100" ${this.state.pageSize === 100 ? 'selected' : ''}>100</option>
+                        <option value="200" ${this.state.pageSize === 200 ? 'selected' : ''}>200</option>
+                    </select>
+                </div>
+            ` : ''}
+
+            ${this.options.showJump ? `
+                <div class="b2b-pagination-jump">
+                    <label for="pageJump">Sayfaya git:</label>
+                    <input type="number" class="b2b-pagination-jump-input" id="pageJump" min="1" value="${this.state.currentPage}">
+                    <button class="b2b-pagination-jump-btn" id="jumpToPage">Git</button>
+                </div>
+            ` : ''}
+        `;
+    }
+
+    renderPageNumbers() {
+        if (this.state.totalPages <= 1) return '';
+        
+        const pages = this.getVisiblePages();
+        let html = '';
+        
+        pages.forEach(page => {
+            if (page === '...') {
+                html += `<span class="b2b-pagination-ellipsis">...</span>`;
+            } else {
+                const isActive = page === this.state.currentPage;
+                html += `
+                    <button class="b2b-pagination-btn ${isActive ? 'active' : ''}" data-page="${page}">
+                        ${page}
+                    </button>
+                `;
+            }
+        });
+        
+        return html;
+    }
+
+    getVisiblePages() {
+        const current = this.state.currentPage;
+        const total = this.state.totalPages;
+        const visible = this.options.visiblePages;
+        
+        if (total <= visible) {
+            return Array.from({ length: total }, (_, i) => i + 1);
+        }
+        
+        let start = Math.max(1, current - Math.floor(visible / 2));
+        let end = Math.min(total, start + visible - 1);
+        
+        if (end - start + 1 < visible) {
+            start = Math.max(1, end - visible + 1);
+        }
+        
+        const pages = [];
+        
+        if (start > 1) {
+            pages.push(1);
+            if (start > 2) pages.push('...');
+        }
+        
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+        
+        if (end < total) {
+            if (end < total - 1) pages.push('...');
+            pages.push(total);
+        }
+        
+        return pages;
+    }
+
+    getInfoText() {
+        if (this.state.totalItems === 0) {
+            return 'Toplam 0 kayıt';
+        }
+        
+        const start = (this.state.currentPage - 1) * this.state.pageSize + 1;
+        const end = Math.min(this.state.currentPage * this.state.pageSize, this.state.totalItems);
+        
+        return `Toplam ${this.state.totalItems} kayıttan ${start}-${end} arası gösteriliyor`;
+    }
+
+    setupEventListeners() {
+        // First page
+        this.container.querySelector('#firstPage')?.addEventListener('click', () => {
+            this.goToPage(1);
+        });
+
+        // Previous page
+        this.container.querySelector('#prevPage')?.addEventListener('click', () => {
+            this.goToPage(this.state.currentPage - 1);
+        });
+
+        // Next page
+        this.container.querySelector('#nextPage')?.addEventListener('click', () => {
+            this.goToPage(this.state.currentPage + 1);
+        });
+
+        // Last page
+        this.container.querySelector('#lastPage')?.addEventListener('click', () => {
+            this.goToPage(this.state.totalPages);
+        });
+
+        // Page number clicks
+        this.container.querySelector('#paginationPages')?.addEventListener('click', (e) => {
+            const pageBtn = e.target.closest('.b2b-pagination-btn[data-page]');
+            if (pageBtn) {
+                const page = parseInt(pageBtn.dataset.page);
+                this.goToPage(page);
+            }
+        });
+
+        // Page size change
+        const pageSizeSelect = this.container.querySelector('#paginationSize');
+        if (pageSizeSelect) {
+            pageSizeSelect.addEventListener('change', (e) => {
+                this.setPageSize(parseInt(e.target.value));
+            });
+        }
+
+        // Page jump
+        const jumpBtn = this.container.querySelector('#jumpToPage');
+        const jumpInput = this.container.querySelector('#pageJump');
+        
+        if (jumpBtn && jumpInput) {
+            jumpBtn.addEventListener('click', () => {
+                const page = parseInt(jumpInput.value);
+                if (page >= 1 && page <= this.state.totalPages) {
+                    this.goToPage(page);
+                }
+            });
+            
+            jumpInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    jumpBtn.click();
+                }
+            });
+            
+            jumpInput.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                if (value < 1) {
+                    e.target.value = 1;
+                } else if (value > this.state.totalPages) {
+                    e.target.value = this.state.totalPages;
+                }
+            });
+        }
+    }
+
+    update() {
+        this.state.totalPages = Math.ceil(this.state.totalItems / this.state.pageSize);
+        
+        // Ensure current page is within bounds
+        if (this.state.currentPage > this.state.totalPages) {
+            this.state.currentPage = Math.max(1, this.state.totalPages);
+        }
+        
+        // Update info text
+        const infoElement = this.container.querySelector('#paginationInfo');
+        if (infoElement) {
+            infoElement.textContent = this.getInfoText();
+        }
+        
+        // Update page numbers
+        const pagesElement = this.container.querySelector('#paginationPages');
+        if (pagesElement) {
+            pagesElement.innerHTML = this.renderPageNumbers();
+        }
+        
+        // Update button states
+        this.updateButtonStates();
+        
+        // Update jump input
+        const jumpInput = this.container.querySelector('#pageJump');
+        if (jumpInput) {
+            jumpInput.value = this.state.currentPage;
+            jumpInput.max = this.state.totalPages;
+        }
+        
+        // Update page size selector
+        const pageSizeSelect = this.container.querySelector('#paginationSize');
+        if (pageSizeSelect) {
+            pageSizeSelect.value = this.state.pageSize;
+        }
+    }
+
+    updateButtonStates() {
+        const firstBtn = this.container.querySelector('#firstPage');
+        const prevBtn = this.container.querySelector('#prevPage');
+        const nextBtn = this.container.querySelector('#nextPage');
+        const lastBtn = this.container.querySelector('#lastPage');
+        
+        if (firstBtn) firstBtn.disabled = this.state.currentPage === 1;
+        if (prevBtn) prevBtn.disabled = this.state.currentPage === 1;
+        if (nextBtn) nextBtn.disabled = this.state.currentPage === this.state.totalPages || this.state.totalPages === 0;
+        if (lastBtn) lastBtn.disabled = this.state.currentPage === this.state.totalPages || this.state.totalPages === 0;
+    }
+
+    goToPage(page) {
+        if (page < 1 || page > this.state.totalPages || page === this.state.currentPage) {
+            return;
+        }
+        
+        this.state.currentPage = page;
+        this.update();
+        
+        if (this.options.onPageChange) {
+            this.options.onPageChange(page, this.state.pageSize);
+        }
+        
+        this.dispatchEvent('pageChange', { page, pageSize: this.state.pageSize });
+    }
+
+    setPageSize(size) {
+        if (size === this.state.pageSize) return;
+        
+        const oldPageSize = this.state.pageSize;
+        this.state.pageSize = size;
+        this.state.totalPages = Math.ceil(this.state.totalItems / size);
+        
+        // Adjust current page if necessary
+        const firstItemIndex = (this.state.currentPage - 1) * oldPageSize;
+        this.state.currentPage = Math.floor(firstItemIndex / size) + 1;
+        
+        this.update();
+        
+        if (this.options.onPageSizeChange) {
+            this.options.onPageSizeChange(this.state.currentPage, size);
+        }
+        
+        this.dispatchEvent('pageSizeChange', { page: this.state.currentPage, pageSize: size });
+    }
+
+    // Public methods
+    setTotalItems(total) {
+        this.state.totalItems = total;
+        this.update();
+    }
+
+    setCurrentPage(page) {
+        this.goToPage(page);
+    }
+
+    setPageSize(size) {
+        this.setPageSize(size);
+    }
+
+    getCurrentState() {
+        return {
+            currentPage: this.state.currentPage,
+            pageSize: this.state.pageSize,
+            totalItems: this.state.totalItems,
+            totalPages: this.state.totalPages
+        };
+    }
+
+    refresh() {
+        this.update();
+    }
+
+    // Event dispatching
+    dispatchEvent(eventName, detail = {}) {
+        const event = new CustomEvent(`pagination:${eventName}`, {
+            detail: { ...detail, component: this }
+        });
+        this.container.dispatchEvent(event);
+    }
+
+    // Static method to create pagination
+    static create(containerId, options) {
+        return new PaginationComponent(containerId, options);
+    }
+}
+
+// Global pagination factory function
+window.createB2BPagination = (containerId, options) => {
+    return PaginationComponent.create(containerId, options);
+};
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Auto-initialize pagination with data-b2b-pagination attribute
+    const paginationContainers = document.querySelectorAll('[data-b2b-pagination]');
+    paginationContainers.forEach(container => {
+        const options = JSON.parse(container.dataset.options || '{}');
+        new PaginationComponent(container.id, options);
+    });
+});
+
+// Utility function for common pagination patterns
+window.setupPagination = (containerId, data, options = {}) => {
+    const pagination = new PaginationComponent(containerId, {
+        totalItems: data.length,
+        pageSize: options.pageSize || 25,
+        onPageChange: (page, pageSize) => {
+            const start = (page - 1) * pageSize;
+            const end = start + pageSize;
+            const pageData = data.slice(start, end);
+            
+            if (options.onPageData) {
+                options.onPageData(pageData, page, pageSize);
+            }
+        },
+        onPageSizeChange: (page, pageSize) => {
+            const start = (page - 1) * pageSize;
+            const end = start + pageSize;
+            const pageData = data.slice(start, end);
+            
+            if (options.onPageData) {
+                options.onPageData(pageData, page, pageSize);
+            }
+        },
+        ...options
+    });
+
+    // Trigger initial page data
+    const initialPageData = data.slice(0, pagination.state.pageSize);
+    if (options.onPageData) {
+        options.onPageData(initialPageData, 1, pagination.state.pageSize);
+    }
+
+    return pagination;
+};
+</script>

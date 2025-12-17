@@ -1,0 +1,1517 @@
+<!-- public/shared/components/table.html -->
+<div class="b2b-table-container" id="b2bTableContainer">
+    <!-- Table Controls -->
+    <div class="b2b-table-controls" id="tableControls">
+        <div class="b2b-table-search">
+            <div class="b2b-search-input-wrapper">
+                <svg class="b2b-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 21L16.514 16.506M19 10.5C19 15.194 15.194 19 10.5 19C5.806 19 2 15.194 2 10.5C2 5.806 5.806 2 10.5 2C15.194 2 19 5.806 19 10.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <input type="text" class="b2b-search-input" id="tableSearch" placeholder="Ara...">
+                <button class="b2b-search-clear" id="searchClear" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="b2b-table-actions">
+            <div class="b2b-table-filters">
+                <button class="b2b-btn b2b-btn-secondary b2b-btn-sm" id="filterToggle">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M22 3H2L10 12.46V19L14 21V12.46L22 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Filtrele
+                    <span class="b2b-filter-badge" id="filterBadge" style="display: none;">0</span>
+                </button>
+            </div>
+
+            <div class="b2b-table-buttons">
+                <button class="b2b-btn b2b-btn-secondary b2b-btn-sm" id="refreshTable">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M23 4V10H17M1 20V14H7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M3.51 9C4.01717 7.56678 4.87913 6.2854 6.01547 5.27542C7.1518 4.26543 8.52547 3.55976 10.0083 3.22426C11.4911 2.88875 13.0348 2.93434 14.4952 3.35677C15.9556 3.77921 17.2853 4.56471 18.36 5.64L23 10M1 14L5.64 18.36C6.71475 19.4353 8.04437 20.2208 9.50481 20.6432C10.9652 21.0657 12.5089 21.1113 13.9917 20.7757C15.4745 20.4402 16.8482 19.7346 17.9845 18.7246C19.1209 17.7146 19.9828 16.4332 20.49 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                
+                <div class="b2b-table-export">
+                    <button class="b2b-btn b2b-btn-secondary b2b-btn-sm" id="exportToggle">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Dışa Aktar
+                    </button>
+                    <div class="b2b-export-dropdown" id="exportDropdown">
+                        <button class="b2b-export-option" data-format="excel">Excel (.xlsx)</button>
+                        <button class="b2b-export-option" data-format="csv">CSV (.csv)</button>
+                        <button class="b2b-export-option" data-format="pdf">PDF (.pdf)</button>
+                    </div>
+                </div>
+
+                <button class="b2b-btn b2b-btn-primary b2b-btn-sm" id="addNewBtn" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Yeni Ekle
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Panel -->
+    <div class="b2b-table-filters-panel" id="filtersPanel">
+        <div class="b2b-filters-header">
+            <h3>Filtreler</h3>
+            <button class="b2b-btn b2b-btn-text" id="clearFilters">
+                Tümünü Temizle
+            </button>
+        </div>
+        <div class="b2b-filters-content" id="filtersContent">
+            <!-- Filters will be dynamically added here -->
+        </div>
+        <div class="b2b-filters-footer">
+            <button class="b2b-btn b2b-btn-secondary" id="applyFilters">
+                Filtreleri Uygula
+            </button>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="b2b-table-wrapper">
+        <table class="b2b-table" id="dataTable">
+            <thead class="b2b-table-header">
+                <tr id="tableHeader">
+                    <!-- Table headers will be dynamically added here -->
+                </tr>
+            </thead>
+            <tbody class="b2b-table-body" id="tableBody">
+                <!-- Table rows will be dynamically added here -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Empty State -->
+    <div class="b2b-table-empty" id="tableEmpty" style="display: none;">
+        <div class="b2b-empty-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2"/>
+                <path d="M9 22V12H15V22" stroke="currentColor" stroke-width="2"/>
+            </svg>
+        </div>
+        <h3>Veri bulunamadı</h3>
+        <p>Arama kriterlerinize uygun veri bulunamadı.</p>
+        <button class="b2b-btn b2b-btn-primary" id="resetSearch">Aramayı Sıfırla</button>
+    </div>
+
+    <!-- Loading State -->
+    <div class="b2b-table-loading" id="tableLoading" style="display: none;">
+        <div class="b2b-loading-spinner"></div>
+        <p>Veriler yükleniyor...</p>
+    </div>
+
+    <!-- Table Footer -->
+    <div class="b2b-table-footer" id="tableFooter">
+        <div class="b2b-table-info">
+            <span id="tableInfo">Toplam 0 kayıttan 0-0 arası gösteriliyor</span>
+        </div>
+        <div class="b2b-table-pagination" id="tablePagination">
+            <!-- Pagination will be dynamically added here -->
+        </div>
+        <div class="b2b-table-page-size">
+            <label for="pageSize">Sayfa başına:</label>
+            <select class="b2b-page-size-select" id="pageSize">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<style>
+.b2b-table-container {
+    background: white;
+    border-radius: var(--borderRadius, 8px);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+}
+
+/* Table Controls */
+.b2b-table-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fafafa;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.b2b-table-search {
+    flex: 1;
+    min-width: 250px;
+    max-width: 400px;
+}
+
+.b2b-search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.b2b-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    color: #6b7280;
+    pointer-events: none;
+}
+
+.b2b-search-input {
+    width: 100%;
+    padding: 0.5rem 2.5rem 0.5rem 2.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    background: white;
+}
+
+.b2b-search-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.b2b-search-clear {
+    position: absolute;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    color: #6b7280;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.b2b-search-clear:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.b2b-table-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.b2b-table-filters {
+    position: relative;
+}
+
+.b2b-filter-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--color-error);
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.b2b-table-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.b2b-table-export {
+    position: relative;
+}
+
+.b2b-export-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    margin-top: 0.5rem;
+    min-width: 140px;
+    z-index: 100;
+    display: none;
+}
+
+.b2b-export-dropdown.show {
+    display: block;
+}
+
+.b2b-export-option {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    cursor: pointer;
+    color: #374151;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.b2b-export-option:hover {
+    background: #f3f4f6;
+}
+
+/* Filters Panel */
+.b2b-table-filters-panel {
+    background: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 1.5rem;
+    display: none;
+}
+
+.b2b-table-filters-panel.show {
+    display: block;
+}
+
+.b2b-filters-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.b2b-filters-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.b2b-filters-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.b2b-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.b2b-filter-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.b2b-filter-input,
+.b2b-filter-select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    background: white;
+}
+
+.b2b-filter-input:focus,
+.b2b-filter-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.b2b-filters-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Table Styles */
+.b2b-table-wrapper {
+    overflow-x: auto;
+}
+
+.b2b-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.b2b-table-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.b2b-table-header th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    border-right: 1px solid #e5e7eb;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+}
+
+.b2b-table-header th:last-child {
+    border-right: none;
+}
+
+.b2b-table-header th.sortable:hover {
+    background: #f1f5f9;
+}
+
+.b2b-table-header th .sort-indicator {
+    margin-left: 0.5rem;
+    color: #9ca3af;
+    transition: transform 0.2s;
+}
+
+.b2b-table-header th.sorted-asc .sort-indicator {
+    color: var(--color-primary);
+    transform: rotate(180deg);
+}
+
+.b2b-table-header th.sorted-desc .sort-indicator {
+    color: var(--color-primary);
+}
+
+.b2b-table-body tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background-color 0.2s;
+}
+
+.b2b-table-body tr:hover {
+    background: #f8fafc;
+}
+
+.b2b-table-body tr:last-child {
+    border-bottom: none;
+}
+
+.b2b-table-body td {
+    padding: 0.75rem 1rem;
+    border-right: 1px solid #f3f4f6;
+    vertical-align: top;
+}
+
+.b2b-table-body td:last-child {
+    border-right: none;
+}
+
+/* Status Badges */
+.b2b-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.b2b-status-success {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.b2b-status-warning {
+    background: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fed7aa;
+}
+
+.b2b-status-error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.b2b-status-info {
+    background: #f0f9ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+/* Action Buttons */
+.b2b-table-actions-cell {
+    display: flex;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.b2b-action-btn {
+    background: none;
+    border: none;
+    padding: 0.375rem;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    color: #6b7280;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.b2b-action-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.b2b-action-btn.edit:hover {
+    color: var(--color-primary);
+}
+
+.b2b-action-btn.delete:hover {
+    color: var(--color-error);
+}
+
+.b2b-action-btn.view:hover {
+    color: var(--color-info);
+}
+
+/* Empty State */
+.b2b-table-empty {
+    padding: 3rem 2rem;
+    text-align: center;
+    color: #6b7280;
+}
+
+.b2b-empty-icon {
+    margin-bottom: 1rem;
+    color: #d1d5db;
+}
+
+.b2b-table-empty h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.b2b-table-empty p {
+    margin: 0 0 1.5rem 0;
+}
+
+/* Loading State */
+.b2b-table-loading {
+    padding: 3rem 2rem;
+    text-align: center;
+    color: #6b7280;
+}
+
+.b2b-loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #f3f4f6;
+    border-top: 3px solid var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+/* Table Footer */
+.b2b-table-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    background: #fafafa;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.b2b-table-info {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.b2b-table-pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.b2b-pagination-btn {
+    background: white;
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    color: #374151;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.b2b-pagination-btn:hover:not(:disabled) {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.b2b-pagination-btn:disabled {
+    background: #f9fafb;
+    color: #d1d5db;
+    cursor: not-allowed;
+}
+
+.b2b-pagination-btn.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.b2b-pagination-pages {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.b2b-table-page-size {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #374151;
+}
+
+.b2b-page-size-select {
+    padding: 0.375rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    background: white;
+}
+
+/* Animations */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .b2b-table-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .b2b-table-search {
+        max-width: none;
+    }
+    
+    .b2b-table-actions {
+        justify-content: space-between;
+    }
+    
+    .b2b-table-footer {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+    
+    .b2b-table-pagination {
+        justify-content: center;
+    }
+    
+    .b2b-filters-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Dark Theme */
+[data-theme="dark"] .b2b-table-container {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .b2b-table-controls {
+    background: #111827;
+    border-bottom-color: #374151;
+}
+
+[data-theme="dark"] .b2b-search-input {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .b2b-search-input:focus {
+    border-color: var(--color-primary);
+}
+
+[data-theme="dark"] .b2b-table-header {
+    background: #111827;
+    border-bottom-color: #374151;
+}
+
+[data-theme="dark"] .b2b-table-header th {
+    color: #f9fafb;
+    border-right-color: #374151;
+}
+
+[data-theme="dark"] .b2b-table-header th.sortable:hover {
+    background: #1f2937;
+}
+
+[data-theme="dark"] .b2b-table-body tr {
+    border-bottom-color: #374151;
+}
+
+[data-theme="dark"] .b2b-table-body tr:hover {
+    background: #1f2937;
+}
+
+[data-theme="dark"] .b2b-table-body td {
+    border-right-color: #374151;
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .b2b-table-filters-panel {
+    background: #111827;
+    border-bottom-color: #374151;
+}
+
+[data-theme="dark"] .b2b-export-dropdown {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .b2b-export-option {
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .b2b-export-option:hover {
+    background: #374151;
+}
+
+[data-theme="dark"] .b2b-table-footer {
+    background: #111827;
+    border-top-color: #374151;
+}
+
+[data-theme="dark"] .b2b-pagination-btn {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .b2b-pagination-btn:hover:not(:disabled) {
+    background: #4b5563;
+}
+
+[data-theme="dark"] .b2b-page-size-select {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+}
+</style>
+
+<script>
+class TableComponent {
+    constructor(containerId, options = {}) {
+        this.container = document.getElementById(containerId);
+        this.options = {
+            columns: [],
+            data: [],
+            ajax: null,
+            selectable: false,
+            searchable: true,
+            sortable: true,
+            filterable: true,
+            pagination: true,
+            pageSize: 25,
+            ...options
+        };
+
+        this.state = {
+            currentPage: 1,
+            pageSize: this.options.pageSize,
+            searchTerm: '',
+            sortColumn: null,
+            sortDirection: 'asc',
+            filters: {},
+            selectedRows: new Set()
+        };
+
+        this.init();
+    }
+
+    init() {
+        this.render();
+        this.setupEventListeners();
+        
+        if (this.options.ajax) {
+            this.loadData();
+        } else if (this.options.data.length > 0) {
+            this.renderTable();
+        }
+    }
+
+    render() {
+        this.container.innerHTML = this.getTemplate();
+    }
+
+    getTemplate() {
+        return `
+            <div class="b2b-table-container">
+                ${this.getControlsTemplate()}
+                ${this.getFiltersTemplate()}
+                ${this.getTableTemplate()}
+                ${this.getEmptyTemplate()}
+                ${this.getLoadingTemplate()}
+                ${this.getFooterTemplate()}
+            </div>
+        `;
+    }
+
+    getControlsTemplate() {
+        return `
+            <div class="b2b-table-controls">
+                ${this.options.searchable ? `
+                    <div class="b2b-table-search">
+                        <div class="b2b-search-input-wrapper">
+                            <svg class="b2b-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M21 21L16.514 16.506M19 10.5C19 15.194 15.194 19 10.5 19C5.806 19 2 15.194 2 10.5C2 5.806 5.806 2 10.5 2C15.194 2 19 5.806 19 10.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <input type="text" class="b2b-search-input" placeholder="Ara...">
+                            <button class="b2b-search-clear" style="display: none;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div class="b2b-table-actions">
+                    ${this.options.filterable ? `
+                        <div class="b2b-table-filters">
+                            <button class="b2b-btn b2b-btn-secondary b2b-btn-sm" id="filterToggle">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M22 3H2L10 12.46V19L14 21V12.46L22 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                Filtrele
+                                <span class="b2b-filter-badge" style="display: none;">0</span>
+                            </button>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="b2b-table-buttons">
+                        <button class="b2b-btn b2b-btn-secondary b2b-btn-sm" id="refreshTable">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M23 4V10H17M1 20V14H7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M3.51 9C4.01717 7.56678 4.87913 6.2854 6.01547 5.27542C7.1518 4.26543 8.52547 3.55976 10.0083 3.22426C11.4911 2.88875 13.0348 2.93434 14.4952 3.35677C15.9556 3.77921 17.2853 4.56471 18.36 5.64L23 10M1 14L5.64 18.36C6.71475 19.4353 8.04437 20.2208 9.50481 20.6432C10.9652 21.0657 12.5089 21.1113 13.9917 20.7757C15.4745 20.4402 16.8482 19.7346 17.9845 18.7246C19.1209 17.7146 19.9828 16.4332 20.49 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        
+                        <div class="b2b-table-export">
+                            <button class="b2b-btn b2b-btn-secondary b2b-btn-sm" id="exportToggle">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                Dışa Aktar
+                            </button>
+                            <div class="b2b-export-dropdown">
+                                <button class="b2b-export-option" data-format="excel">Excel (.xlsx)</button>
+                                <button class="b2b-export-option" data-format="csv">CSV (.csv)</button>
+                                <button class="b2b-export-option" data-format="pdf">PDF (.pdf)</button>
+                            </div>
+                        </div>
+
+                        ${this.options.addButton ? `
+                            <button class="b2b-btn b2b-btn-primary b2b-btn-sm" id="addNewBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                ${this.options.addButton.text || 'Yeni Ekle'}
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    getFiltersTemplate() {
+        if (!this.options.filterable) return '';
+        
+        const filterableColumns = this.options.columns.filter(col => col.filterable);
+        const filtersHtml = filterableColumns.map(col => `
+            <div class="b2b-filter-group">
+                <label class="b2b-filter-label">${col.title}</label>
+                ${this.getFilterInput(col)}
+            </div>
+        `).join('');
+
+        return `
+            <div class="b2b-table-filters-panel" id="filtersPanel">
+                <div class="b2b-filters-header">
+                    <h3>Filtreler</h3>
+                    <button class="b2b-btn b2b-btn-text" id="clearFilters">
+                        Tümünü Temizle
+                    </button>
+                </div>
+                <div class="b2b-filters-content">
+                    ${filtersHtml}
+                </div>
+                <div class="b2b-filters-footer">
+                    <button class="b2b-btn b2b-btn-secondary" id="applyFilters">
+                        Filtreleri Uygula
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    getFilterInput(column) {
+        const filterType = column.filterType || 'text';
+        
+        switch (filterType) {
+            case 'select':
+                const options = column.filterOptions?.map(opt => 
+                    `<option value="${opt.value}">${opt.label}</option>`
+                ).join('') || '';
+                return `<select class="b2b-filter-select" data-field="${column.field}">${options}</select>`;
+            
+            case 'date':
+                return `<input type="date" class="b2b-filter-input" data-field="${column.field}">`;
+            
+            default:
+                return `<input type="text" class="b2b-filter-input" data-field="${column.field}" placeholder="${column.filterPlaceholder || 'Filtrele...'}">`;
+        }
+    }
+
+    getTableTemplate() {
+        return `
+            <div class="b2b-table-wrapper">
+                <table class="b2b-table">
+                    <thead class="b2b-table-header" id="tableHeader"></thead>
+                    <tbody class="b2b-table-body" id="tableBody"></tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    getEmptyTemplate() {
+        return `
+            <div class="b2b-table-empty" id="tableEmpty" style="display: none;">
+                <div class="b2b-empty-icon">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                        <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2"/>
+                        <path d="M9 22V12H15V22" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </div>
+                <h3>Veri bulunamadı</h3>
+                <p>Arama kriterlerinize uygun veri bulunamadı.</p>
+                <button class="b2b-btn b2b-btn-primary" id="resetSearch">Aramayı Sıfırla</button>
+            </div>
+        `;
+    }
+
+    getLoadingTemplate() {
+        return `
+            <div class="b2b-table-loading" id="tableLoading" style="display: none;">
+                <div class="b2b-loading-spinner"></div>
+                <p>Veriler yükleniyor...</p>
+            </div>
+        `;
+    }
+
+    getFooterTemplate() {
+        if (!this.options.pagination) return '';
+        
+        return `
+            <div class="b2b-table-footer">
+                <div class="b2b-table-info" id="tableInfo">Toplam 0 kayıttan 0-0 arası gösteriliyor</div>
+                <div class="b2b-table-pagination" id="tablePagination"></div>
+                <div class="b2b-table-page-size">
+                    <label for="pageSize">Sayfa başına:</label>
+                    <select class="b2b-page-size-select" id="pageSize">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+        `;
+    }
+
+    setupEventListeners() {
+        // Search
+        if (this.options.searchable) {
+            const searchInput = this.container.querySelector('.b2b-search-input');
+            const searchClear = this.container.querySelector('.b2b-search-clear');
+            
+            searchInput.addEventListener('input', this.debounce(() => {
+                this.state.searchTerm = searchInput.value;
+                searchClear.style.display = searchInput.value ? 'flex' : 'none';
+                this.filterData();
+            }, 300));
+            
+            searchClear.addEventListener('click', () => {
+                searchInput.value = '';
+                this.state.searchTerm = '';
+                searchClear.style.display = 'none';
+                this.filterData();
+            });
+        }
+
+        // Filters
+        if (this.options.filterable) {
+            const filterToggle = this.container.querySelector('#filterToggle');
+            const filtersPanel = this.container.querySelector('#filtersPanel');
+            const clearFilters = this.container.querySelector('#clearFilters');
+            const applyFilters = this.container.querySelector('#applyFilters');
+            
+            filterToggle.addEventListener('click', () => {
+                filtersPanel.classList.toggle('show');
+            });
+            
+            clearFilters.addEventListener('click', () => {
+                this.clearFilters();
+            });
+            
+            applyFilters.addEventListener('click', () => {
+                this.applyFilters();
+            });
+        }
+
+        // Refresh
+        const refreshBtn = this.container.querySelector('#refreshTable');
+        refreshBtn.addEventListener('click', () => {
+            this.loadData();
+        });
+
+        // Export
+        const exportToggle = this.container.querySelector('#exportToggle');
+        const exportDropdown = this.container.querySelector('.b2b-export-dropdown');
+        const exportOptions = this.container.querySelectorAll('.b2b-export-option');
+        
+        exportToggle.addEventListener('click', () => {
+            exportDropdown.classList.toggle('show');
+        });
+        
+        exportOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                this.exportData(option.dataset.format);
+                exportDropdown.classList.remove('show');
+            });
+        });
+
+        // Close dropdowns on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.b2b-table-export')) {
+                exportDropdown.classList.remove('show');
+            }
+            if (!e.target.closest('.b2b-table-filters')) {
+                this.container.querySelector('#filtersPanel')?.classList.remove('show');
+            }
+        });
+
+        // Add button
+        const addBtn = this.container.querySelector('#addNewBtn');
+        if (addBtn && this.options.addButton?.onClick) {
+            addBtn.addEventListener('click', this.options.addButton.onClick);
+        }
+
+        // Reset search
+        const resetSearch = this.container.querySelector('#resetSearch');
+        if (resetSearch) {
+            resetSearch.addEventListener('click', () => {
+                this.resetSearch();
+            });
+        }
+
+        // Page size
+        const pageSizeSelect = this.container.querySelector('#pageSize');
+        if (pageSizeSelect) {
+            pageSizeSelect.addEventListener('change', (e) => {
+                this.state.pageSize = parseInt(e.target.value);
+                this.state.currentPage = 1;
+                this.filterData();
+            });
+        }
+    }
+
+    async loadData() {
+        if (!this.options.ajax) return;
+
+        this.showLoading();
+        
+        try {
+            const response = await b2bApi.get(this.options.ajax.url, this.options.ajax.params || {});
+            this.options.data = response.data || response;
+            this.renderTable();
+        } catch (error) {
+            console.error('Table data load error:', error);
+            b2bUtils.showNotification('Veriler yüklenirken hata oluştu', 'error');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    renderTable() {
+        const filteredData = this.getFilteredData();
+        const paginatedData = this.getPaginatedData(filteredData);
+        
+        this.renderHeader();
+        this.renderBody(paginatedData);
+        this.renderFooter(filteredData.length);
+        this.toggleEmptyState(filteredData.length === 0);
+    }
+
+    renderHeader() {
+        const header = this.container.querySelector('#tableHeader');
+        header.innerHTML = '';
+        
+        const row = document.createElement('tr');
+        
+        this.options.columns.forEach(column => {
+            const th = document.createElement('th');
+            th.innerHTML = `
+                ${column.title}
+                ${column.sortable !== false ? '<span class="sort-indicator">▼</span>' : ''}
+            `;
+            
+            if (column.sortable !== false) {
+                th.classList.add('sortable');
+                th.addEventListener('click', () => this.sortData(column.field));
+            }
+            
+            if (this.state.sortColumn === column.field) {
+                th.classList.add(this.state.sortDirection === 'asc' ? 'sorted-desc' : 'sorted-asc');
+            }
+            
+            row.appendChild(th);
+        });
+        
+        header.appendChild(row);
+    }
+
+    renderBody(data) {
+        const tbody = this.container.querySelector('#tableBody');
+        tbody.innerHTML = '';
+        
+        data.forEach((row, index) => {
+            const tr = document.createElement('tr');
+            
+            this.options.columns.forEach(column => {
+                const td = document.createElement('td');
+                td.innerHTML = this.formatCellValue(row, column);
+                tr.appendChild(td);
+            });
+            
+            tbody.appendChild(tr);
+        });
+    }
+
+    formatCellValue(row, column) {
+        let value = row[column.field];
+        
+        if (column.formatter) {
+            return column.formatter(value, row);
+        }
+        
+        if (column.type === 'status') {
+            return `<span class="b2b-status b2b-status-${value}">${this.getStatusText(value)}</span>`;
+        }
+        
+        if (column.type === 'actions') {
+            return this.getActionButtons(row, column.actions);
+        }
+        
+        if (column.type === 'date' && value) {
+            return b2bUtils.formatDate(value);
+        }
+        
+        if (column.type === 'currency' && value) {
+            return b2bUtils.formatCurrency(value);
+        }
+        
+        return value || '-';
+    }
+
+    getStatusText(status) {
+        const statusMap = {
+            'active': 'Aktif',
+            'inactive': 'Pasif',
+            'pending': 'Bekliyor',
+            'completed': 'Tamamlandı',
+            'cancelled': 'İptal Edildi',
+            'success': 'Başarılı',
+            'error': 'Hatalı',
+            'warning': 'Uyarı'
+        };
+        return statusMap[status] || status;
+    }
+
+    getActionButtons(row, actions) {
+        if (!actions) return '';
+        
+        return actions.map(action => `
+            <button class="b2b-action-btn ${action.type}" 
+                    title="${action.title}" 
+                    onclick="event.stopPropagation(); ${action.onClick}(this, ${JSON.stringify(row).replace(/"/g, '&quot;')})">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    ${this.getActionIcon(action.type)}
+                </svg>
+            </button>
+        `).join('');
+    }
+
+    getActionIcon(type) {
+        const icons = {
+            view: '<path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>',
+            edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2"/>',
+            delete: '<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" stroke="currentColor" stroke-width="2"/>'
+        };
+        return icons[type] || icons.view;
+    }
+
+    renderFooter(totalItems) {
+        if (!this.options.pagination) return;
+        
+        const info = this.container.querySelector('#tableInfo');
+        const pagination = this.container.querySelector('#tablePagination');
+        
+        if (info) {
+            const start = (this.state.currentPage - 1) * this.state.pageSize + 1;
+            const end = Math.min(this.state.currentPage * this.state.pageSize, totalItems);
+            info.textContent = `Toplam ${totalItems} kayıttan ${start}-${end} arası gösteriliyor`;
+        }
+        
+        if (pagination) {
+            this.renderPagination(pagination, totalItems);
+        }
+    }
+
+    renderPagination(container, totalItems) {
+        const totalPages = Math.ceil(totalItems / this.state.pageSize);
+        
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        let paginationHtml = '';
+        
+        // Previous button
+        paginationHtml += `
+            <button class="b2b-pagination-btn" ${this.state.currentPage === 1 ? 'disabled' : ''} data-page="${this.state.currentPage - 1}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        `;
+        
+        // Page numbers
+        const pages = this.getPaginationPages(this.state.currentPage, totalPages);
+        pages.forEach(page => {
+            if (page === '...') {
+                paginationHtml += `<span class="b2b-pagination-ellipsis">...</span>`;
+            } else {
+                paginationHtml += `
+                    <button class="b2b-pagination-btn ${page === this.state.currentPage ? 'active' : ''}" data-page="${page}">
+                        ${page}
+                    </button>
+                `;
+            }
+        });
+        
+        // Next button
+        paginationHtml += `
+            <button class="b2b-pagination-btn" ${this.state.currentPage === totalPages ? 'disabled' : ''} data-page="${this.state.currentPage + 1}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        `;
+        
+        container.innerHTML = paginationHtml;
+        
+        // Add event listeners to pagination buttons
+        container.querySelectorAll('.b2b-pagination-btn:not([disabled])').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.state.currentPage = parseInt(btn.dataset.page);
+                this.renderTable();
+            });
+        });
+    }
+
+    getPaginationPages(currentPage, totalPages) {
+        const pages = [];
+        const maxVisible = 5;
+        
+        if (totalPages <= maxVisible) {
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i);
+            }
+        } else {
+            if (currentPage <= 3) {
+                for (let i = 1; i <= 4; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+            } else if (currentPage >= totalPages - 2) {
+                pages.push(1);
+                pages.push('...');
+                for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                pages.push('...');
+                for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+                pages.push('...');
+                pages.push(totalPages);
+            }
+        }
+        
+        return pages;
+    }
+
+    getFilteredData() {
+        let filtered = [...this.options.data];
+        
+        // Apply search
+        if (this.state.searchTerm) {
+            const searchTerm = this.state.searchTerm.toLowerCase();
+            filtered = filtered.filter(row => 
+                this.options.columns.some(col => {
+                    const value = String(row[col.field] || '').toLowerCase();
+                    return value.includes(searchTerm);
+                })
+            );
+        }
+        
+        // Apply filters
+        Object.entries(this.state.filters).forEach(([field, value]) => {
+            if (value) {
+                filtered = filtered.filter(row => 
+                    String(row[field] || '').toLowerCase().includes(value.toLowerCase())
+                );
+            }
+        });
+        
+        // Apply sorting
+        if (this.state.sortColumn) {
+            filtered.sort((a, b) => {
+                const aVal = a[this.state.sortColumn];
+                const bVal = b[this.state.sortColumn];
+                
+                if (aVal < bVal) return this.state.sortDirection === 'asc' ? -1 : 1;
+                if (aVal > bVal) return this.state.sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        
+        return filtered;
+    }
+
+    getPaginatedData(data) {
+        if (!this.options.pagination) return data;
+        
+        const start = (this.state.currentPage - 1) * this.state.pageSize;
+        const end = start + this.state.pageSize;
+        return data.slice(start, end);
+    }
+
+    sortData(column) {
+        if (this.state.sortColumn === column) {
+            this.state.sortDirection = this.state.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.state.sortColumn = column;
+            this.state.sortDirection = 'asc';
+        }
+        this.renderTable();
+    }
+
+    applyFilters() {
+        const filterInputs = this.container.querySelectorAll('.b2b-filter-input, .b2b-filter-select');
+        this.state.filters = {};
+        
+        filterInputs.forEach(input => {
+            const field = input.dataset.field;
+            const value = input.value.trim();
+            if (value) {
+                this.state.filters[field] = value;
+            }
+        });
+        
+        this.updateFilterBadge();
+        this.container.querySelector('#filtersPanel')?.classList.remove('show');
+        this.filterData();
+    }
+
+    clearFilters() {
+        const filterInputs = this.container.querySelectorAll('.b2b-filter-input, .b2b-filter-select');
+        filterInputs.forEach(input => input.value = '');
+        this.state.filters = {};
+        this.updateFilterBadge();
+        this.filterData();
+    }
+
+    resetSearch() {
+        const searchInput = this.container.querySelector('.b2b-search-input');
+        const searchClear = this.container.querySelector('.b2b-search-clear');
+        
+        searchInput.value = '';
+        this.state.searchTerm = '';
+        searchClear.style.display = 'none';
+        this.filterData();
+    }
+
+    updateFilterBadge() {
+        const filterBadge = this.container.querySelector('.b2b-filter-badge');
+        if (filterBadge) {
+            const activeFilters = Object.keys(this.state.filters).length;
+            filterBadge.textContent = activeFilters;
+            filterBadge.style.display = activeFilters > 0 ? 'flex' : 'none';
+        }
+    }
+
+    filterData() {
+        this.state.currentPage = 1;
+        this.renderTable();
+    }
+
+    showLoading() {
+        const loading = this.container.querySelector('#tableLoading');
+        const table = this.container.querySelector('.b2b-table-wrapper');
+        if (loading && table) {
+            loading.style.display = 'block';
+            table.style.opacity = '0.5';
+        }
+    }
+
+    hideLoading() {
+        const loading = this.container.querySelector('#tableLoading');
+        const table = this.container.querySelector('.b2b-table-wrapper');
+        if (loading && table) {
+            loading.style.display = 'none';
+            table.style.opacity = '1';
+        }
+    }
+
+    toggleEmptyState(isEmpty) {
+        const empty = this.container.querySelector('#tableEmpty');
+        const table = this.container.querySelector('.b2b-table-wrapper');
+        const footer = this.container.querySelector('.b2b-table-footer');
+        
+        if (empty && table && footer) {
+            if (isEmpty) {
+                empty.style.display = 'block';
+                table.style.display = 'none';
+                footer.style.display = 'none';
+            } else {
+                empty.style.display = 'none';
+                table.style.display = 'block';
+                footer.style.display = 'flex';
+            }
+        }
+    }
+
+    exportData(format) {
+        const data = this.getFilteredData();
+        const headers = this.options.columns.map(col => col.title);
+        const rows = data.map(row => 
+            this.options.columns.map(col => row[col.field] || '')
+        );
+        
+        // Simple CSV export (for demo)
+        if (format === 'csv') {
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(row => row.join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `export-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        b2bUtils.showNotification(`${format.toUpperCase()} formatında dışa aktarıldı`, 'success');
+    }
+
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Public methods
+    refresh() {
+        this.loadData();
+    }
+
+    setData(data) {
+        this.options.data = data;
+        this.renderTable();
+    }
+
+    addRow(row) {
+        this.options.data.unshift(row);
+        this.renderTable();
+    }
+
+    updateRow(index, row) {
+        this.options.data[index] = row;
+        this.renderTable();
+    }
+
+    deleteRow(index) {
+        this.options.data.splice(index, 1);
+        this.renderTable();
+    }
+}
+
+// Global table factory function
+window.createB2BTable = (containerId, options) => {
+    return new TableComponent(containerId, options);
+};
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Auto-initialize tables with data-b2b-table attribute
+    const tableContainers = document.querySelectorAll('[data-b2b-table]');
+    tableContainers.forEach(container => {
+        const options = JSON.parse(container.dataset.options || '{}');
+        new TableComponent(container.id, options);
+    });
+});
+</script>

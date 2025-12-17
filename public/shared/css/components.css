@@ -1,0 +1,85 @@
+/* BASE STILLER */
+* { 
+  margin: 0; 
+  padding: 0; 
+  box-sizing: border-box; 
+}
+
+body { 
+  font-family: var(--font-family);
+  background: var(--bg-primary);
+  min-height: 100vh; 
+  color: #333;
+}
+
+/* BUTON BİLEŞENİ */
+.btn { 
+  background: var(--primary-color); 
+  color: white; 
+  border: none; 
+  padding: 0.75rem 1.5rem; 
+  border-radius: var(--border-radius); 
+  cursor: pointer; 
+  text-decoration: none;
+  display: inline-block;
+  transition: var(--transition);
+  font-size: var(--font-size-base);
+}
+
+.btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: var(--secondary-color);
+}
+
+.btn-success {
+  background: var(--success-color);
+}
+
+.btn-danger {
+  background: var(--danger-color);
+}
+
+/* KART BİLEŞENİ */
+.card {
+  background: var(--bg-white);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-hover);
+}
+
+/* FORM ELEMENTLERİ */
+.form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.form-label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  font-weight: 500;
+  color: var(--secondary-color);
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-base);
+  transition: var(--transition);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+}

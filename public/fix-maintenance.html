@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bakım Modu Temizleme - ACİL</title>
+    <style>
+        body { 
+            font-family: Arial; 
+            padding: 20px; 
+            background: #f0f0f0; 
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 10px; 
+            max-width: 600px; 
+            margin: 50px auto; 
+        }
+        button { 
+            background: #dc2626; 
+            color: white; 
+            border: none; 
+            padding: 15px 30px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            margin: 10px; 
+        }
+        .success { background: #16a34a; }
+        .info { 
+            background: #dbeafe; 
+            padding: 15px; 
+            border-radius: 5px; 
+            margin: 15px 0; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚨 BAKIM MODU TEMİZLEME</h1>
+        <div class="info">
+            <strong>Problem:</strong> Bakım modu açık kaldı, admin girişi engelleniyor.
+        </div>
+
+        <button onclick="clearMaintenance()">🗑️ BAKIM MODUNU TEMİZLE</button>
+        <button class="success" onclick="goToLogin()">🔐 LOGİN SAYFASINA GİT</button>
+
+        <div id="result" style="margin-top: 20px;"></div>
+        
+        <div style="margin-top: 30px; font-size: 14px; color: #666;">
+            <strong>Manuel çözüm için:</strong><br>
+            1. F12 → Application → Local Storage → your-domain<br>
+            2. <code>b2b_system_config</code> ve <code>b2b_user_settings</code> item'larını silin<br>
+            3. Sayfayı yenileyin
+        </div>
+    </div>
+
+    <script>
+        function clearMaintenance() {
+            try {
+                // Tüm config ve ayarları temizle
+                localStorage.removeItem('b2b_system_config');
+                localStorage.removeItem('b2b_user_settings');
+                sessionStorage.clear();
+                
+                // Yeni temiz config oluştur
+                const cleanConfig = {
+                    settings: {
+                        stock: { visibility: true, lowStockThreshold: 10 },
+                        price: { currency: "TRY", showTax: true },
+                        display: { language: "tr", theme: "light" },
+                        features: { multiSession: true, notifications: true },
+                        security: { storageType: "sessionStorage" },
+                        dashboard: { showStats: true }
+                    },
+                    system: {
+                        companyName: "B2B TRADE PRO",
+                        version: "1.0.0",
+                        maintenance: false, // ⬅️ BURASI FALSE!
+                        maintenanceMessage: "",
+                        environment: "production"
+                    },
+                    theme: {
+                        colors: { primary: "#2563eb", success: "#16a34a" }
+                    },
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                localStorage.setItem('b2b_system_config', JSON.stringify(cleanConfig));
+                
+                document.getElementById('result').innerHTML = `
+                    <div style="background: #dcfce7; color: #166534; padding: 15px; border-radius: 5px;">
+                        ✅ <strong>BAŞARILI!</strong> Bakım modu kapatıldı.<br>
+                        • maintenance: <strong>false</strong><br>
+                        • Tüm storage temizlendi<br>
+                        • Yeni config oluşturuldu
+                    </div>
+                `;
+                
+                console.log('✅ Bakım modu temizlendi!');
+                
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <div style="background: #fecaca; color: #dc2626; padding: 15px; border-radius: 5px;">
+                        ❌ <strong>HATA!</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function goToLogin() {
+            window.location.href = '/login.html';
+        }
+
+        // Sayfa yüklendiğinde mevcut durumu göster
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentConfig = localStorage.getItem('b2b_system_config');
+            if (currentConfig) {
+                try {
+                    const config = JSON.parse(currentConfig);
+                    const isMaintenance = config.system?.maintenance;
+                    document.getElementById('result').innerHTML = `
+                        <div style="background: #fef3c7; color: #92400e; padding: 15px; border-radius: 5px;">
+                            📊 <strong>MEVCUT DURUM:</strong><br>
+                            • Bakım Modu: <strong>${isMaintenance ? 'AKTİF 🚧' : 'PASİF ✅'}</strong><br>
+                            • Mesaj: "${config.system?.maintenanceMessage || 'Yok'}"<br>
+                            • Versiyon: ${config.system?.version || 'Bilinmiyor'}
+                        </div>
+                    `;
+                } catch (e) {
+                    console.error('Config okuma hatası:', e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

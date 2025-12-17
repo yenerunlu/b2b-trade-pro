@@ -1,0 +1,1241 @@
+<!-- public/shared/components/form-elements.html -->
+<div class="b2b-form-elements" style="display: none;">
+    <!-- This container is just for holding the styles and scripts -->
+</div>
+
+<style>
+/* Form Container */
+.b2b-form {
+    width: 100%;
+}
+
+.b2b-form.compact .b2b-form-group {
+    margin-bottom: 1rem;
+}
+
+.b2b-form.horizontal {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+    .b2b-form.horizontal {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .b2b-form.horizontal .b2b-form-group-full {
+        grid-column: 1 / -1;
+    }
+}
+
+/* Form Groups */
+.b2b-form-group {
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.b2b-form-group-inline {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.b2b-form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.b2b-form-label.required::after {
+    content: '*';
+    color: #dc2626;
+    margin-left: 0.25rem;
+}
+
+.b2b-form-label.disabled {
+    color: #9ca3af;
+}
+
+.b2b-form-help {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+    line-height: 1.25;
+}
+
+.b2b-form-error {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: #dc2626;
+    line-height: 1.25;
+}
+
+/* Input Styles */
+.b2b-form-input,
+.b2b-form-select,
+.b2b-form-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    transition: all 0.2s;
+    background: white;
+    color: #374151;
+    box-sizing: border-box;
+}
+
+.b2b-form-input:focus,
+.b2b-form-select:focus,
+.b2b-form-textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.b2b-form-input:hover:not(:focus):not(:disabled),
+.b2b-form-select:hover:not(:focus):not(:disabled),
+.b2b-form-textarea:hover:not(:focus):not(:disabled) {
+    border-color: #9ca3af;
+}
+
+.b2b-form-input::placeholder,
+.b2b-form-textarea::placeholder {
+    color: #9ca3af;
+}
+
+.b2b-form-input.error,
+.b2b-form-select.error,
+.b2b-form-textarea.error {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.b2b-form-input.success,
+.b2b-form-select.success,
+.b2b-form-textarea.success {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+.b2b-form-input.warning,
+.b2b-form-select.warning,
+.b2b-form-textarea.warning {
+    border-color: #d97706;
+    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+}
+
+.b2b-form-input:disabled,
+.b2b-form-select:disabled,
+.b2b-form-textarea:disabled {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* Input Sizes */
+.b2b-form-input.sm,
+.b2b-form-select.sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+}
+
+.b2b-form-input.lg,
+.b2b-form-select.lg {
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+}
+
+/* Textarea */
+.b2b-form-textarea {
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.5;
+}
+
+.b2b-form-textarea.sm {
+    min-height: 80px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+}
+
+.b2b-form-textarea.lg {
+    min-height: 120px;
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+}
+
+/* Select */
+.b2b-form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9L12 15L18 9' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 16px;
+    padding-right: 2.5rem;
+}
+
+.b2b-form-select::-ms-expand {
+    display: none;
+}
+
+/* Input with Icons */
+.b2b-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.b2b-input-wrapper .b2b-form-input,
+.b2b-input-wrapper .b2b-form-select {
+    padding-left: 2.5rem;
+}
+
+.b2b-input-wrapper .b2b-input-icon {
+    position: absolute;
+    left: 1rem;
+    color: #6b7280;
+    pointer-events: none;
+}
+
+.b2b-input-wrapper .b2b-input-action {
+    position: absolute;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s;
+}
+
+.b2b-input-wrapper .b2b-input-action:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+/* Checkbox and Radio */
+.b2b-checkbox-group,
+.b2b-radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.b2b-checkbox-item,
+.b2b-radio-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+
+.b2b-checkbox-input,
+.b2b-radio-input {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    cursor: pointer;
+}
+
+.b2b-checkbox-label,
+.b2b-radio-label {
+    font-size: 0.875rem;
+    color: #374151;
+    cursor: pointer;
+    user-select: none;
+}
+
+.b2b-checkbox-item.disabled,
+.b2b-radio-item.disabled {
+    cursor: not-allowed;
+}
+
+.b2b-checkbox-item.disabled .b2b-checkbox-label,
+.b2b-radio-item.disabled .b2b-radio-label {
+    color: #9ca3af;
+}
+
+.b2b-checkbox-item.disabled .b2b-checkbox-input,
+.b2b-radio-item.disabled .b2b-radio-input {
+    cursor: not-allowed;
+}
+
+/* Custom Checkbox */
+.b2b-custom-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+
+.b2b-custom-checkbox-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.b2b-custom-checkbox-box {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #d1d5db;
+    border-radius: 0.25rem;
+    background: white;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.b2b-custom-checkbox-input:checked + .b2b-custom-checkbox-box {
+    background: #3b82f6;
+    border-color: #3b82f6;
+}
+
+.b2b-custom-checkbox-input:checked + .b2b-custom-checkbox-box::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    background: white;
+    border-radius: 0.125rem;
+}
+
+.b2b-custom-checkbox-input:focus + .b2b-custom-checkbox-box {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.b2b-custom-checkbox-input:disabled + .b2b-custom-checkbox-box {
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+    cursor: not-allowed;
+}
+
+.b2b-custom-checkbox-label {
+    font-size: 0.875rem;
+    color: #374151;
+    user-select: none;
+}
+
+.b2b-custom-checkbox.disabled {
+    cursor: not-allowed;
+}
+
+.b2b-custom-checkbox.disabled .b2b-custom-checkbox-label {
+    color: #9ca3af;
+}
+
+/* Custom Radio */
+.b2b-custom-radio {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+
+.b2b-custom-radio-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.b2b-custom-radio-box {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #d1d5db;
+    border-radius: 50%;
+    background: white;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.b2b-custom-radio-input:checked + .b2b-custom-radio-box {
+    background: #3b82f6;
+    border-color: #3b82f6;
+}
+
+.b2b-custom-radio-input:checked + .b2b-custom-radio-box::after {
+    content: '';
+    width: 0.375rem;
+    height: 0.375rem;
+    background: white;
+    border-radius: 50%;
+}
+
+.b2b-custom-radio-input:focus + .b2b-custom-radio-box {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.b2b-custom-radio-input:disabled + .b2b-custom-radio-box {
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+    cursor: not-allowed;
+}
+
+.b2b-custom-radio-label {
+    font-size: 0.875rem;
+    color: #374151;
+    user-select: none;
+}
+
+.b2b-custom-radio.disabled {
+    cursor: not-allowed;
+}
+
+.b2b-custom-radio.disabled .b2b-custom-radio-label {
+    color: #9ca3af;
+}
+
+/* Switch */
+.b2b-switch {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+
+.b2b-switch-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.b2b-switch-track {
+    width: 2.75rem;
+    height: 1.5rem;
+    background: #d1d5db;
+    border-radius: 0.75rem;
+    position: relative;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.b2b-switch-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 0.125rem;
+    left: 0.125rem;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.b2b-switch-input:checked + .b2b-switch-track {
+    background: #3b82f6;
+}
+
+.b2b-switch-input:checked + .b2b-switch-track .b2b-switch-thumb {
+    transform: translateX(1.25rem);
+}
+
+.b2b-switch-input:focus + .b2b-switch-track {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.b2b-switch-input:disabled + .b2b-switch-track {
+    background: #f3f4f6;
+    cursor: not-allowed;
+}
+
+.b2b-switch-input:disabled + .b2b-switch-track .b2b-switch-thumb {
+    background: #e5e7eb;
+}
+
+.b2b-switch-label {
+    font-size: 0.875rem;
+    color: #374151;
+    user-select: none;
+}
+
+.b2b-switch.disabled {
+    cursor: not-allowed;
+}
+
+.b2b-switch.disabled .b2b-switch-label {
+    color: #9ca3af;
+}
+
+/* File Input */
+.b2b-file-input {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.b2b-file-input-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    border: 2px dashed #d1d5db;
+    border-radius: 0.5rem;
+    background: #fafafa;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.b2b-file-input-label:hover {
+    border-color: #9ca3af;
+    background: #f9fafb;
+}
+
+.b2b-file-input-label.dragover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+.b2b-file-input-icon {
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.b2b-file-input-text {
+    font-size: 0.875rem;
+    color: #374151;
+    margin-bottom: 0.25rem;
+}
+
+.b2b-file-input-hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.b2b-file-input-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.b2b-file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.b2b-file-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+}
+
+.b2b-file-icon {
+    color: #6b7280;
+    flex-shrink: 0;
+}
+
+.b2b-file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.b2b-file-name {
+    font-size: 0.875rem;
+    color: #374151;
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.b2b-file-size {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.b2b-file-remove {
+    background: none;
+    border: none;
+    padding: 0.25rem;
+    cursor: pointer;
+    color: #6b7280;
+    border-radius: 0.25rem;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.b2b-file-remove:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+/* Button Styles */
+.b2b-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border: 1px solid;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.b2b-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.b2b-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Button Variants */
+.b2b-btn-primary {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+}
+
+.b2b-btn-primary:hover:not(:disabled) {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.b2b-btn-secondary {
+    background: white;
+    border-color: #d1d5db;
+    color: #374151;
+}
+
+.b2b-btn-secondary:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.b2b-btn-success {
+    background: #16a34a;
+    border-color: #16a34a;
+    color: white;
+}
+
+.b2b-btn-success:hover:not(:disabled) {
+    background: #15803d;
+    border-color: #15803d;
+}
+
+.b2b-btn-warning {
+    background: #d97706;
+    border-color: #d97706;
+    color: white;
+}
+
+.b2b-btn-warning:hover:not(:disabled) {
+    background: #b45309;
+    border-color: #b45309;
+}
+
+.b2b-btn-error {
+    background: #dc2626;
+    border-color: #dc2626;
+    color: white;
+}
+
+.b2b-btn-error:hover:not(:disabled) {
+    background: #b91c1c;
+    border-color: #b91c1c;
+}
+
+.b2b-btn-text {
+    background: transparent;
+    border-color: transparent;
+    color: #3b82f6;
+}
+
+.b2b-btn-text:hover:not(:disabled) {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+/* Button Sizes */
+.b2b-btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+}
+
+.b2b-btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1rem;
+}
+
+/* Button Group */
+.b2b-btn-group {
+    display: inline-flex;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.b2b-btn-group .b2b-btn {
+    border-radius: 0;
+    margin-left: -1px;
+}
+
+.b2b-btn-group .b2b-btn:first-child {
+    border-top-left-radius: 0.5rem;
+    border-bottom-left-radius: 0.5rem;
+    margin-left: 0;
+}
+
+.b2b-btn-group .b2b-btn:last-child {
+    border-top-right-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+}
+
+/* Form Actions */
+.b2b-form-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.b2b-form-actions.center {
+    justify-content: center;
+}
+
+.b2b-form-actions.space-between {
+    justify-content: space-between;
+}
+
+/* Dark Theme */
+[data-theme="dark"] .b2b-form-label {
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .b2b-form-help {
+    color: #9ca3af;
+}
+
+[data-theme="dark"] .b2b-form-input,
+[data-theme="dark"] .b2b-form-select,
+[data-theme="dark"] .b2b-form-textarea {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+}
+
+[data-theme="dark"] .b2b-form-input:focus,
+[data-theme="dark"] .b2b-form-select:focus,
+[data-theme="dark"] .b2b-form-textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="dark"] .b2b-form-input:hover:not(:focus):not(:disabled),
+[data-theme="dark"] .b2b-form-select:hover:not(:focus):not(:disabled),
+[data-theme="dark"] .b2b-form-textarea:hover:not(:focus):not(:disabled) {
+    border-color: #6b7280;
+}
+
+[data-theme="dark"] .b2b-form-input:disabled,
+[data-theme="dark"] .b2b-form-select:disabled,
+[data-theme="dark"] .b2b-form-textarea:disabled {
+    background: #1f2937;
+    border-color: #374151;
+    color: #6b7280;
+}
+
+[data-theme="dark"] .b2b-custom-checkbox-box {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+[data-theme="dark"] .b2b-custom-radio-box {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+[data-theme="dark"] .b2b-switch-track {
+    background: #4b5563;
+}
+
+[data-theme="dark"] .b2b-file-input-label {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .b2b-file-input-label:hover {
+    background: #374151;
+    border-color: #4b5563;
+}
+
+[data-theme="dark"] .b2b-file-item {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+[data-theme="dark"] .b2b-btn-secondary {
+    background: #374151;
+    border-color: #4b5563;
+    color: #e5e7eb;
+}
+
+[data-theme="dark"] .b2b-btn-secondary:hover:not(:disabled) {
+    background: #4b5563;
+    border-color: #6b7280;
+}
+
+[data-theme="dark"] .b2b-btn-text {
+    background: transparent;
+    border-color: transparent;
+    color: #60a5fa;
+}
+
+[data-theme="dark"] .b2b-btn-text:hover:not(:disabled) {
+    background: #1e3a8a;
+    color: #93c5fd;
+}
+
+[data-theme="dark"] .b2b-form-actions {
+    border-top-color: #374151;
+}
+</style>
+
+<script>
+class FormElements {
+    constructor() {
+        this.init();
+    }
+
+    init() {
+        this.setupCustomCheckboxes();
+        this.setupCustomRadios();
+        this.setupSwitches();
+        this.setupFileInputs();
+        this.setupInputActions();
+    }
+
+    setupCustomCheckboxes() {
+        document.querySelectorAll('.b2b-custom-checkbox').forEach(checkbox => {
+            const input = checkbox.querySelector('.b2b-custom-checkbox-input');
+            const label = checkbox.querySelector('.b2b-custom-checkbox-label');
+            
+            if (input && label) {
+                label.addEventListener('click', () => {
+                    if (!checkbox.classList.contains('disabled')) {
+                        input.checked = !input.checked;
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+            }
+        });
+    }
+
+    setupCustomRadios() {
+        document.querySelectorAll('.b2b-custom-radio').forEach(radio => {
+            const input = radio.querySelector('.b2b-custom-radio-input');
+            const label = radio.querySelector('.b2b-custom-radio-label');
+            
+            if (input && label) {
+                label.addEventListener('click', () => {
+                    if (!radio.classList.contains('disabled')) {
+                        // Uncheck other radios in the same group
+                        const groupName = input.name;
+                        if (groupName) {
+                            document.querySelectorAll(`input[name="${groupName}"]`).forEach(otherInput => {
+                                otherInput.checked = false;
+                                otherInput.dispatchEvent(new Event('change', { bubbles: true }));
+                            });
+                        }
+                        
+                        input.checked = true;
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+            }
+        });
+    }
+
+    setupSwitches() {
+        document.querySelectorAll('.b2b-switch').forEach(switchEl => {
+            const input = switchEl.querySelector('.b2b-switch-input');
+            const label = switchEl.querySelector('.b2b-switch-label');
+            
+            if (input && label) {
+                label.addEventListener('click', () => {
+                    if (!switchEl.classList.contains('disabled')) {
+                        input.checked = !input.checked;
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+            }
+        });
+    }
+
+    setupFileInputs() {
+        document.querySelectorAll('.b2b-file-input').forEach(fileInput => {
+            const input = fileInput.querySelector('.b2b-file-input-input');
+            const label = fileInput.querySelector('.b2b-file-input-label');
+            const fileList = fileInput.querySelector('.b2b-file-list');
+            
+            if (input && label) {
+                // Click handler
+                label.addEventListener('click', (e) => {
+                    if (!fileInput.classList.contains('disabled')) {
+                        input.click();
+                    }
+                });
+
+                // Drag and drop
+                label.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    label.classList.add('dragover');
+                });
+
+                label.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    label.classList.remove('dragover');
+                });
+
+                label.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    label.classList.remove('dragover');
+                    
+                    if (!fileInput.classList.contains('disabled')) {
+                        const files = e.dataTransfer.files;
+                        this.handleFileSelection(files, input, fileList);
+                    }
+                });
+
+                // File selection
+                input.addEventListener('change', (e) => {
+                    this.handleFileSelection(e.target.files, input, fileList);
+                });
+            }
+        });
+    }
+
+    handleFileSelection(files, input, fileList) {
+        if (!files.length) return;
+
+        // Clear existing files if multiple is not enabled
+        if (!input.multiple && fileList) {
+            fileList.innerHTML = '';
+        }
+
+        Array.from(files).forEach(file => {
+            this.addFileToList(file, fileList);
+        });
+
+        // Dispatch change event
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    addFileToList(file, fileList) {
+        if (!fileList) return;
+
+        const fileItem = document.createElement('div');
+        fileItem.className = 'b2b-file-item';
+        
+        const fileSize = this.formatFileSize(file.size);
+        
+        fileItem.innerHTML = `
+            <div class="b2b-file-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" stroke="currentColor" stroke-width="2"/>
+                    <polyline points="13 2 13 9 20 9" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <div class="b2b-file-info">
+                <div class="b2b-file-name">${file.name}</div>
+                <div class="b2b-file-size">${fileSize}</div>
+            </div>
+            <button type="button" class="b2b-file-remove" data-filename="${file.name}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        `;
+
+        fileList.appendChild(fileItem);
+
+        // Add remove event listener
+        const removeBtn = fileItem.querySelector('.b2b-file-remove');
+        removeBtn.addEventListener('click', () => {
+            fileItem.remove();
+        });
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    setupInputActions() {
+        document.querySelectorAll('.b2b-input-wrapper .b2b-input-action').forEach(action => {
+            action.addEventListener('click', (e) => {
+                e.preventDefault();
+                const input = action.closest('.b2b-input-wrapper').querySelector('input, select, textarea');
+                if (input) {
+                    // Handle different action types
+                    if (action.classList.contains('b2b-input-clear')) {
+                        input.value = '';
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    } else if (action.classList.contains('b2b-input-toggle-password')) {
+                        this.togglePasswordVisibility(input, action);
+                    }
+                }
+            });
+        });
+    }
+
+    togglePasswordVisibility(input, button) {
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        
+        // Update button icon
+        const icon = button.querySelector('svg');
+        if (icon) {
+            if (isPassword) {
+                icon.innerHTML = `
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                `;
+                button.title = 'Şifreyi Gizle';
+            } else {
+                icon.innerHTML = `
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" stroke="currentColor" stroke-width="2"/>
+                    <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2"/>
+                `;
+                button.title = 'Şifreyi Göster';
+            }
+        }
+    }
+
+    // Public methods
+    static validateForm(form) {
+        const inputs = form.querySelectorAll('input, select, textarea');
+        let isValid = true;
+
+        inputs.forEach(input => {
+            if (!this.validateInput(input)) {
+                isValid = false;
+            }
+        });
+
+        return isValid;
+    }
+
+    static validateInput(input) {
+        const formGroup = input.closest('.b2b-form-group');
+        const errorElement = formGroup?.querySelector('.b2b-form-error');
+        
+        // Clear previous error
+        input.classList.remove('error');
+        if (errorElement) {
+            errorElement.textContent = '';
+        }
+
+        // Required validation
+        if (input.required && !input.value.trim()) {
+            this.showError(input, 'Bu alan zorunludur');
+            return false;
+        }
+
+        // Email validation
+        if (input.type === 'email' && input.value) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(input.value)) {
+                this.showError(input, 'Geçerli bir e-posta adresi girin');
+                return false;
+            }
+        }
+
+        // Number validation
+        if (input.type === 'number' && input.value) {
+            if (input.min && parseFloat(input.value) < parseFloat(input.min)) {
+                this.showError(input, `Değer ${input.min}'den küçük olamaz`);
+                return false;
+            }
+            if (input.max && parseFloat(input.value) > parseFloat(input.max)) {
+                this.showError(input, `Değer ${input.max}'den büyük olamaz`);
+                return false;
+            }
+        }
+
+        // Custom validation
+        if (input.dataset.validate) {
+            const validationResult = this.customValidation(input);
+            if (!validationResult.isValid) {
+                this.showError(input, validationResult.message);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    static showError(input, message) {
+        input.classList.add('error');
+        
+        const formGroup = input.closest('.b2b-form-group');
+        let errorElement = formGroup?.querySelector('.b2b-form-error');
+        
+        if (!errorElement) {
+            errorElement = document.createElement('div');
+            errorElement.className = 'b2b-form-error';
+            formGroup?.appendChild(errorElement);
+        }
+        
+        errorElement.textContent = message;
+    }
+
+    static customValidation(input) {
+        const validator = input.dataset.validate;
+        const value = input.value.trim();
+
+        switch (validator) {
+            case 'phone':
+                const phoneRegex = /^(\+90|0)?[5][0-9]{9}$/;
+                return {
+                    isValid: phoneRegex.test(value.replace(/\s/g, '')),
+                    message: 'Geçerli bir telefon numarası girin'
+                };
+            
+            case 'tckn':
+                if (value.length !== 11 || isNaN(value)) {
+                    return { isValid: false, message: 'TCKN 11 haneli olmalıdır' };
+                }
+                
+                let sum = 0;
+                for (let i = 0; i < 10; i++) {
+                    sum += parseInt(value[i]);
+                }
+                
+                return {
+                    isValid: sum % 10 === parseInt(value[10]),
+                    message: 'Geçerli bir TCKN girin'
+                };
+            
+            case 'password':
+                const hasMinLength = value.length >= 8;
+                const hasUpperCase = /[A-Z]/.test(value);
+                const hasLowerCase = /[a-z]/.test(value);
+                const hasNumbers = /\d/.test(value);
+                
+                if (!hasMinLength) {
+                    return { isValid: false, message: 'Şifre en az 8 karakter olmalıdır' };
+                }
+                if (!hasUpperCase) {
+                    return { isValid: false, message: 'Şifre en az bir büyük harf içermelidir' };
+                }
+                if (!hasLowerCase) {
+                    return { isValid: false, message: 'Şifre en az bir küçük harf içermelidir' };
+                }
+                if (!hasNumbers) {
+                    return { isValid: false, message: 'Şifre en az bir rakam içermelidir' };
+                }
+                
+                return { isValid: true, message: '' };
+            
+            default:
+                return { isValid: true, message: '' };
+        }
+    }
+
+    static getFormData(form) {
+        const formData = {};
+        const inputs = form.querySelectorAll('input, select, textarea');
+        
+        inputs.forEach(input => {
+            if (input.name) {
+                if (input.type === 'checkbox') {
+                    formData[input.name] = input.checked;
+                } else if (input.type === 'radio') {
+                    if (input.checked) {
+                        formData[input.name] = input.value;
+                    }
+                } else {
+                    formData[input.name] = input.value;
+                }
+            }
+        });
+        
+        return formData;
+    }
+
+    static setFormData(form, data) {
+        Object.entries(data).forEach(([key, value]) => {
+            const input = form.querySelector(`[name="${key}"]`);
+            if (input) {
+                if (input.type === 'checkbox') {
+                    input.checked = Boolean(value);
+                } else if (input.type === 'radio') {
+                    const radio = form.querySelector(`[name="${key}"][value="${value}"]`);
+                    if (radio) {
+                        radio.checked = true;
+                    }
+                } else {
+                    input.value = value;
+                }
+            }
+        });
+    }
+
+    static resetForm(form) {
+        form.reset();
+        
+        // Clear custom errors
+        form.querySelectorAll('.b2b-form-error').forEach(error => {
+            error.textContent = '';
+        });
+        
+        form.querySelectorAll('.error').forEach(input => {
+            input.classList.remove('error');
+        });
+    }
+}
+
+// Initialize form elements when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    new FormElements();
+});
+
+// Global form utilities
+window.validateForm = FormElements.validateForm;
+window.getFormData = FormElements.getFormData;
+window.setFormData = FormElements.setFormData;
+window.resetForm = FormElements.resetForm;
+</script>
