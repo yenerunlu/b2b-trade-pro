@@ -1252,7 +1252,7 @@
                             </div>
                             
                             <div class="summary-row">
-                                <span class="summary-label">Peşin İndirimi (%3)</span>
+                                <span class="summary-label" id="cash-discount-label">Peşin İndirimi (%0)</span>
                                 <span class="summary-value" id="cash-discount">-₺0.00</span>
                             </div>
                             
@@ -1387,12 +1387,51 @@
             try {
                 await loadUserData();
                 displayCustomerInfo();
+                __BUY_NOW_RATE__ = await loadBuyNowRate();
                 await loadExchangeRates();
                 await loadCart();
                 setupEventListeners();
+                loadSelectionMemory();
+                updateCartUI();
+                
+                // Başlangıç hesaplaması
+                updateCartSummary();
+                const buyNowBadge = document.getElementById('cash-discount-label');
+                if (buyNowBadge) buyNowBadge.textContent = `Peşin İndirimi (%${Number(__BUY_NOW_RATE__ || 0)})`;
             } catch (error) {
                 console.error('Uygulama başlatma hatası:', error);
-                showError('Uygulama başlatılamadı: ' + error.message);
+                showError('Uygulama yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.');
+            }
+        }
+
+        function encodeUserDataToBase64(userData) {
+            try {
+                return btoa(unescape(encodeURIComponent(JSON.stringify(userData))));
+            } catch {
+                return '';
+            }
+        }
+
+        function setAuthHeaders(headers = {}) {
+            try {
+                const s = localStorage.getItem('b2b_user_data');
+                if (s) {
+                    const u = JSON.parse(s);
+                    return { ...headers, 'Content-Type': 'application/json', 'x-user-data-base64': encodeUserDataToBase64(u), 'x-user-type': 'customer' };
+                }
+            } catch {}
+            return { ...headers, 'Content-Type': 'application/json', 'x-user-type': 'customer' };
+        }
+
+        async function loadBuyNowRate() {
+            try {
+                const r = await fetch('/api/b2b/global-settings', { method: 'GET', headers: setAuthHeaders({}) });
+                if (!r.ok) return 0;
+                const j = await r.json();
+                return Number(j?.data?.buy_now_discount_rate || 0);
+            } catch (error) {
+                console.log('Hemen al indirimi alınamadı:', error.message);
+                return 0;
             }
         }
 
@@ -1561,9 +1600,16 @@
             cartItemsContainer.innerHTML = '';
             
             cart.forEach((item, index) => {
-                const hasDiscount = item.discountRate && item.discountRate > 0;
-                const discountedPrice = hasDiscount ? item.price * (1 - item.discountRate / 100) : item.price;
-                const totalPriceNet = discountedPrice * item.quantity;
+                const baseUnitPrice = Number((item.originalPrice != null ? item.originalPrice : item.price) || 0);
+                const discountRates = getItemDiscountRates(item);
+                const discountedUnitPrice = applySequentialDiscounts(baseUnitPrice, discountRates);
+                const effectiveDiscountRate = baseUnitPrice > 0
+                    ? (1 - (discountedUnitPrice / baseUnitPrice)) * 100
+                    : 0;
+
+                const hasDiscount = effectiveDiscountRate > 0;
+
+                const totalPriceNet = discountedUnitPrice * item.quantity;
                 const totalPriceTaxIncluded = totalPriceNet * 1.20;
                 const itemCurrencyCode = Number(item.originalCurrency || item.currency || 160);
                 const totalPriceTaxIncludedTry = convertToTry(totalPriceTaxIncluded, itemCurrencyCode);
@@ -1590,15 +1636,15 @@
                         <span class="manufacturer-badge">${item.manufacturer || 'Belirtilmemiş'}</span>
                     </td>
                     <td>
-                        ${hasDiscount ? `<span class="discount-badge">%${item.discountRate}</span>` : '-'}
+                        ${hasDiscount ? `<span class="discount-badge">%${Number(effectiveDiscountRate.toFixed(1)).toString().replace('.0','')}</span>` : '-'}
                     </td>
                     <td class="price-info">
-                        ${hasDiscount ? `<div class="original-price">${formatPrice(item.price, item.currency || 160)}</div>` : ''}
-                        <div class="current-price">${formatPrice(discountedPrice, item.currency || 160)}</div>
+                        ${hasDiscount ? `<div class="original-price">${formatPrice(baseUnitPrice, item.currency || 160)}</div>` : ''}
+                        <div class="current-price">${formatPrice(discountedUnitPrice, item.currency || 160)}</div>
                     </td>
                     <td>
                         <div class="quantity-control">
-                            <button class="qty-btn" onclick="updateQuantity(${index}, -1)" ${item.quantity <= 1 ? 'disabled' : ''}>
+                            <button class="qty-btn" onclick="updateQuantity(${index}, -1)">
                                 <i class="fas fa-minus"></i>
                             </button>
                             <input type="number" class="qty-input" value="${item.quantity}" min="1" max="999"
@@ -1742,9 +1788,12 @@
         function updateCartUI() {
             const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
             const totalValueTry = cart.reduce((sum, item) => {
-                const discountedPrice = item.discountRate ? item.price * (1 - item.discountRate / 100) : item.price;
+                const baseUnitPrice = Number((item.originalPrice != null ? item.originalPrice : item.price) || 0);
+                const discountRates = getItemDiscountRates(item);
+                const discountedUnitPrice = applySequentialDiscounts(baseUnitPrice, discountRates);
                 const itemCurrencyCode = Number(item.originalCurrency || item.currency || 160);
-                return sum + convertToTry(discountedPrice * item.quantity, itemCurrencyCode);
+                const lineTotalVatIncluded = (discountedUnitPrice * item.quantity) * 1.20;
+                return sum + convertToTry(lineTotalVatIncluded, itemCurrencyCode);
             }, 0);
 
             totalItemsEl.textContent = totalItems;
@@ -1776,7 +1825,7 @@
             }
 
             try {
-                sendOrderBtn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; border-width: 2px;"></div> Logo\'ya Gönderiliyor...';
+                sendOrderBtn.innerHTML = '<div class="spinner" style="width: 20px; height: 20px; border-width: 2px;"></div> Siparişiniz Gönderiliyor';
                 sendOrderBtn.disabled = true;
                 buyNowBtn.disabled = true;
 
@@ -1792,12 +1841,14 @@
                     customerCode: currentUser.cari_kodu,
                     items: selectedCartItems.map(item => {
                         const itemCurrencyCode = Number(item.originalCurrency || item.currency || 160);
-                        const unitPriceTry = convertToTry(item.price, itemCurrencyCode);
+                        const baseUnitPrice = Number((item.originalPrice != null ? item.originalPrice : item.price) || 0);
+                        const unitPriceTry = convertToTry(baseUnitPrice, itemCurrencyCode);
 
                         return {
                             code: item.code,
                             quantity: item.quantity,
                             unitPrice: unitPriceTry,
+                            discountRates: getItemDiscountRates(item),
                             exchangeRate: 1,
                             unitCode: item.unitCode || 'ADET',
                             originalCurrency: 160
@@ -1911,6 +1962,8 @@
             }
         }
 
+        let __BUY_NOW_RATE__ = 0;
+
         function updateCartSummary() {
             if (cart.length === 0) {
                 subtotalEl.textContent = '₺0.00';
@@ -1924,31 +1977,65 @@
 
             let subtotalTry = 0;
             let productDiscountTry = 0;
+            let discountedNetTry = 0;
             
             cart.forEach(item => {
                 const itemCurrencyCode = Number(item.originalCurrency || item.currency || 160);
-                const itemTotal = item.price * item.quantity;
-                subtotalTry += convertToTry(itemTotal, itemCurrencyCode);
-                
-                if (item.discountRate && item.discountRate > 0) {
-                    productDiscountTry += convertToTry(itemTotal * (item.discountRate / 100), itemCurrencyCode);
-                }
+                const baseUnitPrice = Number((item.originalPrice != null ? item.originalPrice : item.price) || 0);
+                const discountRates = getItemDiscountRates(item);
+                const discountedUnitPrice = applySequentialDiscounts(baseUnitPrice, discountRates);
+
+                const originalLineNet = baseUnitPrice * (Number(item.quantity) || 0);
+                const discountedLineNet = discountedUnitPrice * (Number(item.quantity) || 0);
+
+                subtotalTry += convertToTry(originalLineNet, itemCurrencyCode);
+                productDiscountTry += convertToTry(Math.max(0, originalLineNet - discountedLineNet), itemCurrencyCode);
+                discountedNetTry += convertToTry(discountedLineNet, itemCurrencyCode);
             });
-            
-            const subtotalAfterDiscount = subtotalTry - productDiscountTry;
-            const cashDiscount = subtotalAfterDiscount * 0.03;
-            const totalAfterCashDiscount = subtotalAfterDiscount - cashDiscount;
-            const tax = totalAfterCashDiscount * 0.20;
-            const total = totalAfterCashDiscount + tax;
+
+            const buyNowRate = Number(__BUY_NOW_RATE__ || 0);
+            const cashDiscount = discountedNetTry * (buyNowRate / 100);
+            const totalVatIncludedTry = discountedNetTry * 1.20;
 
             const totalSaving = productDiscountTry + cashDiscount;
 
             subtotalEl.textContent = formatPrice(subtotalTry, 160);
             productDiscountEl.textContent = `-${formatPrice(productDiscountTry, 160)}`;
             cashDiscountEl.textContent = `-${formatPrice(cashDiscount, 160)}`;
-            totalEl.textContent = formatPrice(total, 160);
-            totalSavingsEl.textContent = formatPrice(totalSaving, 160);
+            totalEl.textContent = formatPrice(totalVatIncludedTry, 160);
+            totalSavingsEl.textContent = formatPrice(cashDiscount, 160);
             totalSavingEl.textContent = formatPrice(totalSaving, 160);
+
+            const cashLabel = document.getElementById('cash-discount-label');
+            if (cashLabel) cashLabel.textContent = `Peşin İndirimi (%${buyNowRate})`;
+        }
+
+        function applySequentialDiscounts(baseAmount, rates) {
+            let current = Number(baseAmount) || 0;
+            (Array.isArray(rates) ? rates : [])
+                .map(r => Number(r) || 0)
+                .filter(r => r > 0)
+                .forEach((rate) => {
+                    current = current * (1 - (rate / 100));
+                });
+
+            return Number((Number.isFinite(current) ? current : 0).toFixed(2));
+        }
+
+        function getItemDiscountRates(item) {
+            const source = Array.isArray(item?.discountRates)
+                ? item.discountRates
+                : (Array.isArray(item?.discounts) ? item.discounts : []);
+
+            const rates = source
+                .map(d => (typeof d === 'number' ? d : Number(d?.rate || 0)))
+                .filter(r => (Number(r) || 0) > 0)
+                .map(r => Number(r) || 0);
+
+            if (rates.length > 0) return rates;
+
+            const fallback = Number(item?.discountRate || 0);
+            return fallback > 0 ? [fallback] : [];
         }
 
         function convertToTry(amount, currencyCode) {

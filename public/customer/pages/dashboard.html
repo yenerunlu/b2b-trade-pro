@@ -2139,7 +2139,8 @@
                     }
                     allProducts = result.data;
 
-                    renderB2BProducts([]);
+                    renderB2BProducts(allProducts);
+                    updateAllItemCounts();
                 } else {
                     throw new Error('Geçersiz veri formatı');
                 }
@@ -2180,9 +2181,14 @@
                 const currencyCode = product.currencyCode || 160;
                 const finalPrice = product.finalPrice || unitPrice;
                 const discountRate = product.totalDiscountRate || product.discountRate || 0;
-                const taxIncludedPrice = finalPrice * 1.20;
-                const taxIncludedPriceTry = convertToTry(taxIncludedPrice, currencyCode);
                 const discounts = product.discounts || [];
+                const discountRates = (Array.isArray(discounts) ? discounts : [])
+                    .map(d => Number(d.rate || 0))
+                    .filter(r => r > 0);
+
+                const discountedNetUnitPrice = applySequentialDiscounts(unitPrice, discountRates);
+                const taxIncludedPrice = discountedNetUnitPrice * 1.20;
+                const taxIncludedPriceTry = convertToTry(taxIncludedPrice, currencyCode);
 
                 const warehouseDefs = {
                     0: { label: 'Merkez', value: centralStock, className: 'central' },
@@ -2260,7 +2266,7 @@
                     </td>
                     <td class="price-info">
                         <div class="price-value">
-                            ${formatPriceWithSymbol(finalPrice, currencyCode)}
+                            ${formatPriceWithSymbol(unitPrice, currencyCode)}
                         </div>
                     </td>
                     <td class="discount-info">
@@ -2300,17 +2306,29 @@
             return 'low';
         }
 
+        function applySequentialDiscounts(baseAmount, rates) {
+            let current = Number(baseAmount) || 0;
+            (Array.isArray(rates) ? rates : [])
+                .map(r => Number(r) || 0)
+                .filter(r => r > 0)
+                .forEach((rate) => {
+                    current = current * (1 - (rate / 100));
+                });
+
+            return Number((Number.isFinite(current) ? current : 0).toFixed(2));
+        }
+
         function getDiscountBadgesHTML(discounts, discountRate) {
             const rates = (Array.isArray(discounts) ? discounts : [])
                 .map(d => Number(d.rate || 0))
                 .filter(r => r > 0);
 
             if (rates.length > 0) {
-                return `%${rates[0]}${rates.slice(1).map(r => `+${r}`).join('')}`;
+                return `${rates[0]}${rates.slice(1).map(r => `+${r}`).join('')} %`;
             }
 
             if (Number(discountRate || 0) > 0) {
-                return `%${Number(discountRate)}`;
+                return `${Number(discountRate)} %`;
             }
 
             return '-';
@@ -2867,7 +2885,11 @@
                 
             } catch (error) {
                 console.error('❌ Akıllı arama hatası:', error);
-                showToast('Arama geçici olarak kullanılamıyor', 'error');
+                try {
+                    await performFallbackSearch(searchTerm);
+                } catch (e) {
+                    showToast('Arama geçici olarak kullanılamıyor', 'error');
+                }
                 
             } finally {
                 hideLoading();

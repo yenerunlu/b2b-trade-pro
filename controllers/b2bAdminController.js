@@ -1,43 +1,237 @@
 // /home/yunlu/b2b-app/controllers/b2bAdminController.js - BASE64 DESTEKLİ GÜNCELLENMİŞ VERSİYON
 const sql = require('mssql');
-const b2bConfig = {
-    server: '5.180.186.54',
-    database: 'B2B_TRADE_PRO',
-    user: 'sa',
-    password: 'Logo12345678',
-    options: {
-        encrypt: true,
-        trustServerCertificate: true,
-        enableArithAbort: true
-    },
-    pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000
-    }
-};
+const { b2bConfig, logoConfig } = require('../config/database');
+
+let __logoPool = null;
+async function getLogoPool() {
+    if (__logoPool && __logoPool.connected) return __logoPool;
+
+    __logoPool = await new sql.ConnectionPool(logoConfig).connect();
+    __logoPool.on('error', (err) => {
+        console.error('❌ Logo pool error (b2bAdminController):', err && err.message ? err.message : err);
+        __logoPool = null;
+    });
+
+    return __logoPool;
+}
 
 class B2BAdminController {
     constructor() {
-        this.b2bConfig = b2bConfig || {
-            server: '5.180.186.54',
-            database: 'B2B_TRADE_PRO',
-            user: 'sa',
-            password: 'Logo12345678',
-            options: {
-                encrypt: true,
-                trustServerCertificate: true,
-                enableArithAbort: true
-            },
-            pool: {
-                max: 10,
-                min: 0,
-                idleTimeoutMillis: 30000
-            }
-        };
+        this.b2bConfig = b2bConfig;
         
         this.b2bPool = null;
         this.cache = new Map();
+        this._defaultSettingsColumnsCache = null;
+    }
+
+    async getDefaultSettingsColumns(pool) {
+        if (this._defaultSettingsColumnsCache) return this._defaultSettingsColumnsCache;
+        const result = await pool.request().query(`
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = 'dbo'
+              AND TABLE_NAME = 'b2b_default_settings'
+        `);
+        const set = new Set((result.recordset || []).map(r => String(r.COLUMN_NAME || '').trim()).filter(Boolean));
+        this._defaultSettingsColumnsCache = set;
+        return set;
+    }
+
+    async getDefaultSettingsIdColumn(pool) {
+        const cols = await this.getDefaultSettingsColumns(pool);
+        if (cols.has('setting_id')) return 'setting_id';
+        if (cols.has('id')) return 'id';
+        return 'setting_id';
+    }
+
+    normalizeOverrideValue(settingType, valueType, value) {
+        const st = String(settingType || '').trim();
+        const vt = String(valueType || '').trim();
+
+        if (vt === 'string') {
+            if (st === 'payment_mode') {
+                const mode = String(value || '').trim();
+                if (mode === 'installment') return 2;
+                if (mode === 'single') return 1;
+                return 0;
+            }
+
+            if (st === 'discount_priority') {
+                const p = String(value || '').trim();
+                if (p === 'item>manufacturer>general') return 1;
+                if (p === 'manufacturer>item>general') return 2;
+                if (p === 'general>manufacturer>item') return 3;
+                return 0;
+            }
+
+            const n = Number(value);
+            return Number.isFinite(n) ? n : 0;
+        }
+
+        if (vt === 'boolean') {
+            if (value === true || value === '1' || value === 1) return 1;
+            return 0;
+        }
+
+        const n = Number(value);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    denormalizeOverrideValue(settingType, valueType, value) {
+        const st = String(settingType || '').trim();
+        const vt = String(valueType || '').trim();
+
+        if (vt === 'string') {
+            if (st === 'payment_mode') {
+                const n = Number(value);
+                if (n === 2) return 'installment';
+                if (n === 1) return 'single';
+                return 'single';
+            }
+
+            if (st === 'discount_priority') {
+                const n = Number(value);
+                if (n === 2) return 'manufacturer>item>general';
+                if (n === 3) return 'general>manufacturer>item';
+                return 'item>manufacturer>general';
+            }
+        }
+
+        return value;
+    }
+
+    parsePaymentPlanCodeToRates(code) {
+        const raw = String(code || '').trim();
+        if (!raw) return [];
+        return raw
+            .split('+')
+            .map(x => Number(String(x || '').trim()))
+            .filter(n => Number.isFinite(n) && n > 0);
+    }
+
+    async getLogoGeneralDiscountRates(customerCode) {
+        if (!customerCode) return [];
+        const pool = await getLogoPool();
+        const request = pool.request();
+        request.input('code', sql.VarChar(50), customerCode);
+        const q = `
+            SELECT TOP 1
+                C.PAYMENTREF,
+                P.CODE AS plan_code
+            FROM dbo.LG_013_CLCARD C
+            LEFT JOIN dbo.LG_013_PAYPLANS P ON P.LOGICALREF = C.PAYMENTREF
+            WHERE C.CODE = @code
+        `;
+        const result = await request.query(q);
+        const row = result.recordset && result.recordset[0] ? result.recordset[0] : null;
+        if (!row || row.PAYMENTREF == null) return [];
+        return this.parsePaymentPlanCodeToRates(row.plan_code);
+    }
+
+    async syncLogoGeneralDiscountOverrides({ customerCode, logoRates, userCode }) {
+        const code = String(customerCode || '').trim();
+        if (!code) return;
+        const pool = await this.getB2BConnection();
+
+        const tx = new sql.Transaction(pool);
+        await tx.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
+
+        try {
+            const rates = Array.isArray(logoRates) ? logoRates : [];
+
+            if (rates.length) {
+                for (let i = 0; i < rates.length; i++) {
+                    const st = `discount_general_${i + 1}`;
+                    const val = Number(rates[i]);
+                    if (!Number.isFinite(val) || val <= 0) continue;
+
+                    const findExistingQuery = `
+                        SELECT TOP 1 id
+                        FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                        WHERE customer_code = @customerCode
+                          AND setting_type = @settingType
+                          AND item_code IS NULL
+                        ORDER BY id DESC
+                    `;
+                    const existingResult = await tx.request()
+                        .input('customerCode', sql.VarChar(50), code)
+                        .input('settingType', sql.VarChar(50), st)
+                        .query(findExistingQuery);
+
+                    const existingId = existingResult.recordset?.[0]?.id;
+                    if (existingId) {
+                        const updateExistingQuery = `
+                            UPDATE B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                            SET value = @value,
+                                value_type = 'percent',
+                                description = 'LOGO_PAYMENTREF',
+                                is_active = 1,
+                                updated_at = GETDATE(),
+                                updated_by = @updatedBy
+                            WHERE id = @id
+                        `;
+                        await tx.request()
+                            .input('id', sql.Int, existingId)
+                            .input('value', sql.Decimal(10, 2), val)
+                            .input('updatedBy', sql.VarChar(50), userCode || 'system')
+                            .query(updateExistingQuery);
+                    } else {
+                        const insertQuery = `
+                            INSERT INTO B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                            (customer_code, setting_type, item_code, value, value_type, description, is_active, created_by, updated_by)
+                            VALUES
+                            (@customerCode, @settingType, NULL, @value, 'percent', 'LOGO_PAYMENTREF', 1, @createdBy, @updatedBy)
+                        `;
+                        await tx.request()
+                            .input('customerCode', sql.VarChar(50), code)
+                            .input('settingType', sql.VarChar(50), st)
+                            .input('value', sql.Decimal(10, 2), val)
+                            .input('createdBy', sql.VarChar(50), userCode || 'system')
+                            .input('updatedBy', sql.VarChar(50), userCode || 'system')
+                            .query(insertQuery);
+                    }
+                }
+
+                // Disable any old Logo-synced tiers beyond current length.
+                const disableQuery = `
+                    UPDATE B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                    SET is_active = 0,
+                        updated_at = GETDATE(),
+                        updated_by = @updatedBy
+                    WHERE customer_code = @customerCode
+                      AND item_code IS NULL
+                      AND description = 'LOGO_PAYMENTREF'
+                      AND setting_type LIKE 'discount_general_%'
+                      AND TRY_CONVERT(int, REPLACE(setting_type, 'discount_general_', '')) > @maxTier
+                `;
+                await tx.request()
+                    .input('customerCode', sql.VarChar(50), code)
+                    .input('maxTier', sql.Int, rates.length)
+                    .input('updatedBy', sql.VarChar(50), userCode || 'system')
+                    .query(disableQuery);
+            } else {
+                // Logo cleared: disable any previously synced tiers so manual/global can take over.
+                const clearQuery = `
+                    UPDATE B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                    SET is_active = 0,
+                        updated_at = GETDATE(),
+                        updated_by = @updatedBy
+                    WHERE customer_code = @customerCode
+                      AND item_code IS NULL
+                      AND description = 'LOGO_PAYMENTREF'
+                      AND setting_type LIKE 'discount_general_%'
+                `;
+                await tx.request()
+                    .input('customerCode', sql.VarChar(50), code)
+                    .input('updatedBy', sql.VarChar(50), userCode || 'system')
+                    .query(clearQuery);
+            }
+
+            await tx.commit();
+        } catch (e) {
+            await tx.rollback();
+            throw e;
+        }
     }
 
     // ====================================================
@@ -69,12 +263,234 @@ class B2BAdminController {
         }
     }
 
+    // ====================================================
+    // 🚀 2.1 SİPARİŞ DAĞITIM AYARLARI (BÖLGE -> AMBAR ÖNCELİKLERİ)
+    // ====================================================
+    async getOrderDistributionSettings(req, res) {
+        try {
+            const userData = this.decodeUserData(req);
+
+            if (!this.checkAdminAuth(req)) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Bu işlem için admin yetkisi gereklidir'
+                });
+            }
+
+            const pool = await this.getB2BConnection();
+            const key = 'order_distribution_settings';
+
+            const idCol = await this.getDefaultSettingsIdColumn(pool);
+            const cols = await this.getDefaultSettingsColumns(pool);
+
+            const activeWhere = cols.has('is_active')
+                ? 'AND (is_active = 1 OR is_active IS NULL)'
+                : '';
+
+            const selectCols = [
+                `${idCol} AS _id`,
+                `setting_key`,
+                `setting_value`
+            ];
+            if (cols.has('setting_type')) selectCols.push('setting_type');
+            if (cols.has('description')) selectCols.push('description');
+
+            const result = await pool.request()
+                .input('key', sql.VarChar(100), key)
+                .query(`
+                    SELECT TOP 1 ${selectCols.join(', ')}
+                    FROM dbo.b2b_default_settings
+                    WHERE setting_key = @key
+                      ${activeWhere}
+                    ORDER BY ${idCol} DESC
+                `);
+
+            const row = result.recordset?.[0];
+            let parsed = null;
+            if (row && row.setting_value != null && String(row.setting_value).trim().length > 0) {
+                try {
+                    parsed = JSON.parse(String(row.setting_value));
+                } catch (e) {
+                    parsed = null;
+                }
+            }
+
+            const defaults = {
+                warehouses: [
+                    { invNo: 0, name: 'MERKEZ' },
+                    { invNo: 1, name: 'IKITELLI' },
+                    { invNo: 2, name: 'BOSTANCI' },
+                    { invNo: 3, name: 'DEPO' }
+                ],
+                regions: ['34', '35', '36', '37', '38', '102'],
+                prioritySettings: {
+                    '34': [0, 1, 2, 3],
+                    '35': [1, 2, 3, 0],
+                    '36': [2, 1, 3, 0],
+                    '37': [1, 2, 3, 0],
+                    '38': [1, 2, 3, 0],
+                    '102': [0, 1, 2, 3]
+                },
+                unfulfilledWarehouse: 3,
+                unfulfilledDocodeText: 'KARŞILANAMADI'
+            };
+
+            const data = parsed && typeof parsed === 'object' ? { ...defaults, ...parsed } : defaults;
+
+            return res.json({
+                success: true,
+                data,
+                meta: row ? {
+                    setting_id: row._id,
+                    setting_key: row.setting_key,
+                    setting_type: row.setting_type,
+                    description: row.description
+                } : null,
+                user: userData ? {
+                    user_code: userData.user_code || userData.cari_kodu,
+                    user_name: userData.kullanici || userData.musteri_adi
+                } : null,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('❌ Sipariş dağıtım ayarları getirilemedi:', error.message);
+            return res.status(500).json({
+                success: false,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
+    async updateOrderDistributionSettings(req, res) {
+        try {
+            const userData = this.decodeUserData(req);
+
+            if (!this.checkAdminAuth(req)) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Bu işlem için admin yetkisi gereklidir'
+                });
+            }
+
+            const payload = req.body?.settings;
+            if (!payload || typeof payload !== 'object') {
+                return res.status(400).json({
+                    success: false,
+                    error: 'settings objesi gereklidir'
+                });
+            }
+
+            const key = 'order_distribution_settings';
+            const userCode = userData?.user_code || userData?.cari_kodu || 'admin';
+            const pool = await this.getB2BConnection();
+
+            const idCol = await this.getDefaultSettingsIdColumn(pool);
+            const cols = await this.getDefaultSettingsColumns(pool);
+
+            const activeWhere = cols.has('is_active')
+                ? 'AND (is_active = 1 OR is_active IS NULL)'
+                : '';
+
+            const safeJson = JSON.stringify(payload);
+
+            // Upsert (insert if missing)
+            const tx = new sql.Transaction(pool);
+            await tx.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
+
+            try {
+                const reqTx = new sql.Request(tx);
+                reqTx.input('key', sql.VarChar(100), key);
+                reqTx.input('value', sql.NVarChar(sql.MAX), safeJson);
+                reqTx.input('type', sql.VarChar(50), 'json');
+                reqTx.input('desc', sql.NVarChar(500), 'Admin: Sipariş dağıtım ayarları (bölge->ambar öncelikleri, karşılanamayan ayarları)');
+                reqTx.input('user', sql.VarChar(50), userCode);
+
+                const existing = await reqTx.query(`
+                    SELECT TOP 1 ${idCol} AS _id
+                    FROM dbo.b2b_default_settings
+                    WHERE setting_key = @key
+                      ${activeWhere}
+                    ORDER BY ${idCol} DESC
+                `);
+
+                if (existing.recordset && existing.recordset.length > 0) {
+                    const settingId = existing.recordset[0]._id;
+                    const upd = new sql.Request(tx);
+
+                    const setParts = [
+                        'setting_value = @value'
+                    ];
+                    if (cols.has('setting_type')) setParts.push('setting_type = @type');
+                    if (cols.has('description')) setParts.push('description = @desc');
+                    if (cols.has('is_active')) setParts.push('is_active = 1');
+                    if (cols.has('updated_at')) setParts.push('updated_at = GETDATE()');
+                    if (cols.has('updated_by')) setParts.push('updated_by = @user');
+
+                    await upd
+                        .input('id', sql.Int, settingId)
+                        .input('value', sql.NVarChar(sql.MAX), safeJson)
+                        .input('type', sql.VarChar(50), 'json')
+                        .input('desc', sql.NVarChar(500), 'Admin: Sipariş dağıtım ayarları (bölge->ambar öncelikleri, karşılanamayan ayarları)')
+                        .input('user', sql.VarChar(50), userCode)
+                        .query(`
+                            UPDATE dbo.b2b_default_settings
+                            SET ${setParts.join(', ')}
+                            WHERE ${idCol} = @id
+                        `);
+                } else {
+                    const insertCols = ['setting_key', 'setting_value'];
+                    const insertVals = ['@key', '@value'];
+                    if (cols.has('setting_type')) { insertCols.push('setting_type'); insertVals.push('@type'); }
+                    if (cols.has('description')) { insertCols.push('description'); insertVals.push('@desc'); }
+                    if (cols.has('is_active')) { insertCols.push('is_active'); insertVals.push('1'); }
+                    if (cols.has('created_at')) { insertCols.push('created_at'); insertVals.push('GETDATE()'); }
+                    if (cols.has('updated_at')) { insertCols.push('updated_at'); insertVals.push('GETDATE()'); }
+                    if (cols.has('created_by')) { insertCols.push('created_by'); insertVals.push('@user'); }
+                    if (cols.has('updated_by')) { insertCols.push('updated_by'); insertVals.push('@user'); }
+
+                    await reqTx.query(`
+                        INSERT INTO dbo.b2b_default_settings
+                        (${insertCols.join(', ')})
+                        VALUES
+                        (${insertVals.join(', ')})
+                    `);
+                }
+
+                await tx.commit();
+
+                this.clearB2BCache('b2b_settings');
+                await this.logAction('order_settings_update', 'Sipariş dağıtım ayarları güncellendi', userCode, req.ip);
+
+                return res.json({
+                    success: true,
+                    message: 'Sipariş dağıtım ayarları kaydedildi',
+                    timestamp: new Date().toISOString()
+                });
+            } catch (e) {
+                await tx.rollback();
+                throw e;
+            }
+        } catch (error) {
+            console.error('❌ Sipariş dağıtım ayarları güncellenemedi:', error.message);
+            return res.status(500).json({
+                success: false,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
     // B2B veritabanı bağlantısı
     async getB2BConnection() {
         try {
             if (!this.b2bPool || !this.b2bPool.connected) {
                 console.log("🔗 B2B_TRADE_PRO bağlanıyor...");
-                this.b2bPool = await sql.connect(this.b2bConfig);
+                this.b2bPool = await new sql.ConnectionPool(this.b2bConfig).connect();
+                this.b2bPool.on('error', err => {
+                    console.error('❌ B2B_TRADE_PRO bağlantı hatası:', err.message);
+                    this.b2bPool = null;
+                });
                 console.log("✅ B2B bağlantısı başarılı");
             }
             return this.b2bPool;
@@ -601,13 +1017,8 @@ class B2BAdminController {
                 });
             }
 
-            // Cache kontrolü
+            // Cache kontrolü (devre dışı: admin/panel güncellemeleri anında yansısın)
             const cacheKey = `b2b_overrides_${customerCode}`;
-            if (this.cache.has(cacheKey)) {
-                console.log('📦 Cache\'ten müşteri ayarları getiriliyor');
-                const cachedData = this.cache.get(cacheKey);
-                return res.json(cachedData);
-            }
 
             // Auth kontrolü
             if (!this.checkAdminAuth(req)) {
@@ -642,12 +1053,53 @@ class B2BAdminController {
             const result = await pool.request()
                 .input('customerCode', sql.VarChar(50), customerCode)
                 .query(query);
+
+            const logoRates = await this.getLogoGeneralDiscountRates(customerCode);
+
+            try {
+                await this.syncLogoGeneralDiscountOverrides({
+                    customerCode,
+                    logoRates,
+                    userCode: (userData?.user_code || userData?.cari_kodu || 'admin')
+                });
+            } catch (e) {
+                console.error('❌ Logo->B2B general discount sync failed:', e && e.message ? e.message : e);
+            }
+
+            let rows = (result.recordset || []).map(r => ({
+                ...r,
+                value: this.denormalizeOverrideValue(r.setting_type, r.value_type, r.value)
+            }));
+
+            if (logoRates && logoRates.length) {
+                // If Logo defines PAYMENTREF, use it as the source of truth for general discounts in UI.
+                rows = rows.filter(r => !/^discount_general_\d+$/.test(String(r.setting_type || '')));
+                const generated = logoRates.map((rate, idx) => ({
+                    id: null,
+                    customer_code: customerCode,
+                    setting_type: `discount_general_${idx + 1}`,
+                    item_code: null,
+                    value: rate,
+                    value_type: 'percent',
+                    description: 'LOGO_PAYMENTREF',
+                    is_active: 1,
+                    created_at: null,
+                    updated_at: null,
+                    created_by: null,
+                    updated_by: null
+                }));
+                rows = [...rows, ...generated].sort((a, b) => {
+                    const at = String(a.setting_type || '');
+                    const bt = String(b.setting_type || '');
+                    return at.localeCompare(bt);
+                });
+            }
             
             const responseData = {
                 success: true,
-                data: result.recordset,
+                data: rows,
                 customerCode: customerCode,
-                count: result.recordset.length,
+                count: rows.length,
                 user: userData ? {
                     user_code: userData.user_code || userData.cari_kodu,
                     user_name: userData.kullanici || userData.musteri_adi
@@ -655,9 +1107,7 @@ class B2BAdminController {
                 timestamp: new Date().toISOString()
             };
 
-            // Cache'e kaydet (3 dakika)
-            this.cache.set(cacheKey, responseData);
-            setTimeout(() => this.cache.delete(cacheKey), 3 * 60 * 1000);
+            // Cache'e kaydetme (devre dışı)
             
             res.json(responseData);
 
@@ -815,6 +1265,16 @@ class B2BAdminController {
                 });
             }
 
+            if (/^discount_general_\d+$/.test(String(override.setting_type || '')) && String(override.customer_code || '') !== '__GLOBAL__') {
+                const logoRates = await this.getLogoGeneralDiscountRates(String(override.customer_code || ''));
+                if (logoRates && logoRates.length) {
+                    return res.status(409).json({
+                        success: false,
+                        error: 'Bu müşteride genel iskonto LOGO tarafından yönetiliyor. LOGO doluyken manuel genel iskonto kaydedilemez.'
+                    });
+                }
+            }
+
             const pool = await this.getB2BConnection();
             
             // Transaction başlat
@@ -825,6 +1285,9 @@ class B2BAdminController {
                 let message = '';
                 let logMessage = '';
                 let overrideId = override.id;
+
+                const normalizedValue = this.normalizeOverrideValue(override.setting_type, override.value_type, override.value);
+                const normalizedIsActive = override.is_active !== undefined ? (override.is_active ? 1 : 0) : 1;
                 
                 if (override.id) {
                     // Güncelleme
@@ -847,41 +1310,88 @@ class B2BAdminController {
                         .input('customerCode', sql.VarChar(50), override.customer_code)
                         .input('settingType', sql.VarChar(50), override.setting_type)
                         .input('itemCode', sql.VarChar(50), override.item_code || null)
-                        .input('value', sql.VarChar(100), override.value.toString())
+                        .input('value', sql.Decimal(10, 2), normalizedValue)
                         .input('valueType', sql.VarChar(50), override.value_type || 'percent')
                         .input('description', sql.NVarChar(500), override.description || '')
-                        .input('isActive', sql.Bit, override.is_active !== undefined ? override.is_active : 1)
+                        .input('isActive', sql.Bit, normalizedIsActive)
                         .input('updatedBy', sql.VarChar(50), userCode)
                         .query(updateQuery);
                         
                     message = 'Müşteri override başarıyla güncellendi';
                     logMessage = `Müşteri override güncellendi: ${override.customer_code} - ${override.setting_type}`;
                 } else {
-                    // Yeni ekleme
-                    const insertQuery = `
-                        INSERT INTO B2B_TRADE_PRO.dbo.b2b_customer_overrides 
-                        (customer_code, setting_type, item_code, value, value_type, description, is_active, created_by, updated_by)
-                        VALUES 
-                        (@customerCode, @settingType, @itemCode, @value, @valueType, @description, @isActive, @createdBy, @updatedBy)
-                        SELECT SCOPE_IDENTITY() as newId;
+                    // Upsert: Aynı müşteri + setting_type + item_code varsa INSERT yerine UPDATE (tekrar aktif et)
+                    const findExistingQuery = `
+                        SELECT TOP 1 id
+                        FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                        WHERE customer_code = @customerCode
+                          AND setting_type = @settingType
+                          AND ISNULL(NULLIF(LTRIM(RTRIM(item_code)), ''), '__NULL__') =
+                              ISNULL(NULLIF(LTRIM(RTRIM(@itemCode)), ''), '__NULL__')
+                        ORDER BY id DESC
                     `;
 
-                    const insertResult = await transaction.request()
+                    const itemCodeParam = override.item_code || null;
+                    const existingResult = await transaction.request()
                         .input('customerCode', sql.VarChar(50), override.customer_code)
                         .input('settingType', sql.VarChar(50), override.setting_type)
-                        .input('itemCode', sql.VarChar(50), override.item_code || null)
-                        .input('value', sql.VarChar(100), override.value.toString())
-                        .input('valueType', sql.VarChar(50), override.value_type || 'percent')
-                        .input('description', sql.NVarChar(500), override.description || '')
-                        .input('isActive', sql.Bit, override.is_active !== undefined ? override.is_active : 1)
-                        .input('createdBy', sql.VarChar(50), userCode)
-                        .input('updatedBy', sql.VarChar(50), userCode)
-                        .query(insertQuery);
+                        .input('itemCode', sql.VarChar(50), itemCodeParam)
+                        .query(findExistingQuery);
 
-                    overrideId = insertResult.recordset?.[0]?.newId || overrideId;
-                    message = 'Müşteri override başarıyla eklendi';
-                    logMessage = `Yeni müşteri override eklendi: ${override.customer_code} - ${override.setting_type}`;
-                    console.log(`✅ Yeni müşteri override eklendi: ${override.customer_code}`);
+                    const existingId = existingResult.recordset?.[0]?.id;
+
+                    if (existingId) {
+                        const updateExistingQuery = `
+                            UPDATE B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                            SET value = @value,
+                                value_type = @valueType,
+                                description = @description,
+                                is_active = @isActive,
+                                updated_at = GETDATE(),
+                                updated_by = @updatedBy
+                            WHERE id = @id
+                        `;
+
+                        await transaction.request()
+                            .input('id', sql.Int, existingId)
+                            .input('value', sql.Decimal(10, 2), normalizedValue)
+                            .input('valueType', sql.VarChar(50), override.value_type || 'percent')
+                            .input('description', sql.NVarChar(500), override.description || '')
+                            .input('isActive', sql.Bit, normalizedIsActive)
+                            .input('updatedBy', sql.VarChar(50), userCode)
+                            .query(updateExistingQuery);
+
+                        overrideId = existingId;
+                        message = 'Müşteri override başarıyla güncellendi';
+                        logMessage = `Müşteri override güncellendi (upsert): ${override.customer_code} - ${override.setting_type}`;
+                        console.log(`✅ Müşteri override upsert (update): ${override.customer_code} (${override.setting_type})`);
+                    } else {
+                        // Yeni ekleme
+                        const insertQuery = `
+                            INSERT INTO B2B_TRADE_PRO.dbo.b2b_customer_overrides 
+                            (customer_code, setting_type, item_code, value, value_type, description, is_active, created_by, updated_by)
+                            VALUES 
+                            (@customerCode, @settingType, @itemCode, @value, @valueType, @description, @isActive, @createdBy, @updatedBy)
+                            SELECT SCOPE_IDENTITY() as newId;
+                        `;
+
+                        const insertResult = await transaction.request()
+                            .input('customerCode', sql.VarChar(50), override.customer_code)
+                            .input('settingType', sql.VarChar(50), override.setting_type)
+                            .input('itemCode', sql.VarChar(50), itemCodeParam)
+                            .input('value', sql.Decimal(10, 2), normalizedValue)
+                            .input('valueType', sql.VarChar(50), override.value_type || 'percent')
+                            .input('description', sql.NVarChar(500), override.description || '')
+                            .input('isActive', sql.Bit, normalizedIsActive)
+                            .input('createdBy', sql.VarChar(50), userCode)
+                            .input('updatedBy', sql.VarChar(50), userCode)
+                            .query(insertQuery);
+
+                        overrideId = insertResult.recordset?.[0]?.newId || overrideId;
+                        message = 'Müşteri override başarıyla eklendi';
+                        logMessage = `Yeni müşteri override eklendi: ${override.customer_code} - ${override.setting_type}`;
+                        console.log(`✅ Yeni müşteri override eklendi: ${override.customer_code}`);
+                    }
                 }
                 
                 await transaction.commit();
@@ -906,10 +1416,261 @@ class B2BAdminController {
             }
 
         } catch (error) {
-            console.error('❌ Müşteri override kaydetme hatası:', error.message);
+            const details = {
+                message: error?.message,
+                code: error?.code,
+                number: error?.number,
+                state: error?.state,
+                class: error?.class,
+                lineNumber: error?.lineNumber,
+                procName: error?.procName,
+                serverName: error?.serverName,
+                originalError: error?.originalError?.message,
+                precedingErrors: Array.isArray(error?.precedingErrors)
+                    ? error.precedingErrors.map(e => ({ message: e.message, number: e.number, code: e.code }))
+                    : undefined
+            };
+
+            console.error('❌ Müşteri override kaydetme hatası:', details);
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error?.message || 'Sunucu hatası',
+                details,
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
+    // ====================================================
+    // 🚀 9. MÜŞTERİ OVERRIDES TOPLU KAYDET (BATCH)
+    // ====================================================
+    async saveCustomerOverridesBatch(req, res) {
+        try {
+            console.log('👥 Müşteri overrides batch kaydediliyor...');
+
+            const userData = this.decodeUserData(req);
+
+            // Auth kontrolü
+            if (!this.checkAdminAuth(req)) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Bu işlem için admin yetkisi gereklidir'
+                });
+            }
+
+            const { customerCode } = req.params;
+            const body = req.body || {};
+            const overrides = Array.isArray(body.overrides) ? body.overrides : [];
+            const userCode = userData?.user_code || userData?.cari_kodu || 'admin';
+
+            if (!customerCode) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Müşteri kodu gereklidir'
+                });
+            }
+
+            if (!overrides.length) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Overrides listesi boş'
+                });
+            }
+
+            if (customerCode !== '__GLOBAL__') {
+                const hasGeneralEdits = overrides.some(o => /^discount_general_\d+$/.test(String(o?.setting_type || '')));
+                if (hasGeneralEdits) {
+                    const logoRates = await this.getLogoGeneralDiscountRates(String(customerCode || ''));
+                    if (logoRates && logoRates.length) {
+                        return res.status(409).json({
+                            success: false,
+                            error: 'Bu müşteride genel iskonto LOGO tarafından yönetiliyor. LOGO doluyken manuel genel iskonto kaydedilemez.'
+                        });
+                    }
+                }
+            }
+
+            // Basit validasyon
+            for (const o of overrides) {
+                if (!o || !o.setting_type || o.value === undefined) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Her override için setting_type ve value gereklidir'
+                    });
+                }
+            }
+
+            const pool = await this.getB2BConnection();
+            const transaction = new sql.Transaction(pool);
+            await transaction.begin(sql.ISOLATION_LEVEL.READ_COMMITTED);
+
+            const results = [];
+
+            try {
+                for (const o of overrides) {
+                    const normalized = {
+                        id: o.id,
+                        customer_code: customerCode,
+                        setting_type: String(o.setting_type),
+                        item_code: (o.item_code === '' || o.item_code === undefined) ? null : o.item_code,
+                        value: this.normalizeOverrideValue(o.setting_type, o.value_type, o.value),
+                        value_type: o.value_type || 'percent',
+                        description: o.description || '',
+                        is_active: o.is_active !== undefined ? (o.is_active ? 1 : 0) : 1
+                    };
+
+                    let overrideId = normalized.id;
+
+                    if (overrideId) {
+                        const updateQuery = `
+                            UPDATE B2B_TRADE_PRO.dbo.b2b_customer_overrides 
+                            SET customer_code = @customerCode,
+                                setting_type = @settingType,
+                                item_code = @itemCode,
+                                value = @value,
+                                value_type = @valueType,
+                                description = @description,
+                                is_active = @isActive,
+                                updated_at = GETDATE(),
+                                updated_by = @updatedBy
+                            WHERE id = @id
+                        `;
+
+                        await transaction.request()
+                            .input('id', sql.Int, overrideId)
+                            .input('customerCode', sql.VarChar(50), normalized.customer_code)
+                            .input('settingType', sql.VarChar(50), normalized.setting_type)
+                            .input('itemCode', sql.VarChar(50), normalized.item_code)
+                            .input('value', sql.Decimal(10, 2), normalized.value)
+                            .input('valueType', sql.VarChar(50), normalized.value_type)
+                            .input('description', sql.NVarChar(500), normalized.description)
+                            .input('isActive', sql.Bit, normalized.is_active)
+                            .input('updatedBy', sql.VarChar(50), userCode)
+                            .query(updateQuery);
+
+                        results.push({
+                            id: overrideId,
+                            setting_type: normalized.setting_type,
+                            item_code: normalized.item_code,
+                            action: 'update'
+                        });
+                        continue;
+                    }
+
+                    // Upsert by (customer_code, setting_type, item_code)
+                    const findExistingQuery = `
+                        SELECT TOP 1 id
+                        FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                        WHERE customer_code = @customerCode
+                          AND setting_type = @settingType
+                          AND ISNULL(NULLIF(LTRIM(RTRIM(item_code)), ''), '__NULL__') =
+                              ISNULL(NULLIF(LTRIM(RTRIM(@itemCode)), ''), '__NULL__')
+                        ORDER BY id DESC
+                    `;
+
+                    const existingResult = await transaction.request()
+                        .input('customerCode', sql.VarChar(50), normalized.customer_code)
+                        .input('settingType', sql.VarChar(50), normalized.setting_type)
+                        .input('itemCode', sql.VarChar(50), normalized.item_code)
+                        .query(findExistingQuery);
+
+                    const existingId = existingResult.recordset?.[0]?.id;
+                    if (existingId) {
+                        const updateExistingQuery = `
+                            UPDATE B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                            SET value = @value,
+                                value_type = @valueType,
+                                description = @description,
+                                is_active = @isActive,
+                                updated_at = GETDATE(),
+                                updated_by = @updatedBy
+                            WHERE id = @id
+                        `;
+
+                        await transaction.request()
+                            .input('id', sql.Int, existingId)
+                            .input('value', sql.Decimal(10, 2), normalized.value)
+                            .input('valueType', sql.VarChar(50), normalized.value_type)
+                            .input('description', sql.NVarChar(500), normalized.description)
+                            .input('isActive', sql.Bit, normalized.is_active)
+                            .input('updatedBy', sql.VarChar(50), userCode)
+                            .query(updateExistingQuery);
+
+                        results.push({
+                            id: existingId,
+                            setting_type: normalized.setting_type,
+                            item_code: normalized.item_code,
+                            action: 'upsert_update'
+                        });
+                        continue;
+                    }
+
+                    const insertQuery = `
+                        INSERT INTO B2B_TRADE_PRO.dbo.b2b_customer_overrides 
+                        (customer_code, setting_type, item_code, value, value_type, description, is_active, created_by, updated_by)
+                        VALUES 
+                        (@customerCode, @settingType, @itemCode, @value, @valueType, @description, @isActive, @createdBy, @updatedBy)
+                        SELECT SCOPE_IDENTITY() as newId;
+                    `;
+
+                    const insertResult = await transaction.request()
+                        .input('customerCode', sql.VarChar(50), normalized.customer_code)
+                        .input('settingType', sql.VarChar(50), normalized.setting_type)
+                        .input('itemCode', sql.VarChar(50), normalized.item_code)
+                        .input('value', sql.Decimal(10, 2), normalized.value)
+                        .input('valueType', sql.VarChar(50), normalized.value_type)
+                        .input('description', sql.NVarChar(500), normalized.description)
+                        .input('isActive', sql.Bit, normalized.is_active)
+                        .input('createdBy', sql.VarChar(50), userCode)
+                        .input('updatedBy', sql.VarChar(50), userCode)
+                        .query(insertQuery);
+
+                    const newId = insertResult.recordset?.[0]?.newId;
+                    results.push({
+                        id: newId,
+                        setting_type: normalized.setting_type,
+                        item_code: normalized.item_code,
+                        action: 'insert'
+                    });
+                }
+
+                await transaction.commit();
+
+                // Cache temizle
+                this.clearB2BCache(`b2b_overrides_${customerCode}`);
+
+                res.json({
+                    success: true,
+                    customerCode,
+                    savedCount: results.length,
+                    results,
+                    userCode,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (error) {
+                await transaction.rollback();
+                throw error;
+            }
+        } catch (error) {
+            const details = {
+                message: error?.message,
+                code: error?.code,
+                number: error?.number,
+                state: error?.state,
+                class: error?.class,
+                lineNumber: error?.lineNumber,
+                procName: error?.procName,
+                serverName: error?.serverName,
+                originalError: error?.originalError?.message,
+                precedingErrors: Array.isArray(error?.precedingErrors)
+                    ? error.precedingErrors.map(e => ({ message: e.message, number: e.number, code: e.code }))
+                    : undefined
+            };
+            console.error('❌ Müşteri overrides batch kaydetme hatası:', details);
+            res.status(500).json({
+                success: false,
+                error: error?.message || 'Sunucu hatası',
+                details,
                 timestamp: new Date().toISOString()
             });
         }
@@ -923,10 +1684,13 @@ const b2bAdminController = new B2BAdminController();
 module.exports = {
     getSettings: (req, res) => b2bAdminController.getSettings(req, res),
     updateSettings: (req, res) => b2bAdminController.updateSettings(req, res),
+    getOrderDistributionSettings: (req, res) => b2bAdminController.getOrderDistributionSettings(req, res),
+    updateOrderDistributionSettings: (req, res) => b2bAdminController.updateOrderDistributionSettings(req, res),
     getCampaigns: (req, res) => b2bAdminController.getCampaigns(req, res),
     saveCampaign: (req, res) => b2bAdminController.saveCampaign(req, res),
     deleteCampaign: (req, res) => b2bAdminController.deleteCampaign(req, res),
     getCustomerOverrides: (req, res) => b2bAdminController.getCustomerOverrides(req, res),
     saveCustomerOverride: (req, res) => b2bAdminController.saveCustomerOverride(req, res),
+    saveCustomerOverridesBatch: (req, res) => b2bAdminController.saveCustomerOverridesBatch(req, res),
     getStatistics: (req, res) => b2bAdminController.getStatistics(req, res)
 };

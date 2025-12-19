@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard • B2B Admin</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    :root {
+      --color-primary: #2563eb;
+      --color-light: #f8fafc;
+      --color-dark: #0f172a;
+      --color-gray: #64748b;
+      --color-gray-light: #e2e8f0;
+      --radius: 12px;
+      --shadow: 0 2px 14px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 18px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--color-light);
+      color: var(--color-dark);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid var(--color-gray-light);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      min-height: 92px;
+    }
+
+    .title {
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 10px;
+    }
+
+    .muted { color: var(--color-gray); }
+
+    .metric {
+      font-size: 1.4rem;
+      font-weight: 900;
+      margin-top: 6px;
+    }
+
+    .card.span-4 { grid-column: span 4; }
+    .card.span-6 { grid-column: span 6; }
+    .card.span-12 { grid-column: span 12; }
+
+    .btn {
+      border: 1px solid var(--color-gray-light);
+      background: white;
+      color: var(--color-dark);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      border-color: rgba(37, 99, 235, 0.35);
+      background: rgba(37, 99, 235, 0.08);
+      color: #1d4ed8;
+    }
+
+    @media (max-width: 980px) {
+      .card.span-4, .card.span-6 { grid-column: span 12; }
+    }
+  </style>
+</head>
+<body>
+  <div class="grid">
+    <div class="card span-12">
+      <h2 class="title"><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
+      <div class="muted">Bu sayfa iframe içeriği olarak kullanılır. Buraya zamanla istatistikler ve yönetim özetleri eklenecek.</div>
+      <div style="margin-top: 12px; display:flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn btn-primary" onclick="window.top && window.top.loadPage ? window.top.loadPage('musteri-yonetimi') : null">
+          <i class="fas fa-users"></i> Müşteri Yönetimi
+        </button>
+        <button class="btn" onclick="window.top && window.top.loadPage ? window.top.loadPage('malzeme-yonetimi') : null">
+          <i class="fas fa-boxes"></i> Malzeme Yönetimi
+        </button>
+      </div>
+    </div>
+
+    <div class="card span-4">
+      <div class="muted">Sistem Durumu</div>
+      <div class="metric">Aktif</div>
+    </div>
+
+    <div class="card span-4">
+      <div class="muted">Son İşlemler</div>
+      <div class="metric">—</div>
+    </div>
+
+    <div class="card span-4">
+      <div class="muted">Bildirimler</div>
+      <div class="metric">—</div>
+    </div>
+
+    <div class="card span-12">
+      <div class="muted" style="line-height: 1.6;">
+        Not: Konsoldaki “-moz-osx-font-smoothing” uyarısı FontAwesome kaynaklıdır ve işlevsel bir problem değildir.
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -19,6 +19,41 @@ class B2BController {
         this.startupTime = new Date();
     }
 
+    async getGlobalSettingsForCustomer(req, res) {
+        try {
+            const { b2bConfig } = require('../config/database');
+            const pool = await sql.connect(b2bConfig);
+
+            const GLOBAL_CUSTOMER_CODE = '__GLOBAL__';
+            const result = await pool.request()
+                .input('customerCode', sql.VarChar(50), GLOBAL_CUSTOMER_CODE)
+                .query(`
+                    SELECT TOP 1 value
+                    FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                    WHERE customer_code = @customerCode
+                      AND setting_type = 'buy_now_discount_rate'
+                      AND item_code IS NULL
+                      AND is_active = 1
+                    ORDER BY id DESC
+                `);
+
+            const rate = result.recordset?.[0]?.value;
+
+            return res.json({
+                success: true,
+                data: {
+                    buy_now_discount_rate: Number(rate) || 0
+                },
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
     async getFiltersForCustomer(req, res) {
         try {
             const { customerCode } = req.query || {};
@@ -561,91 +596,349 @@ class B2BController {
             console.log(`💰 B2B İskonto hesaplanıyor: ${productCode} için ${customerCode}`);
             
             const b2bPool = await this.getB2BConnection();
+
+            const priorityPolicy = await this.getGlobalPriorityDiscountPolicy(b2bPool);
+            const inScope = this.isPriorityPolicyInScope({
+                policy: priorityPolicy,
+                productCode,
+                manufacturerCode
+            });
+
+            const effectivePriorityRule = inScope
+                ? this.selectEffectivePriorityRule({
+                    policy: priorityPolicy,
+                    productCode,
+                    manufacturerCode
+                })
+                : null;
             
-            const campaignDiscount = await this.checkCampaignDiscount(productCode, b2bPool);
-            if (campaignDiscount.hasCampaign) {
-                console.log(`🎯 B2B KAMPANYA VAR: ${productCode} için %${campaignDiscount.rate} indirim`);
-                return {
-                    hasCampaign: true,
-                    discounts: [{
-                        type: 'CAMPAIGN',
-                        rate: campaignDiscount.rate,
-                        description: `Kampanya İndirimi (%${campaignDiscount.rate})`,
-                        source: 'B2B_CAMPAIGN',
-                        campaignName: campaignDiscount.campaignName
-                    }],
-                    totalDiscountRate: campaignDiscount.rate,
-                    calculationMethod: 'CAMPAIGN_DISCOUNT'
-                };
+            if (inScope && !priorityPolicy.disableCampaigns && !effectivePriorityRule) {
+                const campaignDiscount = await this.getCampaignDiscount(customerCode, productCode, b2bPool);
+                if (campaignDiscount && campaignDiscount.rate > 0) {
+                    const allowCampaign = !(priorityPolicy && priorityPolicy.disableCampaigns);
+                    if (allowCampaign) {
+                        console.log(`🎯 Kampanya iskontosu bulundu: %${campaignDiscount.rate}`);
+                        return {
+                            hasCampaign: true,
+                            campaignDiscount,
+                            discounts: [{
+                                type: 'CAMPAIGN',
+                                rate: campaignDiscount.rate,
+                                description: `Kampanya İndirimi (%${campaignDiscount.rate})`,
+                                source: 'B2B_CAMPAIGN',
+                                campaignName: campaignDiscount.campaignName
+                            }],
+                            totalDiscountRate: campaignDiscount.rate,
+                            calculationMethod: 'CAMPAIGN_DISCOUNT'
+                        };
+                    }
+                }
             }
             
             const defaultDiscounts = await this.getDefaultDiscounts(b2bPool);
             
-            const customerOverrides = await this.getCustomerOverrides(customerCode, productCode, b2bPool);
+            const settings = await this.getCustomerDiscountSettings(customerCode, productCode, manufacturerCode, b2bPool);
             
-            const discounts = [];
+            const generalRates = (settings.generalDiscounts && settings.generalDiscounts.length)
+                ? settings.generalDiscounts
+                : (defaultDiscounts.customer_discounts || []);
             
-            const itemDiscount = customerOverrides.item_discount || defaultDiscounts.item_discount;
-            if (itemDiscount > 0) {
-                discounts.push({
-                    type: 'ITEM',
-                    rate: itemDiscount,
-                    description: `Malzeme İskontosu (%${itemDiscount})`,
-                    source: customerOverrides.item_discount ? 'CUSTOMER_OVERRIDE' : 'DEFAULT'
-                });
-            }
+            const itemRate = settings.itemDiscount != null ? settings.itemDiscount : defaultDiscounts.item_discount;
+            const manufacturerRate = settings.manufacturerDiscount != null ? settings.manufacturerDiscount : defaultDiscounts.manufacturer_discount;
+            const priority = 'item>manufacturer>general';
             
-            const manufacturerDiscount = customerOverrides.manufacturer_discount || defaultDiscounts.manufacturer_discount;
-            if (manufacturerDiscount > 0) {
-                discounts.push({
-                    type: 'MANUFACTURER',
-                    rate: manufacturerDiscount,
-                    description: `Üretici İskontosu (%${manufacturerDiscount})`,
-                    source: customerOverrides.manufacturer_discount ? 'CUSTOMER_OVERRIDE' : 'DEFAULT'
-                });
-            }
-            
-            const customerDiscounts = customerOverrides.customer_discounts || defaultDiscounts.customer_discounts;
-            if (customerDiscounts && Array.isArray(customerDiscounts)) {
-                customerDiscounts.forEach((rate, index) => {
-                    if (rate > 0) {
-                        discounts.push({
-                            type: 'CUSTOMER',
-                            rate: rate,
-                            description: `Müşteri İskontosu ${index + 1} (%${rate})`,
-                            source: customerOverrides.customer_discounts ? 'CUSTOMER_OVERRIDE' : 'DEFAULT'
-                        });
-                    }
-                });
-            }
-            
-            let currentRate = 100;
-            discounts.forEach(discount => {
-                const discountAmount = currentRate * (discount.rate / 100);
-                currentRate -= discountAmount;
+            let discounts = this.buildDiscountListByPriority({
+                priority,
+                itemRate,
+                manufacturerRate,
+                generalRates
             });
-            const totalDiscountRate = 100 - currentRate;
-            
+
+            // Öncelikli iskonto kuralı eşleştiyse her şeyin önüne geçer.
+            if (effectivePriorityRule && effectivePriorityRule.rates && effectivePriorityRule.rates.length) {
+                discounts = this.buildPriorityDiscountList(effectivePriorityRule.rates, effectivePriorityRule.source);
+            } else {
+                // Backward-compatible: legacy single-policy behavior
+                if (priorityPolicy && priorityPolicy.rates && priorityPolicy.rates.length) {
+                    const primaryType = (discounts && discounts.length) ? String(discounts[0].type || '') : '';
+
+                    const shouldOverrideByPriority =
+                        (priorityPolicy.disableCustomerDiscounts && customerCode && String(customerCode) !== '__GLOBAL__')
+                        || (priorityPolicy.disableItemDiscounts && primaryType === 'ITEM')
+                        || (priorityPolicy.disableManufacturerDiscounts && primaryType === 'MANUFACTURER')
+                        || (priorityPolicy.disableGeneralDiscounts && primaryType === 'GENERAL');
+
+                    if (inScope && shouldOverrideByPriority) {
+                        discounts = this.buildPriorityDiscountList(priorityPolicy.rates, 'GLOBAL_PRIORITY_DISCOUNT');
+                    }
+                }
+            }
+
+            const applied = this.applySequentialDiscounts(100, discounts.map(d => d.rate));
+            const totalDiscountRate = applied.totalDiscountRate;
+
             console.log(`📊 B2B ${productCode} iskonto özeti:`, {
-                malzeme: `${itemDiscount}%`,
-                uretici: `${manufacturerDiscount}%`,
-                musteri: customerDiscounts ? customerDiscounts.map(r => `${r}%`).join(', ') : '0%',
+                priority,
+                itemRate: `${itemRate}%`,
+                manufacturerRate: `${manufacturerRate}%`,
+                generalRates: generalRates.map(r => `${r}%`).join(', '),
                 toplam: `${totalDiscountRate.toFixed(2)}%`,
-                katman: discounts.length,
-                kaynak: discounts.map(d => d.source).join(', ')
+                katman: discounts.length
             });
             
             return {
                 hasCampaign: false,
-                discounts: discounts,
+                discounts,
                 totalDiscountRate: parseFloat(totalDiscountRate.toFixed(2)),
-                calculationMethod: 'B2B_DATABASE_DISCOUNTS'
+                calculationMethod: priorityPolicy && priorityPolicy.rates && priorityPolicy.rates.length ? 'B2B_OVERLAY_OVERRIDES_WITH_PRIORITY_POLICY' : 'B2B_OVERLAY_OVERRIDES'
             };
             
         } catch (error) {
             console.error(`❌ B2B İskonto hesaplama hatası ${productCode}:`, error.message);
             return this.getFallbackDiscounts();
         }
+    }
+
+    async getGlobalPriorityDiscountPolicy(pool) {
+        try {
+            const GLOBAL_CUSTOMER_CODE = '__GLOBAL__';
+            const query = `
+                SELECT setting_type, value, item_code
+                FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                WHERE customer_code = @globalCode
+                  AND is_active = 1
+                  AND (
+                        setting_type LIKE 'priority_discount_%'
+                     OR setting_type LIKE 'priority_disable_%'
+                     OR setting_type = 'priority_scope_item'
+                     OR setting_type = 'priority_scope_manufacturer'
+                     OR setting_type LIKE 'priority_rule_%'
+                  )
+            `;
+
+            const result = await pool.request()
+                .input('globalCode', sql.VarChar(100), GLOBAL_CUSTOMER_CODE)
+                .query(query);
+
+            const tiers = [];
+            const scopeItems = new Set();
+            const scopeManufacturers = new Set();
+            const ruleMap = new Map();
+            const flags = {
+                disableCustomerDiscounts: false,
+                disableGeneralDiscounts: false,
+                disableManufacturerDiscounts: false,
+                disableItemDiscounts: false,
+                disableCampaigns: false,
+                disableSpecialDiscounts: false
+            };
+
+            (result.recordset || []).forEach(r => {
+                const st = String(r.setting_type || '').trim();
+                const val = String(r.value == null ? '' : r.value).trim();
+                const itemCode = String(r.item_code || '').trim();
+
+                if (st.startsWith('priority_rule_')) {
+                    const key = itemCode || 'GENERAL';
+                    if (!ruleMap.has(key)) {
+                        ruleMap.set(key, {
+                            scopeKey: key,
+                            ratesByIdx: new Map(),
+                            disableCampaigns: false,
+                            disableSpecialDiscounts: false,
+                            disableCustomerDiscounts: false,
+                            disableGeneralDiscounts: false,
+                            disableManufacturerDiscounts: false,
+                            disableItemDiscounts: false
+                        });
+                    }
+                    const rule = ruleMap.get(key);
+
+                    const rm = st.match(/^priority_rule_discount_(\d+)$/);
+                    if (rm) {
+                        const idx = Number(rm[1]);
+                        const rate = Number(val);
+                        if (idx > 0 && Number.isFinite(rate) && rate > 0) rule.ratesByIdx.set(idx, rate);
+                        return;
+                    }
+
+                    const enabled = val === '1' || val.toLowerCase() === 'true';
+                    if (st === 'priority_rule_disable_customer_discounts') rule.disableCustomerDiscounts = enabled;
+                    else if (st === 'priority_rule_disable_general_discounts') rule.disableGeneralDiscounts = enabled;
+                    else if (st === 'priority_rule_disable_manufacturer_discounts') rule.disableManufacturerDiscounts = enabled;
+                    else if (st === 'priority_rule_disable_item_discounts') rule.disableItemDiscounts = enabled;
+                    else if (st === 'priority_rule_disable_campaigns') rule.disableCampaigns = enabled;
+                    else if (st === 'priority_rule_disable_special_discounts') rule.disableSpecialDiscounts = enabled;
+                    return;
+                }
+
+                const m = st.match(/^priority_discount_(\d+)$/);
+                if (m) {
+                    const idx = Number(m[1]);
+                    const rate = Number(val);
+                    if (idx > 0 && Number.isFinite(rate) && rate > 0) tiers.push({ idx, rate });
+                    return;
+                }
+
+                if (st === 'priority_scope_item') {
+                    const code = String(r.item_code || '').trim();
+                    if (code) scopeItems.add(code);
+                    return;
+                }
+                if (st === 'priority_scope_manufacturer') {
+                    const code = String(r.item_code || '').trim();
+                    if (code) scopeManufacturers.add(code);
+                    return;
+                }
+
+                const enabled = val === '1' || val.toLowerCase() === 'true';
+                if (st === 'priority_disable_customer_discounts') flags.disableCustomerDiscounts = enabled;
+                else if (st === 'priority_disable_general_discounts') flags.disableGeneralDiscounts = enabled;
+                else if (st === 'priority_disable_manufacturer_discounts') flags.disableManufacturerDiscounts = enabled;
+                else if (st === 'priority_disable_item_discounts') flags.disableItemDiscounts = enabled;
+                else if (st === 'priority_disable_campaigns') flags.disableCampaigns = enabled;
+                else if (st === 'priority_disable_special_discounts') flags.disableSpecialDiscounts = enabled;
+            });
+
+            return {
+                rates: tiers.sort((a, b) => a.idx - b.idx).map(x => x.rate),
+                scopeItems: Array.from(scopeItems),
+                scopeManufacturers: Array.from(scopeManufacturers),
+                rules: Array.from(ruleMap.values()).map(r => ({
+                    scopeKey: r.scopeKey,
+                    rates: Array.from(r.ratesByIdx.entries()).sort((a, b) => a[0] - b[0]).map(x => x[1]),
+                    disableCustomerDiscounts: !!r.disableCustomerDiscounts,
+                    disableGeneralDiscounts: !!r.disableGeneralDiscounts,
+                    disableManufacturerDiscounts: !!r.disableManufacturerDiscounts,
+                    disableItemDiscounts: !!r.disableItemDiscounts,
+                    disableCampaigns: !!r.disableCampaigns,
+                    disableSpecialDiscounts: !!r.disableSpecialDiscounts
+                })),
+                ...flags
+            };
+        } catch (error) {
+            console.error('❌ B2B Öncelikli iskonto politikası okunamadı:', error.message);
+            return {
+                rates: [],
+                scopeItems: [],
+                scopeManufacturers: [],
+                rules: [],
+                disableCustomerDiscounts: false,
+                disableGeneralDiscounts: false,
+                disableManufacturerDiscounts: false,
+                disableItemDiscounts: false,
+                disableCampaigns: false,
+                disableSpecialDiscounts: false
+            };
+        }
+    }
+
+    selectEffectivePriorityRule({ policy, productCode, manufacturerCode }) {
+        const rules = (policy && Array.isArray(policy.rules)) ? policy.rules : [];
+        if (!rules.length) return null;
+
+        const pCode = String(productCode || '').trim();
+        const mCode = String(manufacturerCode || '').trim();
+        const byKey = new Map(rules.map(r => [String(r.scopeKey || '').trim(), r]));
+
+        const itemKey = `ITEM:${pCode}`;
+        const manKey = `MAN:${mCode}`;
+        const generalKey = 'GENERAL';
+
+        if (pCode && byKey.has(itemKey)) {
+            return { ...byKey.get(itemKey), source: 'PRIORITY_RULE_ITEM' };
+        }
+        if (mCode && byKey.has(manKey)) {
+            return { ...byKey.get(manKey), source: 'PRIORITY_RULE_MANUFACTURER' };
+        }
+        if (byKey.has(generalKey)) {
+            return { ...byKey.get(generalKey), source: 'PRIORITY_RULE_GENERAL' };
+        }
+        return null;
+    }
+
+    isPriorityPolicyInScope({ policy, productCode, manufacturerCode }) {
+        const p = policy || {};
+        const itemList = Array.isArray(p.scopeItems) ? p.scopeItems : [];
+        const manList = Array.isArray(p.scopeManufacturers) ? p.scopeManufacturers : [];
+
+        const itemSet = itemList.length ? new Set(itemList.map(x => String(x || '').trim()).filter(Boolean)) : null;
+        const manSet = manList.length ? new Set(manList.map(x => String(x || '').trim()).filter(Boolean)) : null;
+
+        const pCode = String(productCode || '').trim();
+        const mCode = String(manufacturerCode || '').trim();
+
+        // Scope precedence: product > manufacturer > general
+        if (itemSet) return itemSet.has(pCode);
+        if (manSet) return manSet.has(mCode);
+        return true;
+    }
+
+    buildPriorityDiscountList(rates, source) {
+        return (Array.isArray(rates) ? rates : [])
+            .map(r => Number(r) || 0)
+            .filter(r => r > 0)
+            .map((r, idx) => ({
+                type: 'PRIORITY',
+                rate: r,
+                description: `Öncelikli İskonto ${idx + 1} (%${r})`,
+                source: source || 'GLOBAL_PRIORITY_DISCOUNT'
+            }));
+    }
+
+    applySequentialDiscounts(baseAmount, rates) {
+        let current = Number(baseAmount) || 0;
+        const steps = [];
+        (Array.isArray(rates) ? rates : [])
+            .map(r => Number(r) || 0)
+            .filter(r => r > 0)
+            .forEach((rate) => {
+                const amount = current * (rate / 100);
+                current -= amount;
+                steps.push({ rate, amount });
+            });
+
+        const totalDiscountRate = baseAmount > 0 ? (1 - (current / baseAmount)) * 100 : 0;
+        return {
+            netAmount: current,
+            totalDiscountRate,
+            steps
+        };
+    }
+
+    buildDiscountListByPriority({ priority, itemRate, manufacturerRate, generalRates }) {
+        const pr = String(priority || '').trim() || 'item>manufacturer>general';
+
+        const blocks = {
+            item: (Number(itemRate) || 0) > 0
+                ? [{ type: 'ITEM', rate: Number(itemRate), description: `Ürün İskontosu (%${Number(itemRate)})`, source: 'CUSTOMER_OVERRIDE' }]
+                : [],
+            manufacturer: (Number(manufacturerRate) || 0) > 0
+                ? [{ type: 'MANUFACTURER', rate: Number(manufacturerRate), description: `Üretici İskontosu (%${Number(manufacturerRate)})`, source: 'CUSTOMER_OVERRIDE' }]
+                : [],
+            general: (Array.isArray(generalRates) ? generalRates : [])
+                .map(r => Number(r) || 0)
+                .filter(r => r > 0)
+                .map((r, idx) => ({
+                    type: 'GENERAL',
+                    rate: r,
+                    description: `Genel İskonto ${idx + 1} (%${r})`,
+                    source: 'CUSTOMER_OVERRIDE'
+                }))
+        };
+
+        const order = pr.split('>').map(s => s.trim()).filter(Boolean);
+        const validOrder = order.length ? order : ['item', 'manufacturer', 'general'];
+
+        // OVERRIDE MODE: only the highest-priority non-empty block is applied.
+        // This prevents stacking item/manufacturer/general/global together.
+        for (const k of validOrder) {
+            if (k === 'item' && blocks.item.length) return blocks.item;
+            if (k === 'manufacturer' && blocks.manufacturer.length) return blocks.manufacturer;
+            if (k === 'general' && blocks.general.length) return blocks.general;
+        }
+
+        return [];
     }
 
     async checkCampaignDiscount(productCode, pool) {
@@ -792,6 +1085,131 @@ class B2BController {
         } catch (error) {
             console.error(`❌ B2B Müşteri override getirme hatası ${customerCode}:`, error.message);
             return {};
+        }
+    }
+
+    async getCustomerDiscountSettings(customerCode, productCode, manufacturerCode, pool) {
+        try {
+            const GLOBAL_CUSTOMER_CODE = '__GLOBAL__';
+            const query = `
+                SELECT customer_code, setting_type, item_code, value
+                FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                WHERE customer_code IN (@customerCode, @globalCode)
+                  AND is_active = 1
+                  AND (
+                        (setting_type = 'discount_item' AND item_code = @productCode)
+                     OR (setting_type = 'discount_manufacturer' AND item_code = @manufacturerCode)
+                     OR (setting_type LIKE 'discount_general_%' AND item_code IS NULL)
+                     OR (setting_type = 'discount_priority' AND item_code IS NULL)
+                  )
+            `;
+
+            const result = await pool.request()
+                .input('customerCode', sql.VarChar(100), customerCode)
+                .input('globalCode', sql.VarChar(100), GLOBAL_CUSTOMER_CODE)
+                .input('productCode', sql.VarChar(100), productCode)
+                .input('manufacturerCode', sql.VarChar(100), manufacturerCode || '')
+                .query(query);
+
+            const customerSettings = {
+                itemDiscount: null,
+                manufacturerDiscount: null,
+                generalDiscounts: [],
+                priority: null
+            };
+
+            const globalSettings = {
+                itemDiscount: null,
+                manufacturerDiscount: null,
+                generalDiscounts: [],
+                priority: null
+            };
+
+            (result.recordset || []).forEach(r => {
+                const owner = String(r.customer_code || '').trim();
+                const st = String(r.setting_type || '').trim();
+                const val = Number(r.value);
+                const target = owner === customerCode ? customerSettings : globalSettings;
+
+                if (st === 'discount_item') target.itemDiscount = Number.isFinite(val) ? val : target.itemDiscount;
+                else if (st === 'discount_manufacturer') target.manufacturerDiscount = Number.isFinite(val) ? val : target.manufacturerDiscount;
+                else if (st === 'discount_priority') {
+                    const code = Number.isFinite(val) ? val : 0;
+                    if (code === 2) target.priority = 'manufacturer>item>general';
+                    else if (code === 3) target.priority = 'general>manufacturer>item';
+                    else target.priority = 'item>manufacturer>general';
+                } else if (/^discount_general_(\d+)$/.test(st)) {
+                    const m = st.match(/^discount_general_(\d+)$/);
+                    const idx = m ? Number(m[1]) : 0;
+                    if (idx > 0 && Number.isFinite(val) && val > 0) {
+                        target.generalDiscounts.push({ idx, rate: val });
+                    }
+                }
+            });
+
+            const merged = {
+                itemDiscount: customerSettings.itemDiscount != null ? customerSettings.itemDiscount : globalSettings.itemDiscount,
+                manufacturerDiscount: customerSettings.manufacturerDiscount != null ? customerSettings.manufacturerDiscount : globalSettings.manufacturerDiscount,
+                priority: customerSettings.priority || globalSettings.priority,
+                generalDiscounts: (customerSettings.generalDiscounts && customerSettings.generalDiscounts.length)
+                    ? customerSettings.generalDiscounts
+                    : globalSettings.generalDiscounts
+            };
+
+            merged.generalDiscounts = (merged.generalDiscounts || [])
+                .sort((a, b) => a.idx - b.idx)
+                .map(x => x.rate);
+
+            // LogoGO3 PAYMENTREF-based general discount profile takes precedence.
+            if (customerCode && customerCode !== GLOBAL_CUSTOMER_CODE) {
+                const logoRates = await this.getLogoGeneralDiscountRates(customerCode);
+                if (logoRates && logoRates.length) {
+                    merged.generalDiscounts = logoRates;
+                }
+            }
+
+            return merged;
+        } catch (error) {
+            console.error(`❌ B2B Discount settings read error ${customerCode}:`, error.message);
+            return {
+                itemDiscount: null,
+                manufacturerDiscount: null,
+                generalDiscounts: [],
+                priority: null
+            };
+        }
+    }
+
+    parsePaymentPlanCodeToRates(code) {
+        const raw = String(code || '').trim();
+        if (!raw) return [];
+        return raw
+            .split('+')
+            .map(x => Number(String(x || '').trim()))
+            .filter(n => Number.isFinite(n) && n > 0);
+    }
+
+    async getLogoGeneralDiscountRates(customerCode) {
+        try {
+            if (!customerCode) return [];
+            const logoPool = await this.getLogoConnection();
+            const request = logoPool.request();
+            request.input('code', sql.VarChar(50), customerCode);
+            const q = `
+                SELECT TOP 1
+                    C.PAYMENTREF,
+                    P.CODE AS plan_code
+                FROM dbo.LG_013_CLCARD C
+                LEFT JOIN dbo.LG_013_PAYPLANS P ON P.LOGICALREF = C.PAYMENTREF
+                WHERE C.CODE = @code
+            `;
+            const result = await request.query(q);
+            const row = result.recordset && result.recordset[0] ? result.recordset[0] : null;
+            if (!row || row.PAYMENTREF == null) return [];
+            return this.parsePaymentPlanCodeToRates(row.plan_code);
+        } catch (e) {
+            console.error(`❌ Logo PAYMENTREF discount read error ${customerCode}:`, e && e.message ? e.message : e);
+            return [];
         }
     }
 
@@ -1703,6 +2121,7 @@ module.exports = {
     getProductsForCustomer: (req, res) => b2bController.getProductsForCustomer(req, res),
     searchProductsForCustomer: (req, res) => b2bController.searchProductsForCustomer(req, res),
     getFiltersForCustomer: (req, res) => b2bController.getFiltersForCustomer(req, res),
+    getGlobalSettingsForCustomer: (req, res) => b2bController.getGlobalSettingsForCustomer(req, res),
     getProductDetailForCustomer: (req, res) => b2bController.getProductDetailForCustomer(req, res),
     calculateCart: (req, res) => b2bController.calculateCart(req, res),
     getCustomerInfo: (req, res) => b2bController.getCustomerInfo(req, res),

@@ -101,41 +101,8 @@ const requestLogger = (req, res, next) => {
         const duration = Date.now() - startTime;
         console.log(`🌐 ${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms`);
         
-        if (req.originalUrl.includes('/api/b2b/admin/')) {
-            const userCode = req.headers['x-user-code'] || 
-                           (req.user ? req.user.user_code : 'anonymous');
-            const logData = {
-                log_type: 'api_request',
-                module: 'b2b_admin',
-                message: `${req.method} ${req.originalUrl} - ${res.statusCode}`,
-                user_code: userCode,
-                ip_address: req.ip,
-                duration_ms: duration,
-                created_at: new Date().toISOString()
-            };
-            
-            setTimeout(async () => {
-                try {
-                    const sql = require('mssql');
-                    const { b2bConfig } = require('../config/database');
-                    const pool = await sql.connect(b2bConfig);
-                    
-                    await pool.request()
-                        .input('logType', sql.VarChar(50), logData.log_type)
-                        .input('module', sql.VarChar(50), logData.module)
-                        .input('message', sql.NVarChar(500), logData.message)
-                        .input('userCode', sql.VarChar(50), logData.user_code)
-                        .input('ipAddress', sql.VarChar(50), logData.ip_address)
-                        .input('durationMs', sql.Int, logData.duration_ms)
-                        .query(`
-                            INSERT INTO b2b_system_logs 
-                            (log_type, module, message, user_code, ip_address, duration_ms, created_at)
-                            VALUES (@logType, @module, @message, @userCode, @ipAddress, @durationMs, GETDATE())
-                        `);
-                } catch (error) {
-                    console.error('❌ Log kaydetme hatası:', error.message);
-                }
-            }, 0);
+        if (req.originalUrl.includes('/api/b2b/admin/') && res.statusCode >= 400) {
+            // DB log yazımı geçici olarak devre dışı (şema/trigger uyuşmazlığı 500 tetikliyor)
         }
         
         return originalSend.call(this, data);
@@ -146,6 +113,25 @@ const requestLogger = (req, res, next) => {
 
 router.use(requestLogger);
 router.use(limiter);
+
+const customerAuthMiddleware = (req, res, next) => {
+    try {
+        const userDataBase64 = req.headers['x-user-data-base64'];
+        if (!userDataBase64) {
+            return res.status(401).json({ success: false, error: 'Kimlik doğrulama gerekli' });
+        }
+        const decoded = Buffer.from(userDataBase64, 'base64').toString('utf-8');
+        const userData = JSON.parse(decoded);
+        const role = String(userData?.rol || userData?.user_type || '').toLowerCase();
+        if (role !== 'customer') {
+            return res.status(401).json({ success: false, error: 'Müşteri oturumu gerekli' });
+        }
+        req.user = userData;
+        next();
+    } catch (e) {
+        return res.status(401).json({ success: false, error: 'Geçersiz kimlik bilgisi' });
+    }
+};
 
 router.use('/search', b2bSearchRouter);
 
@@ -162,6 +148,13 @@ router.get('/products/search',
 router.get('/filters',
     cacheControl(600),
     b2bController.getFiltersForCustomer
+);
+
+// Global bulk settings for customer payment flow
+router.get('/global-settings',
+    cacheControl(60),
+    customerAuthMiddleware,
+    b2bController.getGlobalSettingsForCustomer
 );
 
 // Yeni akıllı ürün arama endpoint'i (grup tabanlı smart search)
@@ -286,6 +279,16 @@ router.put('/admin/settings',
     b2bAdminController.updateSettings
 );
 
+router.get('/admin/order-settings',
+    cacheControl(60),
+    b2bAdminController.getOrderDistributionSettings
+);
+
+router.put('/admin/order-settings',
+    cacheControl(0),
+    b2bAdminController.updateOrderDistributionSettings
+);
+
 router.get('/admin/campaigns',
     cacheControl(120),
     b2bAdminController.getCampaigns
@@ -302,8 +305,13 @@ router.delete('/admin/campaigns/:id',
 );
 
 router.get('/admin/customers/:customerCode/overrides',
-    cacheControl(180),
+    cacheControl(0),
     b2bAdminController.getCustomerOverrides
+);
+
+router.post('/admin/customers/:customerCode/overrides/batch',
+    cacheControl(0),
+    b2bAdminController.saveCustomerOverridesBatch
 );
 
 router.post('/admin/customers/overrides',

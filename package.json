@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "backup": "bash ./backup.sh"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^8.0.0",

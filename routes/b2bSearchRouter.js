@@ -19,6 +19,25 @@ const authenticateCustomer = (req, res, next) => {
         // Base64 decode
         const decoded = Buffer.from(userDataBase64, 'base64').toString('utf-8');
         const userData = JSON.parse(decoded);
+
+        const role = String(userData?.rol || userData?.user_type || '').toLowerCase();
+        if (role !== 'customer') {
+            return res.status(401).json({
+                success: false,
+                error: 'Müşteri oturumu gerekli'
+            });
+        }
+
+        if (!userData?.cari_kodu && !userData?.customerCode) {
+            return res.status(401).json({
+                success: false,
+                error: 'Müşteri kodu gerekli'
+            });
+        }
+
+        if (!userData.customerCode) {
+            userData.customerCode = userData.cari_kodu;
+        }
         
         req.user = userData;
         next();

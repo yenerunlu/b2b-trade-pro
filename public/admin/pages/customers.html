@@ -1,0 +1,2422 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Müşteri Yönetimi • B2B Admin</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    :root {
+      --color-primary: #2563eb;
+      --color-primary-dark: #1d4ed8;
+      --color-light: #f8fafc;
+      --color-dark: #0f172a;
+      --color-gray: #64748b;
+      --color-gray-light: #e2e8f0;
+      --color-gray-lighter: #f1f5f9;
+      --border-radius: 10px;
+      --border-radius-sm: 8px;
+      --shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+      --transition: all 0.2s ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--color-light);
+      color: var(--color-dark);
+      height: 100vh;
+      overflow: hidden;
+      padding: 18px;
+    }
+
+    .page {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .shell {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      gap: 14px;
+    }
+
+    .sidebar {
+      flex: 0 0 210px;
+      min-width: 210px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .side-menu {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .side-item {
+      border: 1px solid var(--color-gray-light);
+      background: white;
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: var(--transition);
+      user-select: none;
+      font-weight: 900;
+      font-size: 0.88rem;
+    }
+
+    .side-item i { width: 18px; text-align: center; color: var(--color-gray); }
+    .side-item:hover { background: var(--color-gray-lighter); }
+    .side-item.active { border-color: rgba(37, 99, 235, 0.35); background: rgba(37, 99, 235, 0.08); }
+    .side-item.active i { color: var(--color-primary-dark); }
+    .side-item.has-rule i { color: #16a34a; }
+    .side-item.disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+
+    .content {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .topbar {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--color-gray-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: white;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 900;
+      min-width: 220px;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .topbar-left { flex: 0 0 auto; }
+
+    .search-wrap {
+      position: relative;
+      width: min(720px, 100%);
+      z-index: 60;
+    }
+
+    .search-wrap i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--color-gray);
+    }
+
+    .search-suggest {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 8px);
+      background: white;
+      border: 1px solid var(--color-gray-light);
+      border-radius: 12px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+      overflow: hidden;
+      z-index: 50;
+      display: none;
+      max-height: 420px;
+    }
+
+    .search-suggest.show { display: block; }
+
+    .suggest-header {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--color-gray-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-weight: 900;
+      font-size: 0.85rem;
+      color: var(--color-gray);
+      background: var(--color-gray-lighter);
+    }
+
+    .suggest-list { overflow: auto; }
+
+    .suggest-item {
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      transition: var(--transition);
+      border-bottom: 1px solid var(--color-gray-lighter);
+    }
+
+    .suggest-item:last-child { border-bottom: none; }
+    .suggest-item:hover { background: var(--color-gray-lighter); }
+
+    .suggest-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .suggest-code { font-weight: 900; }
+    .suggest-name { color: var(--color-gray); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .panel {
+      background: white;
+      border: 1px solid var(--color-gray-light);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .panel.panel-overflow-visible {
+      overflow: visible;
+    }
+
+    .panel-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--color-gray-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 900;
+      font-size: 0.95rem;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--color-gray-lighter);
+      color: var(--color-gray);
+      border: 1px solid var(--color-gray-light);
+      font-weight: 900;
+    }
+
+    .search-box {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-gray-light);
+      position: relative;
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 28px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--color-gray);
+    }
+
+    .search-input {
+      width: 100%;
+      border: 1px solid var(--color-gray-light);
+      border-radius: var(--border-radius-sm);
+      padding: 10px 12px 10px 36px;
+      outline: none;
+      transition: var(--transition);
+      font-size: 0.9rem;
+    }
+
+    .search-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .list {
+      overflow: auto;
+      padding: 6px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .list-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: var(--transition);
+      border: 1px solid transparent;
+    }
+
+    .list-item:hover { background: var(--color-gray-lighter); }
+    .list-item.active { background: rgba(37, 99, 235, 0.08); border-color: rgba(37, 99, 235, 0.25); }
+
+    .cust-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .cust-code { font-weight: 900; font-size: 0.92rem; }
+    .cust-name { color: var(--color-gray); font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .override-pill {
+      font-size: 0.72rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.12);
+      color: #065f46;
+      border: 1px solid rgba(16, 185, 129, 0.22);
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+
+    .pagination {
+      padding: 10px 12px;
+      border-top: 1px solid var(--color-gray-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .btn {
+      border: 1px solid var(--color-gray-light);
+      background: white;
+      color: var(--color-dark);
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: var(--transition);
+      font-weight: 900;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover { background: var(--color-gray-lighter); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .detail-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--color-gray-light);
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+    }
+
+    .detail-header.customer-selected {
+      background: rgba(37, 99, 235, 0.04);
+    }
+
+    .detail-header .badge { flex: 0 0 auto; }
+    .detail-title { flex: 1 1 auto; }
+
+    .detail-title { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .detail-title .code { font-weight: 900; font-size: 1.05rem; }
+    .detail-title .name { color: var(--color-gray); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .detail-body { padding: 16px; overflow: auto; overflow-x: hidden; flex: 1; min-height: 0; }
+
+    .detail-body.compact { padding: 12px; }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      background: rgba(255,255,255,0.92);
+      border-bottom: 1px solid var(--color-gray-light);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(10px);
+    }
+
+    .tabs { display: none; }
+
+    .tab {
+      border: 1px solid var(--color-gray-light);
+      border-bottom: none;
+      background: var(--color-gray-lighter);
+      color: var(--color-dark);
+      padding: 10px 12px;
+      border-radius: 12px 12px 0 0;
+      cursor: pointer;
+      font-weight: 900;
+      font-size: 0.85rem;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+
+    .tab.active {
+      background: white;
+      border-color: rgba(37, 99, 235, 0.35);
+      color: var(--color-primary-dark);
+      box-shadow: 0 -2px 8px rgba(37, 99, 235, 0.08);
+    }
+
+    .tab.disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--color-gray-light);
+      border-radius: 12px;
+      padding: 12px;
+      background: white;
+    }
+
+    .scroll-box {
+      max-height: 260px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .scroll-box.tall { max-height: 320px; }
+
+    .card-title {
+      font-weight: 900;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.92rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .label {
+      font-size: 0.8rem;
+      color: var(--color-gray);
+      font-weight: 900;
+    }
+
+    .input, .select {
+      width: 100%;
+      border: 1px solid var(--color-gray-light);
+      border-radius: 10px;
+      padding: 10px 10px;
+      outline: none;
+      font-size: 0.9rem;
+      transition: var(--transition);
+      background: white;
+    }
+
+    .input:focus, .select:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .switch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid var(--color-gray-light);
+      border-radius: 12px;
+      background: var(--color-gray-lighter);
+    }
+
+    .switch .left { display: flex; flex-direction: column; gap: 4px; }
+    .switch .title { font-weight: 900; }
+    .switch .desc { font-size: 0.82rem; color: var(--color-gray); }
+
+    .toggle {
+      width: 44px;
+      height: 26px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      position: relative;
+      cursor: pointer;
+      transition: var(--transition);
+      flex-shrink: 0;
+    }
+
+    .toggle::after {
+      content: '';
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: white;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: var(--transition);
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.18);
+    }
+
+    .toggle.on { background: rgba(37, 99, 235, 0.75); }
+    .toggle.on::after { left: 20px; }
+
+    .rule-row {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr 110px;
+      gap: 8px;
+      align-items: end;
+      padding: 10px;
+      border: 1px solid var(--color-gray-light);
+      border-radius: 12px;
+      background: white;
+      margin-bottom: 10px;
+    }
+
+    .rule-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn-primary {
+      border-color: rgba(37, 99, 235, 0.35);
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--color-primary-dark);
+    }
+
+    .btn-danger {
+      border-color: rgba(239, 68, 68, 0.35);
+      background: rgba(239, 68, 68, 0.08);
+      color: #991b1b;
+    }
+
+    .footer-bar {
+      position: sticky;
+      bottom: 0;
+      background: white;
+      border-top: 1px solid var(--color-gray-light);
+      margin: 16px -16px -16px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .status {
+      font-size: 0.85rem;
+      color: var(--color-gray);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #0f172a;
+      color: white;
+      padding: 10px 12px;
+      border-radius: 12px;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+      font-weight: 900;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: var(--transition);
+      z-index: 1000;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .empty-state {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--color-gray);
+      text-align: center;
+      padding: 30px;
+    }
+
+    .empty-state i { font-size: 2.2rem; color: #cbd5e1; }
+
+    @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+
+    @media (max-width: 1100px) {
+      body { padding: 12px; }
+      .page { gap: 10px; }
+      .topbar { flex-direction: column; align-items: stretch; }
+      .topbar-left { min-width: 0; }
+      .topbar-right { justify-content: stretch; }
+      .search-wrap { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="panel panel-overflow-visible" style="flex:0 0 auto;">
+      <div class="topbar">
+        <div class="topbar-left">
+          <i class="fas fa-users"></i>
+          <span>Genel Ayarlar</span>
+        </div>
+        <div class="topbar-right">
+          <div class="search-wrap" style="width: 520px;">
+            <i class="fas fa-search"></i>
+            <input class="search-input" id="customerSearch" type="text" placeholder="Müşteri kodu veya isim ile arayın..." autocomplete="off" />
+            <div class="search-suggest" id="customerSuggest">
+              <div class="suggest-header">
+                <span id="suggestTitle">Sonuçlar</span>
+                <span class="badge" id="suggestCount">0</span>
+              </div>
+              <div class="suggest-list" id="suggestList"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="shell">
+      <section class="panel sidebar" style="flex:0 0 auto; min-height:0;">
+        <div class="panel-header">
+          <div class="panel-title"><i class="fas fa-layer-group"></i> Menü</div>
+        </div>
+        <div class="side-menu">
+          <div class="side-item active" id="sideGeneral" data-tab="general"><i class="fas fa-sliders"></i> Genel</div>
+          <div class="side-item" id="sidePriorityDiscount" data-tab="priority"><i class="fas fa-star"></i> Öncelikli İskonto</div>
+          <div class="side-item disabled" id="sideDiscount" data-tab="discount"><i class="fas fa-percent"></i> İskonto</div>
+          <div class="side-item disabled" id="sidePayment" data-tab="payment"><i class="fas fa-credit-card"></i> Ödeme</div>
+        </div>
+        <div style="padding: 0 12px 12px; color: var(--color-gray); font-size: 0.82rem; line-height: 1.35;">
+          Global modda yalnızca Genel Ayarlar düzenlenir.
+        </div>
+      </section>
+
+      <section class="panel content" style="min-height:0;">
+        <div class="detail-header" id="detailHeader">
+          <div class="badge" id="selectedMetaBadge">-</div>
+          <div class="detail-title">
+            <div class="code" id="selectedCustomerCode"></div>
+            <div class="name" id="selectedCustomerName"></div>
+          </div>
+        </div>
+        <div class="detail-body" id="detailBody">
+          <div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const suggestLimit = 20;
+    let currentSearch = '';
+    let selectedCustomer = null;
+    let selectedTab = 'bulk';
+    let selectedGlobalTab = 'general';
+    let currentOverrides = [];
+    let overridesByKey = new Map();
+    let isSaving = false;
+    let generalDiscountTierCount = 4;
+
+    const GLOBAL_CUSTOMER_CODE = '__GLOBAL__';
+    let globalTierCount = 4;
+    let globalPriorityTierCount = 2;
+
+    const dom = {
+      detailHeader: document.getElementById('detailHeader'),
+      selectedCustomerCode: document.getElementById('selectedCustomerCode'),
+      selectedCustomerName: document.getElementById('selectedCustomerName'),
+      selectedMetaBadge: document.getElementById('selectedMetaBadge'),
+      detailBody: document.getElementById('detailBody')
+    };
+
+    function encodeUserDataToBase64(userData) {
+      try {
+        const jsonString = JSON.stringify(userData);
+        return btoa(unescape(encodeURIComponent(jsonString)));
+      } catch (error) {
+        return '';
+      }
+    }
+
+    function setAuthHeaders(headers = {}) {
+      try {
+        const userDataString = localStorage.getItem('b2b_user_data');
+        if (userDataString) {
+          const userData = JSON.parse(userDataString);
+          const userDataBase64 = encodeUserDataToBase64(userData);
+          return {
+            ...headers,
+            'Content-Type': 'application/json',
+            'x-user-data-base64': userDataBase64,
+            'x-user-type': 'admin'
+          };
+        }
+        return {
+          ...headers,
+          'Content-Type': 'application/json',
+          'x-user-type': 'admin'
+        };
+      } catch (error) {
+        return headers;
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function hideSuggest() {
+      dom.customerSuggest.classList.remove('show');
+    }
+
+    function showSuggest() {
+      dom.customerSuggest.classList.add('show');
+    }
+
+    function renderSuggestLoading() {
+      dom.suggestTitle.textContent = 'Aranıyor';
+      dom.suggestCount.textContent = '...';
+      dom.suggestList.innerHTML = `
+        <div class="empty-state" style="height:auto; padding: 16px;">
+          <i class="fas fa-spinner" style="animation: spin 1s linear infinite;"></i>
+          <div style="font-weight:900;">Yükleniyor...</div>
+        </div>
+      `;
+      showSuggest();
+    }
+
+    function renderSuggestEmpty(text) {
+      dom.suggestTitle.textContent = 'Sonuçlar';
+      dom.suggestCount.textContent = '0';
+      dom.suggestList.innerHTML = `
+        <div class="empty-state" style="height:auto; padding: 16px;">
+          <i class="fas fa-search"></i>
+          <div style="font-weight:900;">Sonuç bulunamadı</div>
+          <div style="font-size:0.9rem;">${escapeHtml(text || 'Arama terimini değiştirip tekrar deneyin.')}</div>
+        </div>
+      `;
+      showSuggest();
+    }
+
+    function renderSuggest(customers, queryText) {
+      dom.suggestTitle.textContent = queryText ? `"${queryText}"` : 'Sonuçlar';
+      dom.suggestCount.textContent = String((customers || []).length);
+      dom.suggestList.innerHTML = (customers || []).map(c => {
+        const code = escapeHtml(c.customer_code || '');
+        const name = escapeHtml(c.customer_name || '');
+        const overrideCount = Number(c.override_count || 0);
+        return `
+          <div class="suggest-item" data-code="${code}">
+            <div class="suggest-main">
+              <div class="suggest-code">${code}</div>
+              <div class="suggest-name">${name}</div>
+            </div>
+            ${overrideCount > 0 ? `<span class="override-pill">${overrideCount} kural</span>` : ''}
+          </div>
+        `;
+      }).join('');
+      showSuggest();
+
+      dom.suggestList.querySelectorAll('.suggest-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const code = el.getAttribute('data-code') || '';
+          const customer = (customers || []).find(x => String(x.customer_code) === String(code));
+          if (customer) {
+            hideSuggest();
+            selectCustomer(customer);
+          }
+        });
+      });
+    }
+
+    async function searchCustomers(queryText) {
+      const s = String(queryText || '').trim();
+      if (!s || s.length < 2) {
+        hideSuggest();
+        return;
+      }
+
+      renderSuggestLoading();
+
+      try {
+        const params = new URLSearchParams({ limit: String(suggestLimit), offset: '0', search: s });
+        const response = await fetch(`/api/b2b/admin/customers?${params.toString()}`, {
+          method: 'GET',
+          headers: setAuthHeaders({})
+        });
+        if (!response.ok) throw new Error(`API hatası: ${response.status}`);
+        const result = await response.json();
+        if (!result.success) throw new Error(result.error || 'API başarısız');
+
+        const customers = result.data || [];
+        if (!customers.length) {
+          renderSuggestEmpty('En az 2 karakter yazın veya farklı bir arama deneyin.');
+          return;
+        }
+
+        renderSuggest(customers, s);
+      } catch (e) {
+        dom.suggestTitle.textContent = 'Hata';
+        dom.suggestCount.textContent = '!';
+        dom.suggestList.innerHTML = `
+          <div class="empty-state" style="height:auto; padding: 16px;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div style="font-weight:900;">Arama başarısız</div>
+            <div style="font-size:0.9rem;">Tekrar deneyin.</div>
+          </div>
+        `;
+        showSuggest();
+      }
+    }
+
+    function detectTierCount(overrides) {
+      const types = new Set((overrides || []).map(o => String(o.setting_type || '')));
+      let maxTier = 0;
+      types.forEach(t => {
+        const m = t.match(/^discount_general_(\d+)$/);
+        if (m) maxTier = Math.max(maxTier, Number(m[1]));
+      });
+      generalDiscountTierCount = Math.max(4, maxTier || 0);
+    }
+
+    function showToast(message, variant = 'default') {
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.textContent = message;
+      if (variant === 'danger') {
+        el.style.background = '#991b1b';
+      } else if (variant === 'success') {
+        el.style.background = '#065f46';
+      }
+      document.body.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      setTimeout(() => {
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 250);
+      }, 2200);
+    }
+
+    function overrideKey(settingType, itemCode) {
+      return `${String(settingType || '')}::${String(itemCode || '')}`;
+    }
+
+    function indexOverrides(rows) {
+      overridesByKey = new Map();
+      (rows || []).forEach(r => {
+        overridesByKey.set(overrideKey(r.setting_type, r.item_code), r);
+      });
+    }
+
+    function getOverride(settingType, itemCode = null) {
+      return overridesByKey.get(overrideKey(settingType, itemCode)) || null;
+    }
+
+    function isLogoManagedGeneralDiscounts() {
+      return (currentOverrides || []).some(o => {
+        const st = String(o.setting_type || '');
+        return /^discount_general_\d+$/.test(st) && String(o.description || '') === 'LOGO_PAYMENTREF' && String(o.is_active) !== '0';
+      });
+    }
+
+    async function fetchCustomerOverrides(customerCode) {
+      const response = await fetch(`/api/b2b/admin/customers/${encodeURIComponent(customerCode)}/overrides`, {
+        method: 'GET',
+        headers: setAuthHeaders({})
+      });
+      if (!response.ok) throw new Error(`API hatası: ${response.status}`);
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'API başarısız');
+      return result.data || [];
+    }
+
+    async function saveCustomerOverride(payload) {
+      const response = await fetch('/api/b2b/admin/customers/overrides', {
+        method: 'POST',
+        headers: setAuthHeaders({}),
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error(`API hatası: ${response.status}`);
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Kaydetme başarısız');
+      return result;
+    }
+
+    async function saveCustomerOverridesBatch(customerCode, overrides) {
+      const response = await fetch(`/api/b2b/admin/customers/${encodeURIComponent(customerCode)}/overrides/batch`, {
+        method: 'POST',
+        headers: setAuthHeaders({}),
+        body: JSON.stringify({ overrides: overrides || [] })
+      });
+      if (!response.ok) throw new Error(`API hatası: ${response.status}`);
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || 'Toplu kaydetme başarısız');
+      return result;
+    }
+
+    function setActiveToggle(el, on) {
+      if (!el) return;
+      if (on) el.classList.add('on');
+      else el.classList.remove('on');
+      el.setAttribute('aria-checked', on ? 'true' : 'false');
+    }
+
+    function isOverrideActive(ov) {
+      if (!ov) return false;
+      const v = ov.is_active;
+      return v === 1 || v === true || String(v) === '1' || String(v).toLowerCase() === 'true';
+    }
+
+    function readToggle(el) {
+      return el && el.classList.contains('on');
+    }
+
+    function renderDetailSkeleton(customer) {
+      const code = escapeHtml(customer.customer_code || '');
+      const name = escapeHtml(customer.customer_name || '');
+      const isGlobal = String(customer.customer_code || '') === GLOBAL_CUSTOMER_CODE;
+
+      dom.detailBody.classList.toggle('compact', isGlobal);
+
+      if (isGlobal) {
+        if (selectedGlobalTab === 'priority') {
+          dom.detailBody.innerHTML = `
+            <div class="tab-content active" data-tab-content="priority">
+              <div class="card">
+                <div class="card-title"><i class="fas fa-star"></i> Öncelikli İskonto Kuralları</div>
+                <div style="color: var(--color-gray); font-size: 0.88rem; margin-top: 6px; line-height: 1.45;">
+                  Ürün / Üretici / Genel için ayrı kurallar oluşturabilirsin. Çakışma olursa: Ürün > Üretici > Genel.
+                </div>
+                <div style="display:flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+                  <button class="btn btn-primary" id="btnAddPriorityRuleGeneral"><i class="fas fa-plus"></i> Genel Kural</button>
+                  <button class="btn btn-primary" id="btnAddPriorityRuleItem"><i class="fas fa-plus"></i> Ürün Kuralı</button>
+                  <button class="btn btn-primary" id="btnAddPriorityRuleManufacturer"><i class="fas fa-plus"></i> Üretici Kuralı</button>
+                </div>
+              </div>
+
+              <div class="card" style="margin-top: 12px;">
+                <div id="globalPriorityRules" class="scroll-box tall"></div>
+              </div>
+
+              <div class="card" style="margin-top: 12px;">
+                <div class="card-title"><i class="fas fa-circle-info"></i> Kural Özeti</div>
+                <div id="priorityRuleSummary" style="color: var(--color-gray); font-size: 0.9rem; line-height: 1.55;"></div>
+                <div style="display:flex; justify-content:flex-end; margin-top: 10px;">
+                  <button class="btn btn-danger" id="btnDeletePriorityRule"><i class="fas fa-trash"></i> Sil</button>
+                </div>
+              </div>
+
+              <div class="footer-bar">
+                <div class="status saveStatus"><i class="fas fa-circle-info"></i> Hazır</div>
+                <button class="btn btn-primary btnSaveAll"><i class="fas fa-save"></i> Kaydet</button>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        dom.detailBody.innerHTML = `
+          <div class="tab-content active" data-tab-content="bulk">
+            <div class="grid-2">
+              <div class="card">
+                <div class="card-title"><i class="fas fa-bolt"></i> Hemen Al</div>
+                <div class="field" style="margin-bottom: 10px;">
+                  <div class="label">İndirim (%)</div>
+                  <input class="input" id="inputBuyNowDiscountRate" type="number" min="0" max="100" step="0.01" placeholder="Örn: 3" />
+                </div>
+                <div class="switch">
+                  <div class="left">
+                    <div class="title">Aktif</div>
+                    <div class="desc">Ödeme adımında uygulanır.</div>
+                  </div>
+                  <div class="toggle" id="toggleBuyNowDiscount" role="switch" aria-checked="false"></div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-title"><i class="fas fa-globe"></i> Genel İskonto</div>
+                <div id="globalGeneralDiscountTiers" class="scroll-box"></div>
+                <div style="display:flex; align-items:center; justify-content: space-between; gap: 10px;">
+                  <span class="badge" id="globalTierBadge">4 kademe</span>
+                  <div style="display:flex; gap: 8px;">
+                    <button class="btn btn-primary" id="btnAddGlobalTier"><i class="fas fa-plus"></i></button>
+                    <button class="btn" id="btnRemoveGlobalTier"><i class="fas fa-minus"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top: 12px; display:flex; flex-direction:column; gap: 12px;">
+              <div class="card">
+                <div class="card-title"><i class="fas fa-industry"></i> Üreticiler (Genel)</div>
+                <div id="globalManufacturerRules" class="scroll-box tall"></div>
+                <button class="btn btn-primary" id="btnAddGlobalManufacturer"><i class="fas fa-plus"></i> Kural</button>
+              </div>
+
+              <div class="card">
+                <div class="card-title"><i class="fas fa-box"></i> Malzeme Kodları (Genel)</div>
+                <div id="globalItemRules" class="scroll-box tall"></div>
+                <button class="btn btn-primary" id="btnAddGlobalItem"><i class="fas fa-plus"></i> Kural</button>
+              </div>
+            </div>
+
+            <div class="footer-bar">
+              <div class="status saveStatus"><i class="fas fa-circle-info"></i> Hazır</div>
+              <button class="btn btn-primary btnSaveAll"><i class="fas fa-save"></i> Kaydet</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      dom.detailBody.innerHTML = `
+        <div class="tabs" id="tabs">
+          <div class="tab ${selectedTab === 'general' ? 'active' : ''}" data-tab="general"><i class="fas fa-sliders"></i> Genel</div>
+          <div class="tab ${selectedTab === 'discount' ? 'active' : ''}" data-tab="discount"><i class="fas fa-percent"></i> İskonto</div>
+          <div class="tab ${selectedTab === 'payment' ? 'active' : ''}" data-tab="payment"><i class="fas fa-credit-card"></i> Ödeme</div>
+        </div>
+
+        <div class="tab-content ${selectedTab === 'general' ? 'active' : ''}" data-tab-content="general">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title"><i class="fas fa-user"></i> Müşteri</div>
+              <div class="field">
+                <div class="label">Müşteri Kodu</div>
+                <input class="input" value="${code}" disabled />
+              </div>
+              <div class="field">
+                <div class="label">Müşteri Adı</div>
+                <input class="input" value="${name}" disabled />
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title"><i class="fas fa-toggle-on"></i> Durum</div>
+              <div class="switch">
+                <div class="left">
+                  <div class="title">B2B erişimi</div>
+                  <div class="desc">Bu müşteri B2B portalını kullanabilsin mi?</div>
+                </div>
+                <div class="toggle" id="toggleCustomerActive" role="switch" aria-checked="false"></div>
+              </div>
+              <div style="margin-top:10px; font-size:0.85rem; color: var(--color-gray);">
+                Not: Bu ayar LogoGO3'e yazmaz, yalnızca overlay katmanında tutulur.
+              </div>
+            </div>
+          </div>
+
+          <div class="footer-bar">
+            <div class="status saveStatus"><i class="fas fa-circle-info"></i> Değişiklikleri kaydetmek için "Kaydet"'e basın.</div>
+            <div style="display:flex; gap: 8px;">
+              <button class="btn btn-primary btnSaveAll"><i class="fas fa-save"></i> Kaydet</button>
+              <button class="btn btnCloseCustomer"><i class="fas fa-xmark"></i> Kapat</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content ${selectedTab === 'discount' ? 'active' : ''}" data-tab-content="discount">
+          <div class="card" style="margin-bottom: 12px;">
+            <div class="card-title"><i class="fas fa-sort-amount-down"></i> Öncelik</div>
+            <div class="field" style="margin-bottom:0;">
+              <div class="label">İskonto öncelik sırası</div>
+              <select class="select" id="selectDiscountPriority">
+                <option value="item>manufacturer>general">Ürün > Üretici > Genel</option>
+                <option value="manufacturer>item>general">Üretici > Ürün > Genel</option>
+                <option value="general>manufacturer>item">Genel > Üretici > Ürün</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom: 12px;">
+            <div class="card-title"><i class="fas fa-globe"></i> Genel İskonto Kademeleri</div>
+            <div style="color: var(--color-gray); font-size: 0.88rem; margin-bottom: 10px; line-height: 1.45;">
+              Varsayılan 4 kademe ile başlar. İstersen kademeleri artırıp azaltabilirsin.
+            </div>
+            <div id="generalDiscountTiers"></div>
+            <div style="display:flex; align-items:center; justify-content: space-between; gap: 10px;">
+              <span class="badge" id="generalTierBadge">4 kademe</span>
+              <div style="display:flex; gap: 8px;">
+                <button class="btn btn-primary" id="btnAddGeneralTier"><i class="fas fa-plus"></i> Kademe Ekle</button>
+                <button class="btn" id="btnRemoveGeneralTier"><i class="fas fa-minus"></i> Kademe Sil</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom: 12px;">
+            <div class="card-title"><i class="fas fa-industry"></i> Üretici Bazlı</div>
+            <div id="manufacturerRules"></div>
+            <button class="btn btn-primary" id="btnAddManufacturer"><i class="fas fa-plus"></i> Kural Ekle</button>
+          </div>
+
+          <div class="card">
+            <div class="card-title"><i class="fas fa-box"></i> Ürün Bazlı</div>
+            <div id="itemRules"></div>
+            <button class="btn btn-primary" id="btnAddItem"><i class="fas fa-plus"></i> Kural Ekle</button>
+          </div>
+
+          <div class="footer-bar">
+            <div class="status saveStatus"><i class="fas fa-circle-info"></i> Değişiklikleri kaydetmek için "Kaydet"'e basın.</div>
+            <button class="btn btn-primary btnSaveAll"><i class="fas fa-save"></i> Kaydet</button>
+          </div>
+        </div>
+
+        <div class="tab-content ${selectedTab === 'payment' ? 'active' : ''}" data-tab-content="payment">
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title"><i class="fas fa-money-check-alt"></i> Ödeme Tipi</div>
+              <div class="field">
+                <div class="label">Seçim</div>
+                <select class="select" id="selectPaymentMode">
+                  <option value="single">Tek çekim</option>
+                  <option value="installment">Taksit</option>
+                </select>
+              </div>
+              <div class="field" id="installmentCountWrap" style="display:none;">
+                <div class="label">Taksit sayısı</div>
+                <input class="input" id="inputInstallmentCount" type="number" min="2" max="12" step="1" placeholder="Örn: 3" />
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title"><i class="fas fa-info-circle"></i> Not</div>
+              <div style="color: var(--color-gray); font-size: 0.9rem; line-height: 1.5;">
+                Bu ayarlar yalnızca B2B sipariş akışını etkiler. LogoGO3 tarafına doğrudan yazılmaz.
+              </div>
+            </div>
+          </div>
+
+          <div class="footer-bar">
+            <div class="status saveStatus"><i class="fas fa-circle-info"></i> Değişiklikleri kaydetmek için "Kaydet"'e basın.</div>
+            <button class="btn btn-primary btnSaveAll"><i class="fas fa-save"></i> Kaydet</button>
+          </div>
+        </div>
+
+        <div class="tab-content ${selectedTab === 'bulk' ? 'active' : ''}" data-tab-content="bulk">
+          <div class="card" style="margin-bottom: 12px;">
+            <div class="card-title"><i class="fas fa-layer-group"></i> Toplu Ayarlar (Tüm Müşteriler)</div>
+            <div style="color: var(--color-gray); font-size: 0.9rem; line-height: 1.5;">
+              Buradaki kurallar tüm müşteriler için varsayılan olur. Müşteri özel tanımlı bir kural varsa her zaman önceliklidir.
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title"><i class="fas fa-bolt"></i> Hemen Al İndirimi</div>
+              <div class="field">
+                <div class="label">İndirim oranı (%)</div>
+                <input class="input" id="inputBuyNowDiscountRate" type="number" min="0" max="100" step="0.01" placeholder="Örn: 3" />
+              </div>
+              <div class="switch" style="margin-top: 10px;">
+                <div class="left">
+                  <div class="title">Aktif</div>
+                  <div class="desc">Ödeme adımında uygulanır (sepet özetine yansımaz).</div>
+                </div>
+                <div class="toggle" id="toggleBuyNowDiscount" role="switch" aria-checked="false"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title"><i class="fas fa-globe"></i> Tüm Müşteriler İçin Genel İskonto</div>
+              <div style="color: var(--color-gray); font-size: 0.88rem; margin-bottom: 10px; line-height: 1.45;">
+                Genel iskonto kademeleri. Müşteri özel kademeleri varsa onlar geçerlidir.
+              </div>
+              <div id="globalGeneralDiscountTiers"></div>
+              <div style="display:flex; align-items:center; justify-content: space-between; gap: 10px;">
+                <span class="badge" id="globalTierBadge">4 kademe</span>
+                <div style="display:flex; gap: 8px;">
+                  <button class="btn btn-primary" id="btnAddGlobalTier"><i class="fas fa-plus"></i> Kademe Ekle</button>
+                  <button class="btn" id="btnRemoveGlobalTier"><i class="fas fa-minus"></i> Kademe Sil</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom: 12px;">
+            <div class="card-title"><i class="fas fa-industry"></i> Üretici İskontoları (Global)</div>
+            <div id="globalManufacturerRules"></div>
+            <button class="btn btn-primary" id="btnAddGlobalManufacturer"><i class="fas fa-plus"></i> Kural Ekle</button>
+          </div>
+
+          <div class="card">
+            <div class="card-title"><i class="fas fa-box"></i> Ürün İskontoları (Global)</div>
+            <div id="globalItemRules"></div>
+            <button class="btn btn-primary" id="btnAddGlobalItem"><i class="fas fa-plus"></i> Kural Ekle</button>
+          </div>
+
+          <div class="footer-bar">
+            <div class="status saveStatus"><i class="fas fa-circle-info"></i> Değişiklikleri kaydetmek için "Kaydet"'e basın.</div>
+            <div style="display:flex; gap: 8px;">
+              <button class="btn btn-primary btnSaveAll"><i class="fas fa-save"></i> Kaydet</button>
+              <button class="btn btnCloseCustomer"><i class="fas fa-xmark"></i> Kapat</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRuleRow(container, type, rule) {
+      const row = document.createElement('div');
+      row.className = 'rule-row';
+      row.dataset.type = type;
+
+      const codeLabel = type === 'manufacturer' ? 'Üretici kodu' : 'Ürün kodu';
+      row.innerHTML = `
+        <div class="field" style="margin-bottom:0;">
+          <div class="label">${codeLabel}</div>
+          <input class="input" data-field="code" placeholder="Örn: ABC" value="${escapeHtml(rule.item_code || '')}" />
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <div class="label">Oran (%)</div>
+          <input class="input" data-field="rate" type="number" min="0" max="100" step="0.01" placeholder="Örn: 10" value="${escapeHtml(rule.value || '')}" />
+        </div>
+        <div class="rule-actions">
+          <button class="btn btn-danger" data-action="disable"><i class="fas fa-ban"></i></button>
+          <button class="btn btn-primary" data-action="save"><i class="fas fa-check"></i></button>
+        </div>
+      `;
+
+      row.dataset.id = rule.id ? String(rule.id) : '';
+      row.dataset.settingType = String(rule.setting_type || '');
+      row.dataset.itemCode = String(rule.item_code || '');
+      container.appendChild(row);
+      return row;
+    }
+
+    function buildRuleFromRow(customerCode, row) {
+      const type = row.dataset.type;
+      const settingType = type === 'manufacturer' ? 'discount_manufacturer' : 'discount_item';
+      const id = row.dataset.id ? Number(row.dataset.id) : undefined;
+      const code = row.querySelector('[data-field="code"]').value.trim();
+      const rateStr = row.querySelector('[data-field="rate"]').value;
+      const rate = rateStr === '' ? '' : Number(rateStr);
+
+      return {
+        ...(id ? { id } : {}),
+        customer_code: customerCode,
+        setting_type: settingType,
+        item_code: code || null,
+        value: rate === '' ? '' : rate,
+        value_type: 'percent',
+        description: '',
+        is_active: 1
+      };
+    }
+
+    async function hydrateDetail(customer) {
+      const customerCode = String(customer.customer_code || '');
+
+      if (customerCode !== GLOBAL_CUSTOMER_CODE && !selectedTab) selectedTab = 'general';
+
+      renderDetailSkeleton(customer);
+
+      dom.customerSearch = document.getElementById('customerSearch');
+      dom.customerSuggest = document.getElementById('customerSuggest');
+      dom.suggestList = document.getElementById('suggestList');
+      dom.suggestTitle = document.getElementById('suggestTitle');
+      dom.suggestCount = document.getElementById('suggestCount');
+
+      const setStatusForTab = (tabKey, text, icon = 'fa-circle-info') => {
+        const content = dom.detailBody.querySelector(`.tab-content[data-tab-content="${tabKey}"]`);
+        const el = content ? content.querySelector('.saveStatus') : null;
+        if (!el) return;
+        el.innerHTML = `<i class="fas ${icon}"></i> ${escapeHtml(text)}`;
+      };
+
+      try {
+        setStatusForTab(selectedTab, 'Ayarlar yükleniyor...', 'fa-spinner');
+        const activeStatus = dom.detailBody.querySelector('.tab-content.active .saveStatus i');
+        if (activeStatus) activeStatus.style.animation = 'spin 1s linear infinite';
+        currentOverrides = await fetchCustomerOverrides(customerCode);
+        detectTierCount(currentOverrides);
+        indexOverrides(currentOverrides);
+      } catch (e) {
+        currentOverrides = [];
+        detectTierCount([]);
+        indexOverrides([]);
+        showToast('Ayarlar yüklenemedi', 'danger');
+      }
+
+      if (customerCode === GLOBAL_CUSTOMER_CODE) {
+        if (selectedGlobalTab === 'priority') {
+          hydrateGlobalPriorityTabFromOverrides();
+          setStatusForTab('priority', 'Hazır', 'fa-circle-info');
+        } else {
+          hydrateGlobalTabFromOverrides();
+          setStatusForTab('bulk', 'Hazır', 'fa-circle-info');
+        }
+      }
+
+      if (customerCode !== GLOBAL_CUSTOMER_CODE) {
+        const ovActive = getOverride('customer_active', null);
+        const toggleCustomerActive = document.getElementById('toggleCustomerActive');
+        if (toggleCustomerActive) {
+          setActiveToggle(toggleCustomerActive, ovActive ? String(ovActive.value) === '1' : true);
+          toggleCustomerActive.addEventListener('click', () => setActiveToggle(toggleCustomerActive, !readToggle(toggleCustomerActive)));
+        }
+
+        const priority = getOverride('discount_priority', null);
+        const selectPriority = document.getElementById('selectDiscountPriority');
+        if (priority && selectPriority) selectPriority.value = String(priority.value || selectPriority.value);
+
+        const tierWrap = document.getElementById('generalDiscountTiers');
+        const tierBadge = document.getElementById('generalTierBadge');
+        const btnAddTier = document.getElementById('btnAddGeneralTier');
+        const btnRemoveTier = document.getElementById('btnRemoveGeneralTier');
+ 
+        if (tierWrap && tierBadge && btnAddTier && btnRemoveTier) {
+          const logoManaged = isLogoManagedGeneralDiscounts();
+          btnAddTier.disabled = !!logoManaged;
+          btnRemoveTier.disabled = !!logoManaged || generalDiscountTierCount <= 1;
+
+          function renderTiers() {
+            tierWrap.innerHTML = '';
+            tierBadge.textContent = `${generalDiscountTierCount} kademe`;
+            btnRemoveTier.disabled = !!logoManaged || generalDiscountTierCount <= 1;
+
+            for (let i = 1; i <= generalDiscountTierCount; i++) {
+              const ov = getOverride(`discount_general_${i}`, null);
+              const row = document.createElement('div');
+              row.className = 'rule-row';
+              row.dataset.tier = String(i);
+              row.innerHTML = `
+                <div class="field" style="margin-bottom:0;">
+                  <div class="label">Kademe ${i} oran (%)</div>
+                  <input class="input" data-field="rate" type="number" min="0" max="100" step="0.01" placeholder="Örn: 5" value="${escapeHtml(ov ? ov.value : '')}" />
+                </div>
+                <div class="field" style="margin-bottom:0;">
+                  <div class="label">Durum</div>
+                  <div class="toggle" data-field="toggle" role="switch" aria-checked="false"></div>
+                </div>
+                <div class="rule-actions">
+                  <button class="btn btn-danger" data-action="disable" title="Devre dışı bırak"><i class="fas fa-ban"></i></button>
+                </div>
+              `;
+
+              const tgl = row.querySelector('[data-field="toggle"]');
+              setActiveToggle(tgl, ov ? String(ov.is_active) === '1' : (i <= 4));
+              if (!logoManaged) {
+                tgl.addEventListener('click', () => setActiveToggle(tgl, !readToggle(tgl)));
+              }
+
+              const rateEl = row.querySelector('[data-field="rate"]');
+              if (rateEl) rateEl.disabled = !!logoManaged;
+              if (tgl) {
+                if (logoManaged) tgl.classList.add('disabled');
+                else tgl.classList.remove('disabled');
+              }
+
+              tierWrap.appendChild(row);
+            }
+          }
+
+          btnAddTier.addEventListener('click', () => {
+            generalDiscountTierCount += 1;
+            renderTiers();
+          });
+          btnRemoveTier.addEventListener('click', () => {
+            if (generalDiscountTierCount <= 1) return;
+            generalDiscountTierCount -= 1;
+            renderTiers();
+          });
+
+          renderTiers();
+        }
+
+        const selectPaymentMode = document.getElementById('selectPaymentMode');
+        const installmentWrap = document.getElementById('installmentCountWrap');
+        const inputInstallmentCount = document.getElementById('inputInstallmentCount');
+        const ovPayMode = getOverride('payment_mode', null);
+        const ovInstallCount = getOverride('installment_count', null);
+        if (selectPaymentMode && ovPayMode && ovPayMode.value) selectPaymentMode.value = String(ovPayMode.value);
+        if (inputInstallmentCount && ovInstallCount && ovInstallCount.value !== undefined) inputInstallmentCount.value = String(ovInstallCount.value);
+        if (selectPaymentMode && installmentWrap) {
+          const syncPaymentUI = () => {
+            const mode = selectPaymentMode.value;
+            installmentWrap.style.display = mode === 'installment' ? 'block' : 'none';
+          };
+          selectPaymentMode.addEventListener('change', syncPaymentUI);
+          syncPaymentUI();
+        }
+
+        const manContainer = document.getElementById('manufacturerRules');
+        const itemContainer = document.getElementById('itemRules');
+        if (manContainer && itemContainer) {
+          manContainer.innerHTML = '';
+          itemContainer.innerHTML = '';
+          currentOverrides
+            .filter(r => String(r.setting_type) === 'discount_manufacturer' && String(r.is_active) !== '0')
+            .forEach(r => renderRuleRow(manContainer, 'manufacturer', r));
+          currentOverrides
+            .filter(r => String(r.setting_type) === 'discount_item' && String(r.is_active) !== '0')
+            .forEach(r => renderRuleRow(itemContainer, 'item', r));
+
+          const btnAddMan = document.getElementById('btnAddManufacturer');
+          const btnAddItem = document.getElementById('btnAddItem');
+          if (btnAddMan) btnAddMan.addEventListener('click', () => {
+            renderRuleRow(manContainer, 'manufacturer', { setting_type: 'discount_manufacturer', item_code: '', value: '' });
+          });
+          if (btnAddItem) btnAddItem.addEventListener('click', () => {
+            renderRuleRow(itemContainer, 'item', { setting_type: 'discount_item', item_code: '', value: '' });
+          });
+        }
+      }
+
+      dom.detailBody.querySelectorAll('.rule-row').forEach(row => {
+        row.addEventListener('click', async (e) => {
+          const actionBtn = e.target.closest('button');
+          if (!actionBtn) return;
+          const action = actionBtn.getAttribute('data-action');
+          if (!action) return;
+
+          if (action === 'disable') {
+            const id = row.dataset.id ? Number(row.dataset.id) : null;
+            if (!id) {
+              row.remove();
+              return;
+            }
+            try {
+              actionBtn.disabled = true;
+              await saveCustomerOverride({
+                id: id,
+                customer_code: customerCode,
+                setting_type: row.dataset.settingType,
+                item_code: row.dataset.itemCode || null,
+                value: '0',
+                value_type: 'percent',
+                description: '',
+                is_active: 0
+              });
+              showToast(`Kural devre dışı`, 'success');
+              await hydrateDetail(customer);
+            } catch (err) {
+              showToast('Kural devre dışı bırakılamadı', 'danger');
+            } finally {
+              actionBtn.disabled = false;
+            }
+            return;
+          }
+
+          if (action === 'save') {
+            const payload = buildRuleFromRow(customerCode, row);
+            if (!payload.item_code) {
+              showToast('Kod boş olamaz', 'danger');
+              return;
+            }
+            if (payload.value === '' || Number.isNaN(Number(payload.value))) {
+              showToast('Oran geçersiz', 'danger');
+              return;
+            }
+            try {
+              actionBtn.disabled = true;
+              await saveCustomerOverride(payload);
+              showToast('Kural kaydedildi', 'success');
+              await hydrateDetail(customer);
+            } catch (err) {
+              showToast('Kural kaydedilemedi', 'danger');
+            } finally {
+              actionBtn.disabled = false;
+            }
+          }
+        });
+      });
+
+      dom.detailBody.querySelectorAll('.tab').forEach(t => {
+        t.addEventListener('click', () => {
+          if (t.classList.contains('disabled')) return;
+          const nextTab = t.getAttribute('data-tab');
+          selectedTab = nextTab;
+          dom.detailBody.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+          t.classList.add('active');
+          dom.detailBody.querySelectorAll('.tab-content').forEach(c => {
+            c.classList.toggle('active', c.getAttribute('data-tab-content') === selectedTab);
+          });
+
+          // Tab değişince status mesajını o sekme için resetle
+          setStatusForTab(selectedTab, 'Hazır', 'fa-circle-info');
+          if (window.__setSideActive) window.__setSideActive(selectedTab);
+        });
+      });
+
+      // Per-tab save buttons (event delegation)
+      if (!dom.detailBody.dataset.saveBound) {
+        dom.detailBody.dataset.saveBound = '1';
+        dom.detailBody.addEventListener('click', async (e) => {
+          const activeCustomer = selectedCustomer || { customer_code: GLOBAL_CUSTOMER_CODE, customer_name: '', group_code: '-' };
+          const activeCustomerCode = String(activeCustomer.customer_code || GLOBAL_CUSTOMER_CODE);
+          const isGlobalActive = activeCustomerCode === GLOBAL_CUSTOMER_CODE;
+
+          const closeBtn = e.target.closest('.btnCloseCustomer');
+          if (closeBtn) {
+            selectCustomer({ customer_code: GLOBAL_CUSTOMER_CODE, customer_name: '', group_code: '-' });
+            return;
+          }
+
+          const btn = e.target.closest('.btnSaveAll');
+          if (!btn) return;
+          const tabContent = btn.closest('.tab-content');
+          const tabKey = tabContent ? tabContent.getAttribute('data-tab-content') : selectedTab;
+
+          if (isSaving) return;
+          isSaving = true;
+          btn.disabled = true;
+          setStatusForTab(tabKey, 'Kaydediliyor...', 'fa-spinner');
+          const iEl = tabContent ? tabContent.querySelector('.saveStatus i') : null;
+          if (iEl) iEl.style.animation = 'spin 1s linear infinite';
+
+          try {
+          if (isGlobalActive) {
+            const payloads = [];
+
+            if (tabKey === 'priority') {
+              const rulesWrap = document.getElementById('globalPriorityRules');
+              const cards = Array.from((rulesWrap ? rulesWrap.querySelectorAll('.priority-rule-card') : []));
+
+              const flags = [
+                { field: 'disable_customer_discounts', st: 'priority_rule_disable_customer_discounts' },
+                { field: 'disable_general_discounts', st: 'priority_rule_disable_general_discounts' },
+                { field: 'disable_manufacturer_discounts', st: 'priority_rule_disable_manufacturer_discounts' },
+                { field: 'disable_item_discounts', st: 'priority_rule_disable_item_discounts' },
+                { field: 'disable_campaigns', st: 'priority_rule_disable_campaigns' },
+                { field: 'disable_special_discounts', st: 'priority_rule_disable_special_discounts' }
+              ];
+
+              cards.forEach(card => {
+                const scopeType = String(card.querySelector('[data-field="scopeType"]')?.value || 'GENERAL').trim();
+                const scopeCode = String(card.querySelector('[data-field="scopeCode"]')?.value || '').trim();
+                let scopeKey = 'GENERAL';
+                if (scopeType === 'ITEM') {
+                  if (!scopeCode) throw new Error('Ürün kuralında ürün kodu boş olamaz');
+                  scopeKey = `ITEM:${scopeCode}`;
+                } else if (scopeType === 'MAN') {
+                  if (!scopeCode) throw new Error('Üretici kuralında üretici kodu boş olamaz');
+                  scopeKey = `MAN:${scopeCode}`;
+                }
+
+                const tierCount = Number(card.dataset.tierCount || '2') || 2;
+                const existingTiers = (currentOverrides || [])
+                  .filter(o => String(o.setting_type || '').match(/^priority_rule_discount_(\d+)$/) && String(o.item_code || '') === scopeKey)
+                  .map(o => Number(String(o.setting_type).match(/^priority_rule_discount_(\d+)$/)[1]))
+                  .filter(Boolean);
+                const maxExisting = existingTiers.length ? Math.max(...existingTiers) : 0;
+                const maxTier = Math.max(tierCount, maxExisting, 1);
+
+                for (let i = 1; i <= maxTier; i++) {
+                  const settingType = `priority_rule_discount_${i}`;
+                  const existing = getOverride(settingType, scopeKey);
+                  const row = card.querySelector(`.rule-row[data-tier="${i}"]`);
+                  const rateStr = row ? String(row.querySelector('[data-field="rate"]').value || '').trim() : '';
+                  const enabled = row ? (readToggle(row.querySelector('[data-field="toggle"]')) || rateStr !== '') : false;
+
+                  if (i <= tierCount && enabled && rateStr !== '') {
+                    const val = Number(rateStr);
+                    if (Number.isNaN(val)) throw new Error(`Kural oranı geçersiz (Kademe ${i})`);
+                    payloads.push({
+                      ...(existing?.id ? { id: existing.id } : {}),
+                      customer_code: activeCustomerCode,
+                      setting_type: settingType,
+                      item_code: scopeKey,
+                      value: val,
+                      value_type: 'percent',
+                      description: '',
+                      is_active: 1
+                    });
+                  } else if (existing?.id) {
+                    payloads.push({
+                      id: existing.id,
+                      customer_code: activeCustomerCode,
+                      setting_type: settingType,
+                      item_code: scopeKey,
+                      value: existing.value || '0',
+                      value_type: existing.value_type || 'percent',
+                      description: existing.description || '',
+                      is_active: 0
+                    });
+                  }
+                }
+
+                flags.forEach(f => {
+                  const el = card.querySelector(`[data-field="${f.field}"]`);
+                  if (!el) return;
+                  const existing = getOverride(f.st, scopeKey);
+                  const enabled = !!el.checked;
+                  if (enabled) {
+                    payloads.push({
+                      ...(existing?.id ? { id: existing.id } : {}),
+                      customer_code: activeCustomerCode,
+                      setting_type: f.st,
+                      item_code: scopeKey,
+                      value: '1',
+                      value_type: 'boolean',
+                      description: '',
+                      is_active: 1
+                    });
+                  } else if (existing?.id) {
+                    payloads.push({
+                      id: existing.id,
+                      customer_code: activeCustomerCode,
+                      setting_type: f.st,
+                      item_code: scopeKey,
+                      value: existing.value || '0',
+                      value_type: existing.value_type || 'boolean',
+                      description: existing.description || '',
+                      is_active: 0
+                    });
+                  }
+                });
+              });
+
+              if (!payloads.length) throw new Error('Kaydedilecek ayar yok');
+              await saveCustomerOverridesBatch(activeCustomerCode, payloads);
+              showToast('Öncelikli iskonto ayarları kaydedildi', 'success');
+              setStatusForTab(tabKey, 'Kaydedildi', 'fa-check');
+              await hydrateDetail(activeCustomer);
+              return;
+            }
+
+            const buyNowRateStr = String((document.getElementById('inputBuyNowDiscountRate')?.value || '')).trim();
+            const buyNowEnabled = readToggle(document.getElementById('toggleBuyNowDiscount'));
+            if (buyNowRateStr !== '' && buyNowEnabled) {
+              const existing = getOverride('buy_now_discount_rate', null);
+              const val = Number(buyNowRateStr);
+              if (Number.isNaN(val)) throw new Error('Hemen Al indirim oranı geçersiz');
+              payloads.push({
+                ...(existing?.id ? { id: existing.id } : {}),
+                customer_code: activeCustomerCode,
+                setting_type: 'buy_now_discount_rate',
+                item_code: null,
+                value: val,
+                value_type: 'percent',
+                description: '',
+                is_active: 1
+              });
+            } else {
+              const existing = getOverride('buy_now_discount_rate', null);
+              if (existing?.id) {
+                payloads.push({
+                  id: existing.id,
+                  customer_code: activeCustomerCode,
+                  setting_type: 'buy_now_discount_rate',
+                  item_code: null,
+                  value: existing.value || '0',
+                  value_type: existing.value_type || 'percent',
+                  description: existing.description || '',
+                  is_active: 0
+                });
+              }
+            }
+
+            const maxTier = Math.max(globalTierCount, 4);
+            for (let i = 1; i <= maxTier; i++) {
+              const settingType = `discount_general_${i}`;
+              const existing = getOverride(settingType, null);
+              const row = document.querySelector(`.rule-row[data-global-tier="${i}"]`);
+              const rateStr = row ? String(row.querySelector('[data-field="rate"]').value || '').trim() : '';
+              const enabled = row ? (readToggle(row.querySelector('[data-field="toggle"]')) || rateStr !== '') : false;
+              if (i <= globalTierCount && enabled && rateStr !== '') {
+                const val = Number(rateStr);
+                if (Number.isNaN(val)) throw new Error(`Global Kademe ${i} oranı geçersiz`);
+                payloads.push({
+                  ...(existing?.id ? { id: existing.id } : {}),
+                  customer_code: activeCustomerCode,
+                  setting_type: settingType,
+                  item_code: null,
+                  value: val,
+                  value_type: 'percent',
+                  description: '',
+                  is_active: 1
+                });
+              } else if (existing?.id) {
+                payloads.push({
+                  id: existing.id,
+                  customer_code: activeCustomerCode,
+                  setting_type: settingType,
+                  item_code: null,
+                  value: existing.value || '0',
+                  value_type: existing.value_type || 'percent',
+                  description: existing.description || '',
+                  is_active: 0
+                });
+              }
+            }
+
+            document.querySelectorAll('#globalManufacturerRules .rule-row').forEach(r => {
+              const codeVal = String(r.querySelector('[data-field="code"]').value || '').trim();
+              const rateVal = String(r.querySelector('[data-field="rate"]').value || '').trim();
+              if (!codeVal || rateVal === '') return;
+              const existing = getOverride('discount_manufacturer', codeVal);
+              const val = Number(rateVal);
+              if (Number.isNaN(val)) return;
+              payloads.push({
+                ...(existing?.id ? { id: existing.id } : {}),
+                customer_code: activeCustomerCode,
+                setting_type: 'discount_manufacturer',
+                item_code: codeVal,
+                value: val,
+                value_type: 'percent',
+                description: '',
+                is_active: 1
+              });
+            });
+
+            document.querySelectorAll('#globalItemRules .rule-row').forEach(r => {
+              const codeVal = String(r.querySelector('[data-field="code"]').value || '').trim();
+              const rateVal = String(r.querySelector('[data-field="rate"]').value || '').trim();
+              if (!codeVal || rateVal === '') return;
+              const existing = getOverride('discount_item', codeVal);
+              const val = Number(rateVal);
+              if (Number.isNaN(val)) return;
+              payloads.push({
+                ...(existing?.id ? { id: existing.id } : {}),
+                customer_code: activeCustomerCode,
+                setting_type: 'discount_item',
+                item_code: codeVal,
+                value: val,
+                value_type: 'percent',
+                description: '',
+                is_active: 1
+              });
+            });
+
+            if (!payloads.length) throw new Error('Kaydedilecek ayar yok');
+            await saveCustomerOverridesBatch(activeCustomerCode, payloads);
+            showToast('Toplu ayarlar kaydedildi', 'success');
+            setStatusForTab(tabKey, 'Kaydedildi', 'fa-check');
+            await hydrateDetail(activeCustomer);
+            return;
+          }
+
+          const payloads = [];
+
+          // DOM refs must be resolved at click-time (tabs render dynamically)
+          const toggleCustomerActiveEl = document.getElementById('toggleCustomerActive');
+          const selectPriorityEl = document.getElementById('selectDiscountPriority');
+          const selectPaymentModeEl = document.getElementById('selectPaymentMode');
+          const inputInstallmentCountEl = document.getElementById('inputInstallmentCount');
+
+          if (tabKey === 'general') {
+            if (!toggleCustomerActiveEl) throw new Error('Genel ayarlar yüklenemedi');
+            const ovActiveExisting = getOverride('customer_active', null);
+            payloads.push({
+              ...(ovActiveExisting?.id ? { id: ovActiveExisting.id } : {}),
+              customer_code: activeCustomerCode,
+              setting_type: 'customer_active',
+              item_code: null,
+              value: readToggle(toggleCustomerActiveEl) ? '1' : '0',
+              value_type: 'boolean',
+              description: '',
+              is_active: 1
+            });
+          }
+
+          if (tabKey === 'discount') {
+            if (!selectPriorityEl) throw new Error('İskonto ayarları yüklenemedi');
+
+            const ovPriExisting = getOverride('discount_priority', null);
+            payloads.push({
+              ...(ovPriExisting?.id ? { id: ovPriExisting.id } : {}),
+              customer_code: activeCustomerCode,
+              setting_type: 'discount_priority',
+              item_code: null,
+              value: String(selectPriorityEl.value),
+              value_type: 'string',
+              description: '',
+              is_active: 1
+            });
+
+            const existingTiers = (currentOverrides || [])
+              .map(o => String(o.setting_type || ''))
+              .map(t => (t.match(/^discount_general_(\d+)$/) ? Number(t.match(/^discount_general_(\d+)$/)[1]) : 0))
+              .filter(Boolean);
+            const maxExisting = existingTiers.length ? Math.max(...existingTiers) : 0;
+            const maxTier = Math.max(generalDiscountTierCount, maxExisting, 4);
+
+            for (let i = 1; i <= maxTier; i++) {
+              const settingType = `discount_general_${i}`;
+              const ovExisting = getOverride(settingType, null);
+              const row = dom.detailBody.querySelector(`.rule-row[data-tier="${i}"]`);
+              const rateStr = row ? String(row.querySelector('[data-field="rate"]').value || '').trim() : '';
+              const enabled = row ? (readToggle(row.querySelector('[data-field="toggle"]')) || rateStr !== '') : false;
+
+              if (i <= generalDiscountTierCount && enabled && rateStr !== '') {
+                const val = Number(rateStr);
+                if (Number.isNaN(val)) throw new Error(`Kademe ${i} oranı geçersiz`);
+                payloads.push({
+                  ...(ovExisting?.id ? { id: ovExisting.id } : {}),
+                  customer_code: activeCustomerCode,
+                  setting_type: settingType,
+                  item_code: null,
+                  value: val,
+                  value_type: 'percent',
+                  description: '',
+                  is_active: 1
+                });
+              } else if (ovExisting?.id) {
+                payloads.push({
+                  id: ovExisting.id,
+                  customer_code: activeCustomerCode,
+                  setting_type: settingType,
+                  item_code: null,
+                  value: ovExisting.value || '0',
+                  value_type: ovExisting.value_type || 'percent',
+                  description: ovExisting.description || '',
+                  is_active: 0
+                });
+              }
+            }
+
+            const manContainer = document.getElementById('manufacturerRules');
+            const itemContainer = document.getElementById('itemRules');
+
+            if (manContainer) {
+              manContainer.querySelectorAll('.rule-row').forEach(r => {
+                const codeVal = String(r.querySelector('[data-field="code"]')?.value || '').trim();
+                const rateVal = String(r.querySelector('[data-field="rate"]')?.value || '').trim();
+                if (!codeVal || rateVal === '') return;
+                const val = Number(rateVal);
+                if (Number.isNaN(val)) return;
+                const rowId = r.dataset.id ? Number(r.dataset.id) : null;
+                const existing = rowId ? { id: rowId } : getOverride('discount_manufacturer', codeVal);
+
+                payloads.push({
+                  ...(existing?.id ? { id: existing.id } : {}),
+                  customer_code: activeCustomerCode,
+                  setting_type: 'discount_manufacturer',
+                  item_code: codeVal,
+                  value: val,
+                  value_type: 'percent',
+                  description: '',
+                  is_active: 1
+                });
+              });
+            }
+
+            if (itemContainer) {
+              itemContainer.querySelectorAll('.rule-row').forEach(r => {
+                const codeVal = String(r.querySelector('[data-field="code"]')?.value || '').trim();
+                const rateVal = String(r.querySelector('[data-field="rate"]')?.value || '').trim();
+                if (!codeVal || rateVal === '') return;
+                const val = Number(rateVal);
+                if (Number.isNaN(val)) return;
+                const rowId = r.dataset.id ? Number(r.dataset.id) : null;
+                const existing = rowId ? { id: rowId } : getOverride('discount_item', codeVal);
+
+                payloads.push({
+                  ...(existing?.id ? { id: existing.id } : {}),
+                  customer_code: activeCustomerCode,
+                  setting_type: 'discount_item',
+                  item_code: codeVal,
+                  value: val,
+                  value_type: 'percent',
+                  description: '',
+                  is_active: 1
+                });
+              });
+            }
+          }
+
+          if (tabKey === 'payment') {
+            if (!selectPaymentModeEl) throw new Error('Ödeme ayarları yüklenemedi');
+
+            const ovPayModeExisting = getOverride('payment_mode', null);
+            payloads.push({
+              ...(ovPayModeExisting?.id ? { id: ovPayModeExisting.id } : {}),
+              customer_code: activeCustomerCode,
+              setting_type: 'payment_mode',
+              item_code: null,
+              value: String(selectPaymentModeEl.value),
+              value_type: 'string',
+              description: '',
+              is_active: 1
+            });
+
+            const ovInstExisting = getOverride('installment_count', null);
+            if (String(selectPaymentModeEl.value) === 'installment') {
+              const cnt = Number(inputInstallmentCountEl ? inputInstallmentCountEl.value : '');
+              if (!cnt || Number.isNaN(cnt)) {
+                throw new Error('Taksit sayısı girin');
+              }
+              payloads.push({
+                ...(ovInstExisting?.id ? { id: ovInstExisting.id } : {}),
+                customer_code: activeCustomerCode,
+                setting_type: 'installment_count',
+                item_code: null,
+                value: cnt,
+                value_type: 'number',
+                description: '',
+                is_active: 1
+              });
+            } else if (ovInstExisting?.id) {
+              payloads.push({
+                id: ovInstExisting.id,
+                customer_code: activeCustomerCode,
+                setting_type: 'installment_count',
+                item_code: null,
+                value: ovInstExisting.value || '0',
+                value_type: ovInstExisting.value_type || 'number',
+                description: ovInstExisting.description || '',
+                is_active: 0
+              });
+            }
+          }
+
+          if (!payloads.length) throw new Error('Kaydedilecek ayar yok');
+
+          await saveCustomerOverridesBatch(activeCustomerCode, payloads);
+
+            showToast('Kaydedildi', 'success');
+            setStatusForTab(tabKey, 'Kaydedildi', 'fa-check');
+            await hydrateDetail(activeCustomer);
+          } catch (err) {
+            showToast(err.message || 'Kaydedilemedi', 'danger');
+            setStatusForTab(tabKey, 'Kaydetme hatası', 'fa-triangle-exclamation');
+          } finally {
+            isSaving = false;
+            btn.disabled = false;
+          }
+        });
+      }
+
+      setStatusForTab(selectedTab, 'Hazır', 'fa-circle-info');
+    }
+
+    function selectCustomer(customer) {
+      selectedCustomer = customer;
+
+      const code = String(customer.customer_code || '');
+      const name = String(customer.customer_name || '');
+
+      if (dom.detailHeader) dom.detailHeader.classList.toggle('customer-selected', code && code !== GLOBAL_CUSTOMER_CODE);
+
+      if (code === GLOBAL_CUSTOMER_CODE) {
+        dom.selectedCustomerCode.textContent = '';
+        dom.selectedCustomerName.textContent = '';
+        dom.selectedMetaBadge.textContent = 'Genel Ayarlar';
+        selectedTab = 'bulk';
+        selectedGlobalTab = selectedGlobalTab || 'general';
+        if (window.__setSideEnabled) window.__setSideEnabled(false);
+        if (window.__setSideActive) window.__setSideActive(selectedGlobalTab === 'priority' ? 'priority' : 'general');
+      } else {
+        dom.selectedCustomerCode.textContent = code;
+        dom.selectedCustomerName.textContent = name;
+        dom.selectedMetaBadge.textContent = customer.group_code ? String(customer.group_code) : '-';
+        selectedTab = selectedTab && selectedTab !== 'bulk' ? selectedTab : 'general';
+        if (window.__setSideEnabled) window.__setSideEnabled(true);
+        if (window.__setSideActive) window.__setSideActive(selectedTab);
+      }
+
+      dom.detailBody.innerHTML = `
+        <div class="empty-state" style="height:auto; padding: 20px;">
+          <i class="fas fa-spinner" style="animation: spin 1s linear infinite;"></i>
+          <div style="font-weight:900;">Ayarlar yükleniyor...</div>
+        </div>
+      `;
+      hydrateDetail(customer);
+    }
+
+    function setup() {
+      let t;
+
+      const sideGeneral = document.getElementById('sideGeneral');
+      const sidePriorityDiscount = document.getElementById('sidePriorityDiscount');
+      const sideDiscount = document.getElementById('sideDiscount');
+      const sidePayment = document.getElementById('sidePayment');
+
+      function setSideActive(key) {
+        [sideGeneral, sidePriorityDiscount, sideDiscount, sidePayment].forEach(el => {
+          if (!el) return;
+          el.classList.toggle('active', el.getAttribute('data-tab') === key);
+        });
+      }
+
+      function setSideEnabled(isCustomer) {
+        if (!sideDiscount || !sidePayment) return;
+        sideDiscount.classList.toggle('disabled', !isCustomer);
+        sidePayment.classList.toggle('disabled', !isCustomer);
+        if (sidePriorityDiscount) sidePriorityDiscount.classList.toggle('disabled', isCustomer);
+      }
+
+      window.__setSideActive = setSideActive;
+      window.__setSideEnabled = setSideEnabled;
+
+      function activateTab(nextTab) {
+        if (!nextTab) return;
+
+        // Global modda sol menü ile 2 bölüm arasında geçiş
+        if (selectedCustomer && String(selectedCustomer.customer_code) === GLOBAL_CUSTOMER_CODE) {
+          const nextGlobal = nextTab === 'priority' ? 'priority' : 'general';
+          if (selectedGlobalTab !== nextGlobal) {
+            selectedGlobalTab = nextGlobal;
+            setSideActive(nextTab);
+            hydrateDetail(selectedCustomer);
+            return;
+          }
+          setSideActive(nextTab);
+          return;
+        }
+
+        const tabEl = dom.detailBody.querySelector(`.tab[data-tab="${nextTab}"]`);
+        if (tabEl && !tabEl.classList.contains('disabled')) {
+          tabEl.click();
+          return;
+        }
+        // Global modda içerik bulk; menüde 'Genel' seçili kalsın
+        if (selectedCustomer && String(selectedCustomer.customer_code) === GLOBAL_CUSTOMER_CODE) {
+          setSideActive('general');
+        }
+      }
+
+      [sideGeneral, sidePriorityDiscount, sideDiscount, sidePayment].forEach(el => {
+        if (!el) return;
+        el.addEventListener('click', () => {
+          const key = el.getAttribute('data-tab');
+          activateTab(key);
+        });
+      });
+
+      // First render: default to global bulk settings
+      selectedTab = 'bulk';
+      selectedGlobalTab = 'general';
+      selectCustomer({ customer_code: GLOBAL_CUSTOMER_CODE, customer_name: '', group_code: '-' });
+      setSideEnabled(false);
+      setSideActive('general');
+
+      dom.customerSearch = document.getElementById('customerSearch');
+      dom.customerSuggest = document.getElementById('customerSuggest');
+      dom.suggestList = document.getElementById('suggestList');
+      dom.suggestTitle = document.getElementById('suggestTitle');
+      dom.suggestCount = document.getElementById('suggestCount');
+
+      dom.customerSearch.addEventListener('input', (e) => {
+        clearTimeout(t);
+        t = setTimeout(() => {
+          currentSearch = e.target.value || '';
+          searchCustomers(currentSearch);
+        }, 250);
+      });
+
+      dom.customerSearch.addEventListener('focus', () => {
+        if (currentSearch && currentSearch.length >= 2) showSuggest();
+      });
+
+      document.addEventListener('click', (e) => {
+        const within = e.target.closest('.search-wrap');
+        if (!within) hideSuggest();
+      });
+
+      window.addEventListener('pageshow', () => {
+        if (!document.hidden) {
+          selectCustomer({ customer_code: GLOBAL_CUSTOMER_CODE, customer_name: '', group_code: '-' });
+        }
+      });
+    }
+
+    function hydrateGlobalTabFromOverrides() {
+      const buyNowExisting = getOverride('buy_now_discount_rate', null);
+      const buyNowInput = document.getElementById('inputBuyNowDiscountRate');
+      const buyNowToggle = document.getElementById('toggleBuyNowDiscount');
+      if (buyNowInput) buyNowInput.value = buyNowExisting ? String(buyNowExisting.value || '') : '';
+      setActiveToggle(buyNowToggle, buyNowExisting ? isOverrideActive(buyNowExisting) : false);
+      if (buyNowToggle) buyNowToggle.addEventListener('click', () => setActiveToggle(buyNowToggle, !readToggle(buyNowToggle)));
+
+      const tierWrap = document.getElementById('globalGeneralDiscountTiers');
+      const tierBadge = document.getElementById('globalTierBadge');
+      const btnAddTier = document.getElementById('btnAddGlobalTier');
+      const btnRemoveTier = document.getElementById('btnRemoveGlobalTier');
+
+      const existingTiers = (currentOverrides || [])
+        .map(o => String(o.setting_type || ''))
+        .map(t => (t.match(/^discount_general_(\d+)$/) ? Number(t.match(/^discount_general_(\d+)$/)[1]) : 0))
+        .filter(Boolean);
+      const maxExisting = existingTiers.length ? Math.max(...existingTiers) : 0;
+      globalTierCount = Math.max(4, maxExisting || 0, globalTierCount);
+
+      function renderGlobalTiers() {
+        if (!tierWrap) return;
+        tierWrap.innerHTML = '';
+        if (tierBadge) tierBadge.textContent = `${globalTierCount} kademe`;
+        if (btnRemoveTier) btnRemoveTier.disabled = globalTierCount <= 1;
+
+        for (let i = 1; i <= globalTierCount; i++) {
+          const ov = getOverride(`discount_general_${i}`, null);
+          const row = document.createElement('div');
+          row.className = 'rule-row';
+          row.dataset.globalTier = String(i);
+          row.innerHTML = `
+            <div class="field" style="margin-bottom:0;">
+              <div class="label">Kademe ${i} oran (%)</div>
+              <input class="input" data-field="rate" type="number" min="0" max="100" step="0.01" placeholder="Örn: 5" value="${escapeHtml(ov ? ov.value : '')}" />
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <div class="label">Durum</div>
+              <div class="toggle" data-field="toggle" role="switch" aria-checked="false"></div>
+            </div>
+          `;
+
+          const tgl = row.querySelector('[data-field="toggle"]');
+          setActiveToggle(tgl, ov ? isOverrideActive(ov) : (i <= 4));
+          tgl.addEventListener('click', () => setActiveToggle(tgl, !readToggle(tgl)));
+
+          tierWrap.appendChild(row);
+        }
+      }
+
+      if (btnAddTier) {
+        btnAddTier.addEventListener('click', () => {
+          globalTierCount += 1;
+          renderGlobalTiers();
+        });
+      }
+      if (btnRemoveTier) {
+        btnRemoveTier.addEventListener('click', () => {
+          if (globalTierCount <= 1) return;
+          globalTierCount -= 1;
+          renderGlobalTiers();
+        });
+      }
+      renderGlobalTiers();
+
+      const manContainer = document.getElementById('globalManufacturerRules');
+      const itemContainer = document.getElementById('globalItemRules');
+      if (manContainer) manContainer.innerHTML = '';
+      if (itemContainer) itemContainer.innerHTML = '';
+      (currentOverrides || [])
+        .filter(r => String(r.setting_type) === 'discount_manufacturer' && String(r.is_active) !== '0')
+        .sort((a, b) => String(a.item_code || '').localeCompare(String(b.item_code || '')))
+        .forEach(r => renderRuleRow(manContainer, 'manufacturer', r));
+      (currentOverrides || [])
+        .filter(r => String(r.setting_type) === 'discount_item' && String(r.is_active) !== '0')
+        .sort((a, b) => String(a.item_code || '').localeCompare(String(b.item_code || '')))
+        .forEach(r => renderRuleRow(itemContainer, 'item', r));
+
+      const btnAddMan = document.getElementById('btnAddGlobalManufacturer');
+      const btnAddItem = document.getElementById('btnAddGlobalItem');
+      if (btnAddMan) btnAddMan.addEventListener('click', () => renderRuleRow(manContainer, 'manufacturer', { setting_type: 'discount_manufacturer', item_code: '', value: '' }));
+      if (btnAddItem) btnAddItem.addEventListener('click', () => renderRuleRow(itemContainer, 'item', { setting_type: 'discount_item', item_code: '', value: '' }));
+    }
+
+    function hydrateGlobalPriorityTabFromOverrides() {
+      const rulesWrap = document.getElementById('globalPriorityRules');
+      const btnAddGeneral = document.getElementById('btnAddPriorityRuleGeneral');
+      const btnAddItem = document.getElementById('btnAddPriorityRuleItem');
+      const btnAddMan = document.getElementById('btnAddPriorityRuleManufacturer');
+      const btnDeleteAll = document.getElementById('btnDeletePriorityRule');
+      const summaryEl = document.getElementById('priorityRuleSummary');
+      if (!rulesWrap) return;
+
+      const scopeTypeFromKey = (k) => (String(k || '').startsWith('ITEM:') ? 'ITEM' : (String(k || '').startsWith('MAN:') ? 'MAN' : 'GENERAL'));
+      const scopeCodeFromKey = (k) => (String(k || '').startsWith('ITEM:') ? String(k).slice(5) : (String(k || '').startsWith('MAN:') ? String(k).slice(4) : ''));
+      const makeScopeKey = (scopeType, scopeCode) => {
+        const t = String(scopeType || 'GENERAL');
+        const c = String(scopeCode || '').trim();
+        if (t === 'ITEM') return `ITEM:${c}`;
+        if (t === 'MAN') return `MAN:${c}`;
+        return 'GENERAL';
+      };
+
+      const getCardState = (card) => {
+        const scopeType = String(card.querySelector('[data-field="scopeType"]')?.value || 'GENERAL');
+        const scopeCode = String(card.querySelector('[data-field="scopeCode"]')?.value || '');
+        const tierCount = Number(card.dataset.tierCount || '2') || 2;
+        const tiers = {};
+        Array.from(card.querySelectorAll('.rule-row[data-tier]') || []).forEach(r => {
+          const i = Number(r.dataset.tier || '0');
+          const rate = String(r.querySelector('[data-field="rate"]')?.value || '');
+          const tgl = r.querySelector('[data-field="toggle"]');
+          tiers[i] = { rate, enabled: readToggle(tgl) };
+        });
+        const flags = {
+          disable_customer_discounts: !!card.querySelector('[data-field="disable_customer_discounts"]')?.checked,
+          disable_general_discounts: !!card.querySelector('[data-field="disable_general_discounts"]')?.checked,
+          disable_manufacturer_discounts: !!card.querySelector('[data-field="disable_manufacturer_discounts"]')?.checked,
+          disable_item_discounts: !!card.querySelector('[data-field="disable_item_discounts"]')?.checked,
+          disable_campaigns: !!card.querySelector('[data-field="disable_campaigns"]')?.checked,
+          disable_special_discounts: !!card.querySelector('[data-field="disable_special_discounts"]')?.checked
+        };
+        return { scopeType, scopeCode, tierCount, tiers, flags };
+      };
+
+      const setCardTitle = (card) => {
+        const titleEl = card.querySelector('[data-field="title"]');
+        if (!titleEl) return;
+        const scopeType = String(card.querySelector('[data-field="scopeType"]')?.value || 'GENERAL');
+        const scopeCode = String(card.querySelector('[data-field="scopeCode"]')?.value || '').trim();
+        if (scopeType === 'ITEM') titleEl.textContent = `Ürün Kuralı (${scopeCode || '-'})`;
+        else if (scopeType === 'MAN') titleEl.textContent = `Üretici Kuralı (${scopeCode || '-'})`;
+        else titleEl.textContent = 'Genel Kural';
+      };
+
+      const renderTiersForCard = (card, existingState) => {
+        const state = existingState || getCardState(card);
+        const wrap = card.querySelector('[data-field="tiers"]');
+        if (!wrap) return;
+        wrap.innerHTML = '';
+        for (let i = 1; i <= state.tierCount; i++) {
+          const row = document.createElement('div');
+          row.className = 'rule-row';
+          row.dataset.tier = String(i);
+          row.innerHTML = `
+            <div class="field" style="margin-bottom:0;">
+              <div class="label">Kademe ${i} oran (%)</div>
+              <input class="input" data-field="rate" type="number" min="0" max="100" step="0.01" value="${escapeHtml(state.tiers[i] ? state.tiers[i].rate : '')}" />
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <div class="label">Durum</div>
+              <div class="toggle" data-field="toggle" role="switch" aria-checked="false"></div>
+            </div>
+          `;
+          const tgl = row.querySelector('[data-field="toggle"]');
+          setActiveToggle(tgl, state.tiers[i] ? !!state.tiers[i].enabled : true);
+          if (tgl) tgl.addEventListener('click', () => setActiveToggle(tgl, !readToggle(tgl)));
+          wrap.appendChild(row);
+        }
+      };
+
+      const buildRuleCard = (init) => {
+        const card = document.createElement('div');
+        card.className = 'card priority-rule-card';
+        card.dataset.tierCount = String(Math.max(1, Number(init?.tierCount || 2) || 2));
+        card.innerHTML = `
+          <div style="display:flex; align-items:center; justify-content: space-between; gap: 10px;">
+            <div class="card-title" data-field="title" style="margin:0;"></div>
+            <div style="display:flex; gap: 8px;">
+              <button class="btn" data-action="tier-minus"><i class="fas fa-minus"></i></button>
+              <button class="btn btn-primary" data-action="tier-plus"><i class="fas fa-plus"></i></button>
+              <button class="btn btn-danger" data-action="delete-rule"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+
+          <div class="grid-2" style="margin-top:10px;">
+            <div class="field" style="margin-bottom:0;">
+              <div class="label">Kural Tipi</div>
+              <select class="select" data-field="scopeType">
+                <option value="GENERAL">Genel</option>
+                <option value="ITEM">Ürün</option>
+                <option value="MAN">Üretici</option>
+              </select>
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <div class="label">Kod</div>
+              <input class="input" data-field="scopeCode" placeholder="Örn: B-350 / FEBI" />
+            </div>
+          </div>
+
+          <div class="grid-2" style="margin-top: 12px;">
+            <div>
+              <div style="font-weight: 900;">Öncelikli Oranlar</div>
+              <div data-field="tiers" style="margin-top: 8px;"></div>
+            </div>
+            <div>
+              <div style="font-weight: 900;">Geçerli Olduğu İskontolar</div>
+              <div style="margin-top: 8px; display:flex; flex-direction:column; gap: 8px;">
+                <label style="display:flex; align-items:center; gap: 10px; font-weight: 800;"><input type="checkbox" data-field="disable_customer_discounts" /> Müşteri İskontoları Devre Dışı</label>
+                <label style="display:flex; align-items:center; gap: 10px; font-weight: 800;"><input type="checkbox" data-field="disable_general_discounts" /> Genel İskontolar Devre Dışı</label>
+                <label style="display:flex; align-items:center; gap: 10px; font-weight: 800;"><input type="checkbox" data-field="disable_manufacturer_discounts" /> Üretici İskontoları Devre Dışı</label>
+                <label style="display:flex; align-items:center; gap: 10px; font-weight: 800;"><input type="checkbox" data-field="disable_item_discounts" /> Ürün İskontoları Devre Dışı</label>
+                <label style="display:flex; align-items:center; gap: 10px; font-weight: 800;"><input type="checkbox" data-field="disable_campaigns" /> Kampanyalar Devre Dışı</label>
+                <label style="display:flex; align-items:center; gap: 10px; font-weight: 800;"><input type="checkbox" data-field="disable_special_discounts" /> Özel İskontolar Devre Dışı</label>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const scopeTypeEl = card.querySelector('[data-field="scopeType"]');
+        const scopeCodeEl = card.querySelector('[data-field="scopeCode"]');
+        if (scopeTypeEl) scopeTypeEl.value = String(init?.scopeType || 'GENERAL');
+        if (scopeCodeEl) scopeCodeEl.value = String(init?.scopeCode || '');
+        if (scopeCodeEl) scopeCodeEl.disabled = String(scopeTypeEl?.value || 'GENERAL') === 'GENERAL';
+        if (scopeTypeEl && scopeCodeEl) {
+          scopeTypeEl.addEventListener('change', () => {
+            scopeCodeEl.disabled = String(scopeTypeEl.value || 'GENERAL') === 'GENERAL';
+            setCardTitle(card);
+          });
+          scopeCodeEl.addEventListener('input', () => setCardTitle(card));
+        }
+
+        const flags = init?.flags || {};
+        const flagFields = [
+          'disable_customer_discounts',
+          'disable_general_discounts',
+          'disable_manufacturer_discounts',
+          'disable_item_discounts',
+          'disable_campaigns',
+          'disable_special_discounts'
+        ];
+        flagFields.forEach(f => {
+          const el = card.querySelector(`[data-field="${f}"]`);
+          if (el) el.checked = !!flags[f];
+        });
+
+        const state = init?.state || null;
+        renderTiersForCard(card, state || undefined);
+        setCardTitle(card);
+        return card;
+      };
+
+      const activeKeys = Array.from(new Set((currentOverrides || [])
+        .filter(o => isOverrideActive(o) && String(o.setting_type || '').startsWith('priority_rule_'))
+        .map(o => String(o.item_code || '').trim() || 'GENERAL')));
+
+      const order = (k) => {
+        const t = scopeTypeFromKey(k);
+        return t === 'ITEM' ? 1 : (t === 'MAN' ? 2 : 3);
+      };
+      activeKeys.sort((a, b) => order(a) - order(b) || String(a).localeCompare(String(b)));
+
+      rulesWrap.innerHTML = '';
+      activeKeys.forEach((key) => {
+        const scopeType = scopeTypeFromKey(key);
+        const scopeCode = scopeCodeFromKey(key);
+        const tierNums = (currentOverrides || [])
+          .filter(o => isOverrideActive(o) && String(o.item_code || '') === key && /^priority_rule_discount_\d+$/.test(String(o.setting_type || '')))
+          .map(o => Number(String(o.setting_type).match(/^priority_rule_discount_(\d+)$/)[1]))
+          .filter(Boolean);
+        const tierCount = Math.max(2, tierNums.length ? Math.max(...tierNums) : 2);
+
+        const tiers = {};
+        for (let i = 1; i <= tierCount; i++) {
+          const ov = getOverride(`priority_rule_discount_${i}`, key);
+          tiers[i] = { rate: ov ? String(ov.value || '') : '', enabled: ov ? isOverrideActive(ov) : true };
+        }
+
+        const flags = {
+          disable_customer_discounts: !!(getOverride('priority_rule_disable_customer_discounts', key) && isOverrideActive(getOverride('priority_rule_disable_customer_discounts', key))),
+          disable_general_discounts: !!(getOverride('priority_rule_disable_general_discounts', key) && isOverrideActive(getOverride('priority_rule_disable_general_discounts', key))),
+          disable_manufacturer_discounts: !!(getOverride('priority_rule_disable_manufacturer_discounts', key) && isOverrideActive(getOverride('priority_rule_disable_manufacturer_discounts', key))),
+          disable_item_discounts: !!(getOverride('priority_rule_disable_item_discounts', key) && isOverrideActive(getOverride('priority_rule_disable_item_discounts', key))),
+          disable_campaigns: !!(getOverride('priority_rule_disable_campaigns', key) && isOverrideActive(getOverride('priority_rule_disable_campaigns', key))),
+          disable_special_discounts: !!(getOverride('priority_rule_disable_special_discounts', key) && isOverrideActive(getOverride('priority_rule_disable_special_discounts', key)))
+        };
+
+        rulesWrap.appendChild(buildRuleCard({
+          scopeType,
+          scopeCode,
+          tierCount,
+          flags,
+          state: { scopeType, scopeCode, tierCount, tiers, flags }
+        }));
+      });
+
+      if (summaryEl) summaryEl.textContent = activeKeys.length ? `Aktif kural: ${activeKeys.length}` : 'Aktif bir öncelikli iskonto kuralı yok.';
+      const sidePriority = document.getElementById('sidePriorityDiscount');
+      if (sidePriority) sidePriority.classList.toggle('has-rule', activeKeys.length > 0);
+
+      if (btnAddGeneral && !btnAddGeneral.dataset.bound) {
+        btnAddGeneral.dataset.bound = '1';
+        btnAddGeneral.addEventListener('click', () => {
+          rulesWrap.prepend(buildRuleCard({ scopeType: 'GENERAL', scopeCode: '', tierCount: 2, flags: {} }));
+        });
+      }
+      if (btnAddItem && !btnAddItem.dataset.bound) {
+        btnAddItem.dataset.bound = '1';
+        btnAddItem.addEventListener('click', () => {
+          rulesWrap.prepend(buildRuleCard({ scopeType: 'ITEM', scopeCode: '', tierCount: 2, flags: {} }));
+        });
+      }
+      if (btnAddMan && !btnAddMan.dataset.bound) {
+        btnAddMan.dataset.bound = '1';
+        btnAddMan.addEventListener('click', () => {
+          rulesWrap.prepend(buildRuleCard({ scopeType: 'MAN', scopeCode: '', tierCount: 2, flags: {} }));
+        });
+      }
+
+      if (!rulesWrap.dataset.bound) {
+        rulesWrap.dataset.bound = '1';
+        rulesWrap.addEventListener('click', (e) => {
+          const btn = e.target.closest('button');
+          if (!btn) return;
+          const card = btn.closest('.priority-rule-card');
+          if (!card) return;
+          const action = String(btn.getAttribute('data-action') || '');
+          if (action === 'delete-rule') {
+            card.remove();
+            return;
+          }
+          if (action === 'tier-plus' || action === 'tier-minus') {
+            const state = getCardState(card);
+            const next = action === 'tier-plus' ? (state.tierCount + 1) : Math.max(1, state.tierCount - 1);
+            card.dataset.tierCount = String(next);
+            const merged = { ...state, tierCount: next };
+            renderTiersForCard(card, merged);
+          }
+        });
+      }
+
+      if (btnDeleteAll && !btnDeleteAll.dataset.bound) {
+        btnDeleteAll.dataset.bound = '1';
+        btnDeleteAll.addEventListener('click', async () => {
+          const rows = (currentOverrides || []).filter(o => String(o.customer_code || '') === GLOBAL_CUSTOMER_CODE);
+          const toDisable = rows.filter(o => {
+            const st = String(o.setting_type || '');
+            return st.startsWith('priority_rule_') || st.startsWith('priority_discount_') || st.startsWith('priority_disable_') || st.startsWith('priority_scope_');
+          });
+          if (!toDisable.length) {
+            showToast('Silinecek kural yok', 'danger');
+            return;
+          }
+          btnDeleteAll.disabled = true;
+          try {
+            await saveCustomerOverridesBatch(GLOBAL_CUSTOMER_CODE, toDisable.map(o => ({
+              id: o.id,
+              setting_type: o.setting_type,
+              item_code: o.item_code || null,
+              value: o.value,
+              value_type: o.value_type || 'boolean',
+              description: o.description || '',
+              is_active: 0
+            })));
+            showToast('Öncelikli iskonto kuralları silindi', 'success');
+            await hydrateDetail({ customer_code: GLOBAL_CUSTOMER_CODE, customer_name: '', group_code: '-' });
+          } catch (e) {
+            showToast('Kural silinemedi', 'danger');
+          } finally {
+            btnDeleteAll.disabled = false;
+          }
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', setup);
+  </script>
+</body>
+</html>

@@ -1829,7 +1829,16 @@
         function initializeApp() {
             try {
                 setupEventListeners();
-                loadProductsPage(1, true);
+                document.getElementById('productsTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-row">
+                            <div class="empty-content">
+                                <i class="fas fa-search" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                                <span>Arama yapın veya filtre seçin</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
             } catch (error) {
                 console.error('Uygulama başlatma hatası:', error);
             }
@@ -1841,7 +1850,7 @@
             document.getElementById('searchInput').addEventListener('input', (e) => {
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
-                    currentFilters.search = e.target.value.toLowerCase();
+                    currentFilters.search = e.target.value;
                     loadProductsPage(1, true);
                 }, 500);
             });
@@ -1849,14 +1858,14 @@
             // Enter tuşu ile arama
             document.getElementById('searchInput').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    currentFilters.search = e.target.value.toLowerCase();
+                    currentFilters.search = e.target.value;
                     loadProductsPage(1, true);
                 }
             });
             
             // Filtre değişiklikleri
             document.getElementById('manufacturerFilter').addEventListener('change', (e) => {
-                currentFilters.manufacturer = e.target.value.toLowerCase();
+                currentFilters.manufacturer = e.target.value;
                 loadProductsPage(1, true);
             });
             
@@ -1881,8 +1890,6 @@
         // ====================================================
         async function refreshAllProducts() {
             try {
-                showTableLoading();
-                
                 // Tüm filtreleri sıfırla
                 currentFilters = {
                     search: '',
@@ -1898,40 +1905,13 @@
                 document.getElementById('categoryFilter').value = '';
                 document.getElementById('stockFilter').value = '';
                 document.getElementById('sortFilter').value = 'code_asc';
-                
-                // API'den tüm ürünleri yeniden yükle
-                const headers = setAuthHeaders();
-                const params = new URLSearchParams({
-                    limit: pageSize.toString(),
-                    offset: '0',
-                    sort: 'code_asc',
-                    refresh: 'true'
-                });
-                
-                const response = await fetch(`http://192.168.219.128:8080/api/b2b/admin/products?${params.toString()}`, {
-                    headers: headers
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`API hatası: ${response.status} ${response.statusText}`);
-                }
-                
-                const result = await response.json();
-                
-                if (!result.success) {
-                    throw new Error(result.error || result.message || 'API başarısız');
-                }
-                
-                const apiProducts = result.data || [];
-                const pagination = result.pagination || {};
-                
-                totalProducts = pagination.total || 0;
-                totalPages = Math.max(1, Math.ceil(totalProducts / pageSize));
-                
-                processAndDisplayProducts(apiProducts);
+
+                currentProducts = [];
+                totalProducts = 0;
+                totalPages = 1;
+                currentPage = 1;
+                updateProductTable();
                 updatePagination();
-                
-                console.log(`✅ Tüm ürünler yenilendi: ${totalProducts} ürün`);
                 
             } catch (error) {
                 console.error('❌ Tüm ürünleri yenileme hatası:', error);
@@ -1945,7 +1925,6 @@
             console.log(`📄 Sayfa ${page} yükleniyor...`);
             
             try {
-                showTableLoading();
                 
                 if (resetFilters) {
                     currentPage = 1;
@@ -1954,35 +1933,32 @@
                 }
                 
                 const offset = (currentPage - 1) * pageSize;
+
+                const q = String(currentFilters.search || '').trim();
+                const manufacturer = String(currentFilters.manufacturer || '').trim();
+                const manufacturerCodes = manufacturer ? [manufacturer] : [];
+                const hasAnyFilter = manufacturerCodes.length > 0;
+                if (!q && !hasAnyFilter) {
+                    currentProducts = [];
+                    totalProducts = 0;
+                    totalPages = 1;
+                    updateProductTable();
+                    updatePagination();
+                    return;
+                }
+
                 const headers = setAuthHeaders();
-                
-                const params = new URLSearchParams({
-                    limit: pageSize.toString(),
-                    offset: offset.toString()
-                });
-                
-                if (currentFilters.sort) {
-                    params.append('sort', currentFilters.sort);
-                }
-                
-                if (currentFilters.search) {
-                    params.append('search', currentFilters.search);
-                }
-                
-                if (currentFilters.manufacturer) {
-                    params.append('manufacturer', currentFilters.manufacturer);
-                }
-                
-                if (currentFilters.category) {
-                    params.append('category', currentFilters.category);
-                }
-                
-                if (currentFilters.stock) {
-                    params.append('stock', currentFilters.stock);
-                }
-                
-                const response = await fetch(`http://192.168.219.128:8080/api/b2b/admin/products?${params.toString()}`, {
-                    headers: headers
+                const response = await fetch('/api/b2b/search/meili-search-enriched', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        query: q,
+                        customerCode: 'S1981',
+                        limit: pageSize,
+                        offset: offset,
+                        manufacturerCodes: manufacturerCodes,
+                        vehicleModels: []
+                    })
                 });
                 
                 if (!response.ok) {
@@ -1994,11 +1970,9 @@
                 if (!result.success) {
                     throw new Error(result.error || result.message || 'API başarısız');
                 }
-                
-                const apiProducts = result.data || [];
-                const pagination = result.pagination || {};
-                
-                totalProducts = pagination.total || 0;
+
+                const apiProducts = result.results || [];
+                totalProducts = Number(result.total_results || 0);
                 totalPages = Math.max(1, Math.ceil(totalProducts / pageSize));
                 
                 console.log(`✅ Sayfa ${currentPage} yüklendi: ${apiProducts.length} ürün (Toplam: ${totalProducts}, Sayfa: ${currentPage}/${totalPages})`);
@@ -2024,15 +1998,15 @@
 
         function processAndDisplayProducts(apiProducts) {
             currentProducts = apiProducts.map(product => {
-                const stock = product.stock || {};
-                const merkezStock = parseInt(stock.merkez) || 0;
-                const ikitelliStock = parseInt(stock.ikitelli) || 0;
-                const bostanciStock = parseInt(stock.bostanci) || 0;
-                const depotStock = parseInt(stock.depot) || 0;
+                const merkezStock = parseInt(product.centralStock) || 0;
+                const ikitelliStock = parseInt(product.ikitelliStock) || 0;
+                const bostanciStock = parseInt(product.bostanciStock) || 0;
+                const depotStock = parseInt(product.depotStock) || 0;
                 const totalStock = merkezStock + ikitelliStock + bostanciStock + depotStock;
                 
                 const manualDiscounts = product.manualDiscounts || [0, 0, 0, 0, 0];
-                const currency = product.currency || product.currencyCode || 'TL';
+                const currencyCode = Number(product.currencyCode);
+                const currency = currencyCode === 1 ? 'USD' : currencyCode === 20 ? 'EUR' : currencyCode === 17 ? 'GBP' : 'TL';
                 
                 return {
                     id: product.id || product.logicalref,

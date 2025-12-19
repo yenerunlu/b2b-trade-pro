@@ -62,6 +62,403 @@ const getCache = (key) => {
     return cached.data;
 };
 
+async function getOrficheDocodeMaxLen() {
+    const cacheKey = 'logo_orfiche_docode_max_len';
+    const cached = getCache(cacheKey);
+    if (Number.isFinite(cached) && cached > 0) return cached;
+
+    try {
+        const pool = await getLogoConnection();
+        const res = await pool.request().query(`
+            SELECT TOP 1 CHARACTER_MAXIMUM_LENGTH AS maxLen
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = 'LG_013_01_ORFICHE'
+              AND COLUMN_NAME = 'DOCODE'
+        `);
+        const maxLen = Number(res.recordset?.[0]?.maxLen);
+        const safe = Number.isFinite(maxLen) && maxLen > 0 ? maxLen : 50;
+        setCache(cacheKey, safe, CACHE_DURATION.SUMMARY);
+        return safe;
+    } catch (e) {
+        return 50;
+    }
+}
+
+async function getOrderDistributionSettings() {
+    const defaults = {
+        warehouses: [
+            { invNo: 0, name: 'MERKEZ' },
+            { invNo: 1, name: 'IKITELLI' },
+            { invNo: 2, name: 'BOSTANCI' },
+            { invNo: 3, name: 'DEPO' }
+        ],
+        regions: [],
+        prioritySettings: {},
+        unfulfilledWarehouse: 3,
+        unfulfilledDocodeText: 'KARŞILANAMADI'
+    };
+
+    try {
+        const pool = await getB2BConnection();
+        const colsRes = await pool.request().query(`
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = 'dbo'
+              AND TABLE_NAME = 'b2b_default_settings'
+        `);
+        const cols = new Set((colsRes.recordset || []).map(r => String(r.COLUMN_NAME || '').trim()).filter(Boolean));
+        const idCol = cols.has('setting_id') ? 'setting_id' : (cols.has('id') ? 'id' : 'setting_id');
+        const activeWhere = cols.has('is_active') ? 'AND (is_active = 1 OR is_active IS NULL)' : '';
+
+        const result = await pool.request()
+            .input('key', sql.VarChar(100), 'order_distribution_settings')
+            .query(`
+                SELECT TOP 1 setting_value
+                FROM dbo.b2b_default_settings
+                WHERE setting_key = @key
+                  ${activeWhere}
+                ORDER BY ${idCol} DESC
+            `);
+
+        const raw = String(result.recordset?.[0]?.setting_value || '').trim();
+        if (!raw) return defaults;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return defaults;
+        return { ...defaults, ...parsed };
+    } catch (err) {
+        console.error('❌ order_distribution_settings okunamadı, defaults kullanılacak:', err.message);
+        return defaults;
+    }
+}
+
+async function getWarehouseStocksByItemRef(transaction, itemRefs, invNos) {
+    const itemList = (itemRefs || []).map(x => Number(x)).filter(n => Number.isFinite(n));
+    const invList = (invNos || []).map(x => Number(x)).filter(n => Number.isFinite(n));
+    if (!itemList.length || !invList.length) return new Map();
+
+    const req = new sql.Request(transaction);
+    const inItem = itemList.map((_, i) => `@item${i}`).join(',');
+    const inInv = invList.map((_, i) => `@inv${i}`).join(',');
+    itemList.forEach((v, i) => req.input(`item${i}`, sql.Int, v));
+    invList.forEach((v, i) => req.input(`inv${i}`, sql.SmallInt, v));
+
+    const q = `
+        SELECT STOCKREF, INVENNO, SUM(ONHAND - RESERVED) AS AVAIL
+        FROM LV_013_01_STINVTOT
+        WHERE STOCKREF IN (${inItem})
+          AND INVENNO IN (${inInv})
+        GROUP BY STOCKREF, INVENNO
+    `;
+
+    const result = await req.query(q);
+    const map = new Map();
+    for (const row of (result.recordset || [])) {
+        const ref = Number(row.STOCKREF);
+        const inv = Number(row.INVENNO);
+        const avail = Number(row.AVAIL) || 0;
+        if (!map.has(ref)) map.set(ref, new Map());
+        map.get(ref).set(inv, avail);
+    }
+    return map;
+}
+
+function allocateByPriority(itemDetails, priorityInvNos, stockMap) {
+    const allocations = new Map();
+    const unfulfilled = [];
+
+    for (const item of (itemDetails || [])) {
+        let remaining = Number(item.quantity) || 0;
+        const ref = Number(item.ref);
+        const perInv = stockMap.get(ref) || new Map();
+
+        for (const invNo of (priorityInvNos || [])) {
+            if (remaining <= 0) break;
+            const avail = Number(perInv.get(invNo)) || 0;
+            if (avail <= 0) continue;
+            const take = Math.min(remaining, avail);
+            remaining -= take;
+            perInv.set(invNo, avail - take);
+            if (!allocations.has(invNo)) allocations.set(invNo, []);
+            allocations.get(invNo).push({ item, qty: take });
+        }
+
+        if (remaining > 0) unfulfilled.push({ item, qty: remaining });
+    }
+
+    return { allocations, unfulfilled };
+}
+
+function scaleItemForQty(item, qty) {
+    const origQty = Number(item.quantity) || 0;
+    const safeQty = Number(qty) || 0;
+    const ratio = origQty > 0 ? safeQty / origQty : 0;
+
+    const unitPrice = Number(item.unitPrice) || 0;
+    const brutTotal = unitPrice * safeQty;
+    const discounts = (Array.isArray(item.discounts) ? item.discounts : []).map(d => ({
+        ...d,
+        amount: (Number(d.amount) || 0) * ratio
+    }));
+    const totalDiscountAmount = discounts.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+    const netTotal = brutTotal - totalDiscountAmount;
+
+    return {
+        ...item,
+        quantity: safeQty,
+        brutTotal,
+        netTotal,
+        discounts,
+        totalDiscountAmount
+    };
+}
+
+function computeTotals(itemDetails, vatRate) {
+    const brutTotal = (itemDetails || []).reduce((s, it) => s + (Number(it.brutTotal) || 0), 0);
+    const totalDiscounts = (itemDetails || []).reduce((s, it) => s + (Number(it.totalDiscountAmount) || 0), 0);
+    const netTotal = brutTotal - totalDiscounts;
+    const vatAmount = netTotal * ((Number(vatRate) || 0) / 100);
+    const grandTotal = netTotal + vatAmount;
+    return { brutTotal, totalDiscounts, netTotal, vatAmount, grandTotal };
+}
+
+async function createFicheWithLines(transaction, args) {
+    const { customerRef, sourceIndex, docode, vatRate, items } = args;
+
+    const ficheNo = await getNextFicheNo(transaction);
+    const currentDate = new Date();
+    const currentTime = (currentDate.getHours() * 10000) +
+                       (currentDate.getMinutes() * 100) +
+                       currentDate.getSeconds();
+
+    const totals = computeTotals(items, vatRate);
+
+    const orficheRequest = new sql.Request(transaction);
+    const orficheQuery = `
+        INSERT INTO LG_013_01_ORFICHE (
+            TRCODE, FICHENO, DATE_, TIME_, DOCODE,
+            CLIENTREF, SOURCEINDEX, SOURCECOSTGRP, STATUS,
+            CAPIBLOCK_CREATEDBY, CAPIBLOCK_CREADEDDATE, CAPIBLOCK_CREATEDHOUR, CAPIBLOCK_CREATEDMIN,
+            GENEXCTYP, LINEEXCTYP, SITEID, RECSTATUS, ORGLOGOID,
+            TRCURR, TRRATE, TRNET, UPDCURR, REPORTRATE,
+            TOTALDISCOUNTS, TOTALDISCOUNTED, TOTALVAT, GROSSTOTAL, NETTOTAL,
+            PAYDEFREF, TEXTINC, SPECODE, CYPHCODE, DEPARTMENT, BRANCH,
+            PRINTCNT, PRINTDATE, SENDCNT
+        )
+        OUTPUT INSERTED.LOGICALREF
+        VALUES (
+            @trCode, @ficheNo, @date, @time, @docode,
+            @clientRef, @sourceIndex, @sourceCostGrp, @status,
+            @createdBy, @createdDate, @createdHour, @createdMin,
+            @genExcTyp, @lineExcTyp, @siteId, @recStatus, @orgLogoId,
+            @trCurr, @trRate, @trNet, @updCurr, @reportRate,
+            @totalDiscounts, @totalDiscounted, @totalVat, @grossTotal, @netTotal,
+            @paydefRef, @textInc, @specode, @cyphcode, @department, @branch,
+            @printCnt, @printDate, @sendCnt
+        )
+    `;
+
+    const docodeMaxLen = await getOrficheDocodeMaxLen();
+    const safeDocode = String(docode || '')
+        .replace(/[\r\n\t]+/g, ' ')
+        .trim()
+        .slice(0, Math.max(1, Number(docodeMaxLen) || 50));
+
+    orficheRequest.input('trCode', sql.SmallInt, 1);
+    orficheRequest.input('ficheNo', sql.VarChar, ficheNo);
+    orficheRequest.input('date', sql.DateTime, currentDate);
+    orficheRequest.input('time', sql.Int, currentTime);
+    orficheRequest.input('docode', sql.VarChar, safeDocode);
+    orficheRequest.input('clientRef', sql.Int, customerRef);
+    orficheRequest.input('sourceIndex', sql.SmallInt, Number(sourceIndex) || 0);
+    orficheRequest.input('sourceCostGrp', sql.SmallInt, Number(sourceIndex) || 0);
+    orficheRequest.input('status', sql.SmallInt, 4);
+    orficheRequest.input('createdBy', sql.SmallInt, 29);
+    orficheRequest.input('createdDate', sql.DateTime, currentDate);
+    orficheRequest.input('createdHour', sql.SmallInt, currentDate.getHours());
+    orficheRequest.input('createdMin', sql.SmallInt, currentDate.getMinutes());
+    orficheRequest.input('genExcTyp', sql.SmallInt, 1);
+    orficheRequest.input('lineExcTyp', sql.SmallInt, 0);
+    orficheRequest.input('siteId', sql.SmallInt, 0);
+    orficheRequest.input('recStatus', sql.SmallInt, 0);
+    orficheRequest.input('orgLogoId', sql.VarChar, null);
+    orficheRequest.input('trCurr', sql.SmallInt, 0);
+    orficheRequest.input('trRate', sql.Float, 0.0);
+    orficheRequest.input('trNet', sql.Float, totals.grandTotal);
+    orficheRequest.input('updCurr', sql.SmallInt, 0);
+    orficheRequest.input('reportRate', sql.Float, 42.4369);
+    orficheRequest.input('totalDiscounts', sql.Float, totals.totalDiscounts);
+    orficheRequest.input('totalDiscounted', sql.Float, totals.netTotal);
+    orficheRequest.input('totalVat', sql.Float, totals.vatAmount);
+    orficheRequest.input('grossTotal', sql.Float, totals.brutTotal);
+    orficheRequest.input('netTotal', sql.Float, totals.grandTotal);
+    orficheRequest.input('paydefRef', sql.Int, 15);
+    orficheRequest.input('textInc', sql.SmallInt, 0);
+    orficheRequest.input('specode', sql.VarChar, '');
+    orficheRequest.input('cyphcode', sql.VarChar, '');
+    orficheRequest.input('department', sql.SmallInt, 0);
+    orficheRequest.input('branch', sql.SmallInt, 0);
+    orficheRequest.input('printCnt', sql.SmallInt, 0);
+    orficheRequest.input('printDate', sql.DateTime, null);
+    orficheRequest.input('sendCnt', sql.SmallInt, 0);
+
+    const orficheResult = await orficheRequest.query(orficheQuery);
+    const orderRef = orficheResult.recordset[0].LOGICALREF;
+
+    let lineNo = 10;
+    for (const item of (items || [])) {
+        const itemTotalDiscount = (Array.isArray(item.discounts) ? item.discounts : []).reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+        const itemNetMatrah = (Number(item.brutTotal) || 0) - itemTotalDiscount;
+        const safeNetMatrah = itemNetMatrah < 0 ? 0 : itemNetMatrah;
+        const itemVatMatrah = safeNetMatrah;
+        const itemVatAmount = itemVatMatrah * ((Number(vatRate) || 0) / 100);
+
+        const malzemeRequest = new sql.Request(transaction);
+        const malzemeQuery = `
+            INSERT INTO LG_013_01_ORFLINE (
+                ORDFICHEREF, STOCKREF, LINETYPE, DETLINE, LINENO_, TRCODE, DATE_, TIME_,
+                AMOUNT, PRICE, TOTAL,
+                VAT, VATAMNT, VATMATRAH,
+                UOMREF, USREF,
+                UINFO1, UINFO2, VATINC,
+                SOURCEINDEX, STATUS, CLIENTREF,
+                SHIPPEDAMOUNT, CLOSED,
+                RESERVEAMOUNT, DORESERVE, RESERVEDATE,
+                SITEID, RECSTATUS,
+                TRCURR, TRRATE,
+                SPECODE, DISCPER, DISTDISC, TEXTINC
+            )
+            VALUES (
+                @orderRef, @stockRef, @lineType, @detLine, @lineNo, @trCode, @date, @time,
+                @amount, @price, @total,
+                @vat, @vatAmount, @vatMatrah,
+                @uomRef, @usRef,
+                @uInfo1, @uInfo2, @vatInc,
+                @sourceIndex, @status, @clientRef,
+                @shippedAmount, @closed,
+                @reserveAmount, @doReserve, @reserveDate,
+                @siteId, @recStatus,
+                @trCurr, @trRate,
+                @specode, @discPer, @distDisc, @textInc
+            )
+        `;
+
+        malzemeRequest.input('orderRef', sql.Int, orderRef);
+        malzemeRequest.input('stockRef', sql.Int, item.ref);
+        malzemeRequest.input('lineType', sql.SmallInt, 0);
+        malzemeRequest.input('detLine', sql.SmallInt, 0);
+        malzemeRequest.input('lineNo', sql.Int, lineNo);
+        malzemeRequest.input('trCode', sql.SmallInt, 1);
+        malzemeRequest.input('date', sql.DateTime, currentDate);
+        malzemeRequest.input('time', sql.Int, currentTime);
+        malzemeRequest.input('amount', sql.Float, item.quantity);
+        malzemeRequest.input('price', sql.Float, item.unitPrice);
+        malzemeRequest.input('total', sql.Float, item.brutTotal);
+        malzemeRequest.input('vat', sql.Float, vatRate);
+        malzemeRequest.input('vatAmount', sql.Float, itemVatAmount);
+        malzemeRequest.input('vatMatrah', sql.Float, itemVatMatrah);
+        malzemeRequest.input('uomRef', sql.Int, 23);
+        malzemeRequest.input('usRef', sql.Int, 5);
+        malzemeRequest.input('uInfo1', sql.SmallInt, 1);
+        malzemeRequest.input('uInfo2', sql.SmallInt, 1);
+        malzemeRequest.input('vatInc', sql.SmallInt, 0);
+        malzemeRequest.input('sourceIndex', sql.SmallInt, Number(sourceIndex) || 0);
+        malzemeRequest.input('status', sql.SmallInt, 4);
+        malzemeRequest.input('clientRef', sql.Int, customerRef);
+        malzemeRequest.input('shippedAmount', sql.Float, 0);
+        malzemeRequest.input('closed', sql.SmallInt, 0);
+        malzemeRequest.input('reserveAmount', sql.Float, item.quantity);
+        malzemeRequest.input('doReserve', sql.SmallInt, 1);
+        malzemeRequest.input('reserveDate', sql.DateTime, currentDate);
+        malzemeRequest.input('siteId', sql.SmallInt, 0);
+        malzemeRequest.input('recStatus', sql.SmallInt, 1);
+        malzemeRequest.input('trCurr', sql.SmallInt, 0);
+        malzemeRequest.input('trRate', sql.Float, 0.0);
+        malzemeRequest.input('specode', sql.VarChar, '');
+        malzemeRequest.input('discPer', sql.Float, 0);
+        malzemeRequest.input('distDisc', sql.Float, 0);
+        malzemeRequest.input('textInc', sql.SmallInt, 0);
+
+        await malzemeRequest.query(malzemeQuery);
+        lineNo += 10;
+
+        for (const discount of (Array.isArray(item.discounts) ? item.discounts : [])) {
+            const amt = Number(discount.amount) || 0;
+            if (amt <= 0) continue;
+
+            const discountRequest = new sql.Request(transaction);
+            const discountQuery = `
+                INSERT INTO LG_013_01_ORFLINE (
+                    ORDFICHEREF, STOCKREF, LINETYPE, DETLINE, LINENO_, TRCODE, DATE_, TIME_,
+                    AMOUNT, PRICE, TOTAL,
+                    VAT, VATAMNT, VATMATRAH,
+                    UOMREF, USREF,
+                    UINFO1, UINFO2, VATINC,
+                    SOURCEINDEX, STATUS, CLIENTREF,
+                    SHIPPEDAMOUNT, CLOSED,
+                    RESERVEAMOUNT, DORESERVE, RESERVEDATE,
+                    SITEID, RECSTATUS,
+                    TRCURR, TRRATE,
+                    SPECODE, DISCPER, TEXTINC
+                )
+                VALUES (
+                    @orderRef, @stockRef, @lineType, @detLine, @lineNo, @trCode, @date, @time,
+                    @amount, @price, @total,
+                    @vat, @vatAmount, @vatMatrah,
+                    @uomRef, @usRef,
+                    @uInfo1, @uInfo2, @vatInc,
+                    @sourceIndex, @status, @clientRef,
+                    @shippedAmount, @closed,
+                    @reserveAmount, @doReserve, @reserveDate,
+                    @siteId, @recStatus,
+                    @trCurr, @trRate,
+                    @specode, @discPer, @textInc
+                )
+            `;
+
+            discountRequest.input('orderRef', sql.Int, orderRef);
+            discountRequest.input('stockRef', sql.Int, 0);
+            discountRequest.input('lineType', sql.SmallInt, 2);
+            discountRequest.input('detLine', sql.SmallInt, 0);
+            discountRequest.input('lineNo', sql.Int, lineNo);
+            discountRequest.input('trCode', sql.SmallInt, 1);
+            discountRequest.input('date', sql.DateTime, currentDate);
+            discountRequest.input('time', sql.Int, currentTime);
+            discountRequest.input('amount', sql.Float, 0);
+            discountRequest.input('price', sql.Float, 0);
+            discountRequest.input('total', sql.Float, amt);
+            discountRequest.input('vat', sql.Float, 0);
+            discountRequest.input('vatAmount', sql.Float, 0);
+            discountRequest.input('vatMatrah', sql.Float, 0);
+            discountRequest.input('uomRef', sql.Int, 0);
+            discountRequest.input('usRef', sql.Int, 0);
+            discountRequest.input('uInfo1', sql.SmallInt, 0);
+            discountRequest.input('uInfo2', sql.SmallInt, 0);
+            discountRequest.input('vatInc', sql.SmallInt, 0);
+            discountRequest.input('sourceIndex', sql.SmallInt, 0);
+            discountRequest.input('status', sql.SmallInt, 4);
+            discountRequest.input('clientRef', sql.Int, customerRef);
+            discountRequest.input('shippedAmount', sql.Float, 0);
+            discountRequest.input('closed', sql.SmallInt, 0);
+            discountRequest.input('reserveAmount', sql.Float, null);
+            discountRequest.input('doReserve', sql.SmallInt, null);
+            discountRequest.input('reserveDate', sql.DateTime, null);
+            discountRequest.input('siteId', sql.SmallInt, 0);
+            discountRequest.input('recStatus', sql.SmallInt, 1);
+            discountRequest.input('trCurr', sql.SmallInt, 0);
+            discountRequest.input('trRate', sql.Float, 0.0);
+            discountRequest.input('specode', sql.VarChar, '');
+            discountRequest.input('discPer', sql.Float, Number(discount.rate) || 0);
+            discountRequest.input('textInc', sql.SmallInt, 0);
+
+            await discountRequest.query(discountQuery);
+            lineNo += 10;
+        }
+    }
+
+    return { ficheNo, orderRef, totals };
+}
+
+
 const getCacheConfig = (action) => {
     const cacheMap = {
         'products': { duration: CACHE_DURATION.PRODUCTS },
@@ -135,7 +532,7 @@ const initializeConnectionPool = async () => {
     
     try {
         console.log('🔄 SQL Server bağlantısı başlatılıyor...');
-        logoConnectionPool = await sql.connect(logoConfig);
+        logoConnectionPool = await new sql.ConnectionPool(logoConfig).connect();
         console.log('✅ SQL Server bağlantısı başarılı');
         
         logoConnectionPool.on('error', err => {
@@ -171,7 +568,7 @@ const getLogoConnection = async () => {
 const getB2BConnection = async () => {
     try {
         if (!b2bConnectionPool || !b2bConnectionPool.connected) {
-            b2bConnectionPool = await sql.connect(b2bConfig);
+            b2bConnectionPool = await new sql.ConnectionPool(b2bConfig).connect();
             console.log('✅ B2B_TRADE_PRO bağlantısı başarılı');
             
             b2bConnectionPool.on('error', err => {
@@ -187,7 +584,7 @@ const getB2BConnection = async () => {
     } catch (err) {
         console.error('❌ B2B bağlantı test hatası, yeniden bağlanılıyor...', err.message);
         b2bConnectionPool = null;
-        return await sql.connect(b2bConfig);
+        return await new sql.ConnectionPool(b2bConfig).connect();
     }
 };
 
@@ -197,13 +594,13 @@ module.exports.config = {
     b2bConfig,
     getLogoConnection: async () => {
         if (!logoConnectionPool || !logoConnectionPool.connected) {
-            logoConnectionPool = await sql.connect(logoConfig);
+            logoConnectionPool = await new sql.ConnectionPool(logoConfig).connect();
         }
         return logoConnectionPool;
     },
     getB2BConnection: async () => {
         if (!b2bConnectionPool || !b2bConnectionPool.connected) {
-            b2bConnectionPool = await sql.connect(b2bConfig);
+            b2bConnectionPool = await new sql.ConnectionPool(b2bConfig).connect();
         }
         return b2bConnectionPool;
     }
@@ -786,15 +1183,16 @@ async function migrateFileAuthToSqlite() {
 // ====================================================
 // 🚀 1.0 - SIP-000001 FİŞ NUMARASI FONKSİYONU (KORUNDU)
 // ====================================================
-async function getNextFicheNo() {
+async function getNextFicheNo(transaction) {
     try {
         console.log('🔍 Son SIP numarası kontrol ediliyor...');
-        
-        const pool = await getLogoConnection();
-        const lastFicheRequest = pool.request();
+
+        const lastFicheRequest = transaction
+            ? new sql.Request(transaction)
+            : (await getLogoConnection()).request();
         const lastFicheQuery = `
             SELECT TOP 1 FICHENO 
-            FROM LG_013_01_ORFICHE 
+            FROM LG_013_01_ORFICHE WITH (UPDLOCK, HOLDLOCK)
             WHERE FICHENO LIKE 'SIP-%' 
             AND TRCODE = 1 
             ORDER BY FICHENO DESC
@@ -827,8 +1225,7 @@ async function getNextFicheNo() {
         
     } catch (error) {
         console.error('❌ Son fiş numarası alınamadı:', error.message);
-        const timestamp = Date.now().toString().slice(-6);
-        return `SIP-${timestamp}`;
+        throw error;
     }
 }
 
@@ -1787,10 +2184,6 @@ app.post('/api/logo/create-order', generalLimiter, async (req, res) => {
         const customerRef = customer.LOGICALREF;
         console.log('✅ Müşteri bulundu:', { ref: customerRef, name: customer.DEFINITION_ });
 
-        // 2. FİŞ NUMARASI AL (MEVCUT SİSTEM)
-        const sipFicheNo = await getNextFicheNo();
-        console.log('🎯 SIP Fiche No:', sipFicheNo);
-
         // 3. TÜM MALZEMELERİ VE İSKONTOLARI HESAPLA
         console.log('🧮 Tüm malzemeler ve iskontolar hesaplanıyor...');
         
@@ -1798,44 +2191,76 @@ app.post('/api/logo/create-order', generalLimiter, async (req, res) => {
         let totalDiscounts = 0;
         const itemDetails = [];
 
+        const requestedCodes = Array.from(new Set(
+            (items || [])
+                .map(it => String(it.code || it.itemCode || '').trim())
+                .filter(Boolean)
+        ));
+
+        const itemByCode = new Map();
+        const priceByRef = new Map();
+
+        if (requestedCodes.length > 0) {
+            const reqItems = new sql.Request(transaction);
+            const codeParams = requestedCodes.map((_, i) => `@code${i}`).join(',');
+            requestedCodes.forEach((c, i) => reqItems.input(`code${i}`, sql.VarChar, c));
+
+            const itemsRes = await reqItems.query(`
+                SELECT LOGICALREF, CODE, NAME, STGRPCODE
+                FROM LG_013_ITEMS
+                WHERE ACTIVE = 0
+                  AND CODE IN (${codeParams})
+            `);
+
+            for (const row of (itemsRes.recordset || [])) {
+                itemByCode.set(String(row.CODE).trim(), row);
+            }
+
+            const refs = Array.from(new Set((itemsRes.recordset || []).map(r => Number(r.LOGICALREF)).filter(n => Number.isFinite(n))));
+            if (refs.length > 0) {
+                const valuesList = refs.map((_, i) => `(@ref${i})`).join(',');
+                const reqPrices = new sql.Request(transaction);
+                refs.forEach((r, i) => reqPrices.input(`ref${i}`, sql.Int, r));
+
+                const pricesRes = await reqPrices.query(`
+                    SELECT x.CARDREF, x.PRICE
+                    FROM (VALUES ${valuesList}) v(CARDREF)
+                    OUTER APPLY (
+                        SELECT TOP 1 p.PRICE, p.CARDREF
+                        FROM LG_013_PRCLIST p
+                        WHERE p.CARDREF = v.CARDREF
+                          AND p.ACTIVE = 0
+                          AND GETDATE() BETWEEN ISNULL(p.BEGDATE, '1900-01-01') AND ISNULL(p.ENDDATE, '2100-12-31')
+                        ORDER BY p.PRIORITY, p.BEGDATE DESC
+                    ) x
+                `);
+
+                for (const row of (pricesRes.recordset || [])) {
+                    if (row && row.CARDREF != null && row.PRICE != null) {
+                        priceByRef.set(Number(row.CARDREF), Number(row.PRICE));
+                    }
+                }
+            }
+        }
+
         for (const item of items) {
             const malzemeKodu = item.code || item.itemCode;
             const quantity = item.quantity || 1;
             let unitPrice = item.unitPrice || 0;
 
-            // Malzeme referansını ve üreticisini bul
-            const itemRequest = new sql.Request(transaction);
-            itemRequest.input('itemCode', sql.VarChar, malzemeKodu);
-            const itemResult = await itemRequest.query(`
-                SELECT LOGICALREF, CODE, NAME, STGRPCODE 
-                FROM LG_013_ITEMS 
-                WHERE CODE = @itemCode AND ACTIVE = 0
-            `);
-
-            if (itemResult.recordset.length === 0) {
-                throw new LogoAPIError('Malzeme bulunamadı: ' + malzemeKodu, 'create-order', { 
+            const product = itemByCode.get(String(malzemeKodu || '').trim());
+            if (!product) {
+                throw new LogoAPIError('Malzeme bulunamadı: ' + malzemeKodu, 'create-order', {
                     itemCode: malzemeKodu
                 });
             }
-
-            const product = itemResult.recordset[0];
             const manufacturerCode = product.STGRPCODE; // Üretici kodu
             
             // Eğer fiyat 0 ise, fiyat listesinden al
             if (unitPrice === 0) {
-                const priceRequest = new sql.Request(transaction);
-                priceRequest.input('itemRef', sql.Int, product.LOGICALREF);
-                const priceResult = await priceRequest.query(`
-                    SELECT TOP 1 PRICE
-                    FROM LG_013_PRCLIST 
-                    WHERE CARDREF = @itemRef
-                    AND ACTIVE = 0
-                    AND GETDATE() BETWEEN ISNULL(BEGDATE, '1900-01-01') AND ISNULL(ENDDATE, '2100-12-31')
-                    ORDER BY PRIORITY, BEGDATE DESC
-                `);
-                
-                if (priceResult.recordset.length > 0) {
-                    unitPrice = priceResult.recordset[0].PRICE;
+                const found = priceByRef.get(Number(product.LOGICALREF));
+                if (Number.isFinite(found) && found > 0) {
+                    unitPrice = found;
                     console.log(`💰 ${malzemeKodu} fiyatı bulundu:`, unitPrice);
                 } else {
                     console.warn(`⚠️ ${malzemeKodu} için fiyat bulunamadı, 100 TL varsayıldı`);
@@ -1847,12 +2272,28 @@ app.post('/api/logo/create-order', generalLimiter, async (req, res) => {
             brutTotal += itemBrutTotal;
 
             // 4 KATMANLI İSKONTOLARI HESAPLA
-            const discountInfo = await getAllDiscountsForItem(
-                product.LOGICALREF,
-                product.CODE,
-                manufacturerCode,
-                customerRef
-            );
+            // Eğer frontend'den discountRates geldiyse (sepetten), bunları satır altı ayrı iskontolar olarak kullan.
+            const incomingRates = Array.isArray(item.discountRates) ? item.discountRates : [];
+            const normalizedIncomingRates = incomingRates
+                .map(r => Number(r) || 0)
+                .filter(r => r > 0);
+
+            const discountInfo = normalizedIncomingRates.length
+                ? {
+                    hasCampaign: false,
+                    discounts: normalizedIncomingRates.map((rate, idx) => ({
+                        type: 'B2B',
+                        rate,
+                        description: `B2B İskonto ${idx + 1}`
+                    })),
+                    totalDiscountRate: 0
+                }
+                : await getAllDiscountsForItem(
+                    product.LOGICALREF,
+                    product.CODE,
+                    manufacturerCode,
+                    customerRef
+                );
 
             // İskonto tutarlarını hesapla
             let itemNetTotal = itemBrutTotal;
@@ -1921,6 +2362,102 @@ app.post('/api/logo/create-order', generalLimiter, async (req, res) => {
         console.log('  KDV (%20):', vatAmount.toFixed(2), 'TL');
         console.log('  Genel Toplam:', grandTotal.toFixed(2), 'TL');
 
+        // 4. SİPARİŞİ AMBARLARA GÖRE BÖL (BÖLGE -> ÖNCELİK SIRASI)
+        const distributionSettings = await getOrderDistributionSettings();
+        const regionCode = String(customer.CYPHCODE || '').trim();
+        const whInvNos = Array.isArray(distributionSettings.warehouses)
+            ? distributionSettings.warehouses.map(w => Number(w.invNo)).filter(n => Number.isFinite(n))
+            : [0, 1, 2, 3];
+
+        const configuredPriority = (distributionSettings.prioritySettings && regionCode && Array.isArray(distributionSettings.prioritySettings[regionCode]))
+            ? distributionSettings.prioritySettings[regionCode].map(n => Number(n)).filter(n => Number.isFinite(n))
+            : [];
+
+        const priorityInvNos = Array.from(new Set([
+            ...configuredPriority,
+            ...whInvNos
+        ])).filter(inv => whInvNos.includes(inv));
+
+        const itemRefs = itemDetails.map(it => Number(it.ref)).filter(n => Number.isFinite(n));
+        const stockMap = await getWarehouseStocksByItemRef(transaction, itemRefs, priorityInvNos);
+        const { allocations, unfulfilled } = allocateByPriority(itemDetails, priorityInvNos, stockMap);
+
+        const created = [];
+        const vatRateSplit = vatRate;
+
+        // Her ambar için fiş oluştur
+        for (const invNo of priorityInvNos) {
+            const lines = allocations.get(invNo) || [];
+            if (!lines.length) continue;
+
+            const scaledItems = lines
+                .map(x => scaleItemForQty(x.item, x.qty))
+                .filter(x => (Number(x.quantity) || 0) > 0);
+            if (!scaledItems.length) continue;
+
+            const docode = String(orderNote || '').trim();
+            const result = await createFicheWithLines(transaction, {
+                customerRef,
+                sourceIndex: invNo,
+                docode,
+                vatRate: vatRateSplit,
+                items: scaledItems
+            });
+
+            created.push({
+                type: 'warehouse',
+                invNo,
+                ficheNo: result.ficheNo,
+                orderRef: result.orderRef,
+                totals: result.totals
+            });
+        }
+
+        // Karşılanamayanlar için tek fiş
+        const unfulfilledItems = unfulfilled
+            .map(x => scaleItemForQty(x.item, x.qty))
+            .filter(x => (Number(x.quantity) || 0) > 0);
+
+        if (unfulfilledItems.length) {
+            const ufInv = Number(distributionSettings.unfulfilledWarehouse);
+            const ufDocode = String(distributionSettings.unfulfilledDocodeText || 'KARŞILANAMADI').trim() || 'KARŞILANAMADI';
+            const docode = ufDocode;
+
+            const result = await createFicheWithLines(transaction, {
+                customerRef,
+                sourceIndex: Number.isFinite(ufInv) ? ufInv : 3,
+                docode,
+                vatRate: vatRateSplit,
+                items: unfulfilledItems
+            });
+
+            created.push({
+                type: 'unfulfilled',
+                invNo: Number.isFinite(ufInv) ? ufInv : 3,
+                ficheNo: result.ficheNo,
+                orderRef: result.orderRef,
+                totals: result.totals,
+                docode
+            });
+        }
+
+        await transaction.commit();
+
+        return res.json({
+            success: true,
+            message: 'Sipariş ambarlara göre bölünerek oluşturuldu',
+            regionCode,
+            priorityInvNos,
+            distributionSettingsUsed: {
+                unfulfilledWarehouse: distributionSettings.unfulfilledWarehouse,
+                unfulfilledDocodeText: distributionSettings.unfulfilledDocodeText,
+                warehouses: Array.isArray(distributionSettings.warehouses) ? distributionSettings.warehouses : null
+            },
+            created,
+            timestamp: new Date().toISOString(),
+            responseTime: Date.now() - startTime
+        });
+
         // 4. ORFICHE KAYDI (SIP-000005 FORMATI)
         console.log('📝 ORFICHE kaydı oluşturuluyor...');
         
@@ -1958,7 +2495,12 @@ app.post('/api/logo/create-order', generalLimiter, async (req, res) => {
         orficheRequest.input('ficheNo', sql.VarChar, sipFicheNo);
         orficheRequest.input('date', sql.DateTime, currentDate);
         orficheRequest.input('time', sql.Int, currentTime);
-        orficheRequest.input('docode', sql.VarChar, '');
+        const safeDocode = String(orderNote || '')
+            .replace(/[\r\n\t]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 50);
+        orficheRequest.input('docode', sql.VarChar, safeDocode);
         orficheRequest.input('clientRef', sql.Int, customerRef);
         orficheRequest.input('sourceIndex', sql.SmallInt, 1);
         orficheRequest.input('sourceCostGrp', sql.SmallInt, 1);
@@ -1988,171 +2530,6 @@ app.post('/api/logo/create-order', generalLimiter, async (req, res) => {
         orficheRequest.input('cyphcode', sql.VarChar, '');
         orficheRequest.input('department', sql.SmallInt, 0);
         orficheRequest.input('branch', sql.SmallInt, 0);
-        orficheRequest.input('printCnt', sql.SmallInt, 0);
-        orficheRequest.input('printDate', sql.DateTime, null);
-        orficheRequest.input('sendCnt', sql.SmallInt, 0);
-
-        const orficheResult = await orficheRequest.query(orficheQuery);
-        const orderRef = orficheResult.recordset[0].LOGICALREF;
-        console.log('✅ ORFICHE kaydı başarılı! Ref:', orderRef);
-
-        // 5. MALZEME VE İSKONTO SATIRLARI (4 KATMAN)
-        console.log('📦 Malzeme ve iskonto satırları oluşturuluyor...');
-        
-        let lineNo = 10;
-        
-        for (const item of itemDetails) {
-            // MALZEME SATIRI
-            console.log(`   📦 ${item.code} malzeme satırı (${lineNo})`);
-            
-            const malzemeRequest = new sql.Request(transaction);
-            const malzemeQuery = `
-                INSERT INTO LG_013_01_ORFLINE (
-                    ORDFICHEREF, STOCKREF, LINETYPE, DETLINE, LINENO_, TRCODE, DATE_, TIME_,
-                    AMOUNT, PRICE, TOTAL, 
-                    VAT, VATAMNT, VATMATRAH,
-                    UOMREF, USREF,
-                    UINFO1, UINFO2, VATINC,
-                    SOURCEINDEX, STATUS, CLIENTREF,
-                    SHIPPEDAMOUNT, CLOSED,
-                    RESERVEAMOUNT, DORESERVE, RESERVEDATE,
-                    SITEID, RECSTATUS,
-                    TRCURR, TRRATE,
-                    SPECODE, DISCPER, TEXTINC
-                )
-                VALUES (
-                    @orderRef, @stockRef, @lineType, @detLine, @lineNo, @trCode, @date, @time,
-                    @amount, @price, @total, 
-                    @vat, @vatAmount, @vatMatrah,
-                    @uomRef, @usRef,
-                    @uInfo1, @uInfo2, @vatInc,
-                    @sourceIndex, @status, @clientRef,
-                    @shippedAmount, @closed,
-                    @reserveAmount, @doReserve, @reserveDate,
-                    @siteId, @recStatus,
-                    @trCurr, @trRate,
-                    @specode, @discPer, @textInc
-                )
-            `;
-
-            const itemVatAmount = item.brutTotal * (vatRate / 100);
-            const itemVatMatrah = item.brutTotal;
-
-            malzemeRequest.input('orderRef', sql.Int, orderRef);
-            malzemeRequest.input('stockRef', sql.Int, item.ref);
-            malzemeRequest.input('lineType', sql.SmallInt, 0);
-            malzemeRequest.input('detLine', sql.SmallInt, 0);
-            malzemeRequest.input('lineNo', sql.Int, lineNo);
-            malzemeRequest.input('trCode', sql.SmallInt, 1);
-            malzemeRequest.input('date', sql.DateTime, currentDate);
-            malzemeRequest.input('time', sql.Int, currentTime);
-            malzemeRequest.input('amount', sql.Float, item.quantity);
-            malzemeRequest.input('price', sql.Float, item.unitPrice);
-            malzemeRequest.input('total', sql.Float, item.brutTotal);
-            malzemeRequest.input('vat', sql.Float, vatRate);
-            malzemeRequest.input('vatAmount', sql.Float, itemVatAmount);
-            malzemeRequest.input('vatMatrah', sql.Float, itemVatMatrah);
-            malzemeRequest.input('uomRef', sql.Int, 23);
-            malzemeRequest.input('usRef', sql.Int, 5);
-            malzemeRequest.input('uInfo1', sql.SmallInt, 1);
-            malzemeRequest.input('uInfo2', sql.SmallInt, 1);
-            malzemeRequest.input('vatInc', sql.SmallInt, 0);
-            malzemeRequest.input('sourceIndex', sql.SmallInt, 1);
-            malzemeRequest.input('status', sql.SmallInt, 4);
-            malzemeRequest.input('clientRef', sql.Int, customerRef);
-            malzemeRequest.input('shippedAmount', sql.Float, 0);
-            malzemeRequest.input('closed', sql.SmallInt, 0);
-            malzemeRequest.input('reserveAmount', sql.Float, item.quantity);
-            malzemeRequest.input('doReserve', sql.SmallInt, 1);
-            malzemeRequest.input('reserveDate', sql.DateTime, currentDate);
-            malzemeRequest.input('siteId', sql.SmallInt, 0);
-            malzemeRequest.input('recStatus', sql.SmallInt, 1);
-            malzemeRequest.input('trCurr', sql.SmallInt, 0);
-            malzemeRequest.input('trRate', sql.Float, 0.0);
-            malzemeRequest.input('specode', sql.VarChar, '');
-            malzemeRequest.input('discPer', sql.Float, 0);
-            malzemeRequest.input('textInc', sql.SmallInt, 0);
-
-            await malzemeRequest.query(malzemeQuery);
-            lineNo += 10;
-
-            // İSKONTO SATIRLARI (4 KATMAN)
-            for (const discount of item.discounts) {
-                console.log(`      ${discount.type === 'CAMPAIGN' ? '🎯' : discount.type === 'ITEM' ? '📦' : discount.type === 'MANUFACTURER' ? '🏭' : '👤'} ${discount.description} satırı (${lineNo})`);
-                
-                const discountRequest = new sql.Request(transaction);
-                const discountQuery = `
-                    INSERT INTO LG_013_01_ORFLINE (
-                        ORDFICHEREF, STOCKREF, LINETYPE, DETLINE, LINENO_, TRCODE, DATE_, TIME_,
-                        AMOUNT, PRICE, TOTAL, 
-                        VAT, VATAMNT, VATMATRAH,
-                        UOMREF, USREF,
-                        UINFO1, UINFO2, VATINC,
-                        SOURCEINDEX, STATUS, CLIENTREF,
-                        SHIPPEDAMOUNT, CLOSED,
-                        RESERVEAMOUNT, DORESERVE, RESERVEDATE,
-                        SITEID, RECSTATUS,
-                        TRCURR, TRRATE,
-                        SPECODE, DISCPER, TEXTINC
-                    )
-                    VALUES (
-                        @orderRef, @stockRef, @lineType, @detLine, @lineNo, @trCode, @date, @time,
-                        @amount, @price, @total, 
-                        @vat, @vatAmount, @vatMatrah,
-                        @uomRef, @usRef,
-                        @uInfo1, @uInfo2, @vatInc,
-                        @sourceIndex, @status, @clientRef,
-                        @shippedAmount, @closed,
-                        @reserveAmount, @doReserve, @reserveDate,
-                        @siteId, @recStatus,
-                        @trCurr, @trRate,
-                        @specode, @discPer, @textInc
-                    )
-                `;
-
-                discountRequest.input('orderRef', sql.Int, orderRef);
-                discountRequest.input('stockRef', sql.Int, 0);
-                discountRequest.input('lineType', sql.SmallInt, 2);
-                discountRequest.input('detLine', sql.SmallInt, 0);
-                discountRequest.input('lineNo', sql.Int, lineNo);
-                discountRequest.input('trCode', sql.SmallInt, 1);
-                discountRequest.input('date', sql.DateTime, currentDate);
-                discountRequest.input('time', sql.Int, currentTime);
-                discountRequest.input('amount', sql.Float, 0);
-                discountRequest.input('price', sql.Float, 0);
-                discountRequest.input('total', sql.Float, discount.amount); // POZİTİF TUTAR
-                discountRequest.input('vat', sql.Float, 0);
-                discountRequest.input('vatAmount', sql.Float, 0);
-                discountRequest.input('vatMatrah', sql.Float, 0);
-                discountRequest.input('uomRef', sql.Int, 0);
-                discountRequest.input('usRef', sql.Int, 0);
-                discountRequest.input('uInfo1', sql.SmallInt, 0);
-                discountRequest.input('uInfo2', sql.SmallInt, 0);
-                discountRequest.input('vatInc', sql.SmallInt, 0);
-                discountRequest.input('sourceIndex', sql.SmallInt, 0);
-                discountRequest.input('status', sql.SmallInt, 4);
-                discountRequest.input('clientRef', sql.Int, customerRef);
-                discountRequest.input('shippedAmount', sql.Float, 0);
-                discountRequest.input('closed', sql.SmallInt, 0);
-                discountRequest.input('reserveAmount', sql.Float, null);
-                discountRequest.input('doReserve', sql.SmallInt, null);
-                discountRequest.input('reserveDate', sql.DateTime, null);
-                discountRequest.input('siteId', sql.SmallInt, 0);
-                discountRequest.input('recStatus', sql.SmallInt, 1);
-                discountRequest.input('trCurr', sql.SmallInt, 0);
-                discountRequest.input('trRate', sql.Float, 0.0);
-                discountRequest.input('specode', sql.VarChar, '');
-                discountRequest.input('discPer', sql.Float, discount.rate);
-                discountRequest.input('textInc', sql.SmallInt, 0);
-
-                await discountRequest.query(discountQuery);
-                lineNo += 10;
-            }
-        }
-
-        // 6. STLINE KAYDI YOK (SIP-000005 formatında yok)
-
-        await transaction.commit();
         console.log('🎉 SIPARIŞ BAŞARILI! (4 KATMANLI İSKONTO - ADIM 1)');
         console.log('📊 Fiş No:', sipFicheNo, 'Ref:', orderRef);
         

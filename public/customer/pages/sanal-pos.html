@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B2B Trade Pro | Sanal Pos Ödeme</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1e40af;
+      --secondary: #f59e0b;
+      --light: #f8fafc;
+      --gray: #64748b;
+      --gray-light: #e2e8f0;
+      --shadow: 0 4px 20px rgba(0,0,0,0.08);
+      --border-radius: 12px;
+      --transition: all 0.3s ease;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      color: #334155;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .app-container { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 260px;
+      background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 1.5rem 0;
+      box-shadow: var(--shadow);
+      z-index: 100;
+    }
+
+    .logo {
+      padding: 0 1.5rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .logo h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
+    .logo span { color: var(--secondary); }
+
+    .customer-info {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 1rem;
+    }
+
+    .customer-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .customer-code { font-size: 0.875rem; }
+
+    .nav-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0 1rem;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.875rem 1rem;
+      border-radius: var(--border-radius);
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      transition: var(--transition);
+      font-weight: 500;
+    }
+
+    .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.15); color: white; }
+
+    .main-content { flex: 1; padding: 1.5rem; overflow-y: auto; }
+    .page-content { max-width: 1200px; margin: 0 auto; }
+
+    /* Sanal Pos content */
+    .card { background: #fff; border: 1px solid var(--gray-light); border-radius: 12px; padding: 14px; }
+    .grid { display: grid; grid-template-columns: 1.35fr 0.65fr; gap: 12px; }
+    @media(max-width:900px){ .grid{ grid-template-columns: 1fr; } }
+    .title { font-weight: 900; font-size: 18px; display:flex; align-items:center; gap:10px; }
+    .sub { color: var(--gray); font-size: 12px; margin-top: 6px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { font-size: 13px; padding: 10px; border-bottom: 1px solid #f3f4f6; }
+    th { color: var(--gray); font-weight: 800; text-align: left; }
+    td.r, th.r { text-align: right; }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid #f3f4f6; }
+    .row:last-child { border-bottom: 0; }
+    .amount { font-weight: 900; }
+    .badge { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid #fde68a; background:#fef3c7; color:#92400e; font-weight:800; font-size:12px; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:1px solid var(--gray-light); background: #111827; color:#fff; font-weight:900; cursor:pointer; }
+    .btn.secondary { background:#fff; color:#111827; }
+    .actions { display:flex; gap:10px; margin-top:12px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="logo">
+        <h1><i class="fas fa-store"></i> B2B<span>TRADE</span></h1>
+      </div>
+      <div class="customer-info">
+        <div class="customer-name" id="customer-name">Yükleniyor...</div>
+        <div class="customer-code" id="customer-code">Müşteri Kodu: Yükleniyor...</div>
+      </div>
+      <nav class="nav-menu">
+        <a href="dashboard.html" class="nav-item"><i class="fas fa-home"></i> Anasayfa</a>
+        <a href="sepetim.html" class="nav-item"><i class="fas fa-shopping-cart"></i> Sepetim</a>
+        <a href="kampanya-sepeti.html" class="nav-item"><i class="fas fa-tags"></i> Kampanya Sepetim</a>
+        <a href="sanal-pos.html" class="nav-item active"><i class="fas fa-credit-card"></i> Sanal Pos Ödeme</a>
+        <a href="cari-hesap.html" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Cari Hesabım</a>
+        <a href="siparis-gecmisi.html" class="nav-item"><i class="fas fa-clipboard-list"></i> Sipariş Geçmişim</a>
+        <a href="iade-islemleri.html" class="nav-item"><i class="fas fa-undo-alt"></i> İade İşlemlerim</a>
+        <a href="musteri-hizmetleri.html" class="nav-item"><i class="fas fa-headset"></i> Müşteri Hizmetleri</a>
+        <a href="hesap-ayarlari.html" class="nav-item"><i class="fas fa-user-cog"></i> Hesap Ayarları</a>
+        <a href="#" class="nav-item" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-content">
+        <div class="card" style="margin-bottom:12px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap: wrap;">
+            <div>
+              <div class="title"><i class="fas fa-credit-card"></i> Sanal POS Ödeme</div>
+              <div class="sub">"Hemen Al" indirimi bu ekranda uygulanır. Sepet özetine yansımaz.</div>
+            </div>
+            <span class="badge" id="badge">Hemen Al: %0</span>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <div style="font-weight:900;">Seçili Ürünler</div>
+            <div class="sub" id="meta">Yükleniyor...</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Ürün</th>
+                  <th class="r">Adet</th>
+                  <th class="r">Satır Toplam (KDV Dahil)</th>
+                </tr>
+              </thead>
+              <tbody id="items"></tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="row">
+              <div style="color:var(--gray);">Toplam (KDV Dahil)</div>
+              <div class="amount" id="totalVat">₺0.00</div>
+            </div>
+            <div class="row">
+              <div style="color:var(--gray);">Hemen Al İndirimi</div>
+              <div class="amount" id="buyNowDisc">-₺0.00</div>
+            </div>
+            <div class="row">
+              <div style="font-weight:900;">Ödenecek Tutar</div>
+              <div class="amount" id="payable">₺0.00</div>
+            </div>
+            <div class="actions">
+              <button class="btn secondary" onclick="window.location.href='sepetim.html'">
+                <i class="fas fa-arrow-left"></i> Sepete Dön
+              </button>
+              <button class="btn" onclick="completePayment()">
+                <i class="fas fa-lock"></i> Ödemeyi Tamamla
+              </button>
+            </div>
+            <div class="sub" style="margin-top:10px;">
+              Not: Bu sayfa yalnızca hesaplama + indirim uygulamasını gösterir. Provizyon entegrasyonu sonra eklenebilir.
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+<script>
+  let exchangeRates = { EUR: 49.45, USD: 42.43 };
+
+  function encodeUserDataToBase64(userData) {
+    try { return btoa(unescape(encodeURIComponent(JSON.stringify(userData)))); } catch { return ''; }
+  }
+  function setAuthHeaders(headers = {}) {
+    try {
+      const s = localStorage.getItem('b2b_user_data');
+      if (s) {
+        const u = JSON.parse(s);
+        return { ...headers, 'Content-Type':'application/json', 'x-user-data-base64': encodeUserDataToBase64(u), 'x-user-type':'customer' };
+      }
+    } catch {}
+    return { ...headers, 'Content-Type':'application/json', 'x-user-type':'customer' };
+  }
+
+  function formatTRY(n){ return `${(Number(n)||0).toFixed(2)} ₺`; }
+
+  function convertToTry(amount, currencyCode) {
+    const value = parseFloat(amount) || 0;
+    if (currencyCode === 160) return value;
+    if (currencyCode === 20) return value * (parseFloat(exchangeRates?.EUR) || 0);
+    if (currencyCode === 1) return value * (parseFloat(exchangeRates?.USD) || 0);
+    if (currencyCode === 17) return value * ((parseFloat(exchangeRates?.EUR) || 0) * 1.1);
+    return value;
+  }
+
+  function applySequentialDiscounts(baseAmount, rates) {
+    let current = Number(baseAmount) || 0;
+    (Array.isArray(rates) ? rates : [])
+      .map(r => Number(r) || 0)
+      .filter(r => r > 0)
+      .forEach(rate => { current = current * (1 - rate/100); });
+    return Number((Number.isFinite(current) ? current : 0).toFixed(2));
+  }
+
+  function getItemDiscountRates(item) {
+    const source = Array.isArray(item?.discountRates)
+      ? item.discountRates
+      : (Array.isArray(item?.discounts) ? item.discounts : []);
+    const rates = source
+      .map(d => (typeof d === 'number' ? d : Number(d?.rate || 0)))
+      .filter(r => (Number(r) || 0) > 0)
+      .map(r => Number(r) || 0);
+    if (rates.length) return rates;
+    const fallback = Number(item?.discountRate || 0);
+    return fallback > 0 ? [fallback] : [];
+  }
+
+  function getSelectedCartItems() {
+    const cart = JSON.parse(localStorage.getItem('b2b_cart') || '[]');
+    const selectedRaw = localStorage.getItem('b2b_selection_memory');
+    const selectedIdx = selectedRaw ? JSON.parse(selectedRaw) : [];
+    const indices = (Array.isArray(selectedIdx) && selectedIdx.length) ? selectedIdx : cart.map((_, i) => i);
+    return indices.map(i => cart[i]).filter(Boolean);
+  }
+
+  async function loadExchangeRates() {
+    try {
+      const r = await fetch('/api/exchange-rates');
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j && j.success && j.data) {
+        exchangeRates.EUR = j.data.EUR?.ForexBuying || exchangeRates.EUR;
+        exchangeRates.USD = j.data.USD?.ForexBuying || exchangeRates.USD;
+      }
+    } catch {}
+  }
+
+  async function loadBuyNowRate() {
+    try {
+      const r = await fetch('/api/b2b/global-settings', { method:'GET', headers: setAuthHeaders({}) });
+      const j = await r.json();
+      return Number(j?.data?.buy_now_discount_rate || 0);
+    } catch { return 0; }
+  }
+
+  function calcLineNetTry(item) {
+    const base = Number((item.originalPrice != null ? item.originalPrice : item.price) || 0);
+    const rates = getItemDiscountRates(item);
+    const discountedUnit = applySequentialDiscounts(base, rates);
+    const qty = Number(item.quantity) || 0;
+    const net = discountedUnit * qty;
+    const cc = Number(item.originalCurrency || item.currency || 160);
+    return convertToTry(net, cc);
+  }
+
+  async function init() {
+    await loadExchangeRates();
+    const buyNowRate = await loadBuyNowRate();
+
+    const badge = document.getElementById('badge');
+    if (badge) badge.textContent = `Hemen Al: %${buyNowRate}`;
+
+    const items = getSelectedCartItems();
+    const meta = document.getElementById('meta');
+    const tbody = document.getElementById('items');
+
+    if (!items.length) {
+      if (meta) meta.textContent = 'Seçili ürün bulunamadı.';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="3">Seçili ürün yok.</td></tr>';
+      return;
+    }
+
+    let totalNetTry = 0;
+    if (tbody) {
+      tbody.innerHTML = items.map(it => {
+        const lineNet = calcLineNetTry(it);
+        totalNetTry += lineNet;
+        const lineVatIncluded = lineNet * 1.20;
+        return `<tr><td>${String(it.code||'')} - ${String(it.name||'')}</td><td class="r">${Number(it.quantity||0)}</td><td class="r">${formatTRY(lineVatIncluded)}</td></tr>`;
+      }).join('');
+    }
+
+    // Buy-now discount is applied AFTER all discounts, on NET amount; then VAT is calculated.
+    const discountAmountNet = totalNetTry * (buyNowRate / 100);
+    const payableNet = totalNetTry - discountAmountNet;
+    const totalVatTry = payableNet * 1.20;
+
+    if (meta) meta.textContent = `${items.length} ürün seçili`;
+    document.getElementById('totalVat').textContent = formatTRY(totalVatTry);
+    document.getElementById('buyNowDisc').textContent = `-${formatTRY(discountAmountNet)}`;
+    document.getElementById('payable').textContent = formatTRY(totalVatTry);
+
+    window.__PAYABLE__ = totalVatTry;
+  }
+
+  function completePayment() {
+    alert(`Ödenecek Tutar: ${formatTRY(window.__PAYABLE__ || 0)}\n(Bu ekran sadece hesaplama gösterir.)`);
+  }
+
+  function displayCustomerInfo() {
+    try {
+      const s = localStorage.getItem('b2b_user_data');
+      if (!s) return;
+      const u = JSON.parse(s);
+      const name = u.musteri_adi || u.kullanici || 'Müşteri';
+      const code = u.cari_kodu || u.customerCode || u.kullanici || '-';
+      const nameEl = document.getElementById('customer-name');
+      const codeEl = document.getElementById('customer-code');
+      if (nameEl) nameEl.textContent = name;
+      if (codeEl) codeEl.textContent = `Müşteri Kodu: ${code}`;
+    } catch {}
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    displayCustomerInfo();
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+          localStorage.removeItem('b2b_cart');
+          localStorage.removeItem('b2b_user_data');
+          localStorage.removeItem('b2b_user_type');
+          localStorage.removeItem('b2b_session_id');
+          sessionStorage.clear();
+          window.location.href = '/';
+        }
+      });
+    }
+    init();
+  });
+</script>
+</body>
+</html>
