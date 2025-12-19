@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>B2B Trade Pro | Müşteri Hizmetleri</title>
+  <title>B2B Trade Pro | İade İşlemlerim</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root{--primary:#2563eb;--primary-dark:#1e40af;--primary-light:#dbeafe;--secondary:#f59e0b;--success:#10b981;--success-dark:#059669;--success-light:#d1fae5;--danger:#ef4444;--warning:#f59e0b;--info:#3b82f6;--light:#f8fafc;--dark:#1e293b;--gray:#64748b;--gray-light:#e2e8f0;--gray-lighter:#f1f5f9;--border-radius:12px;--border-radius-sm:8px;--shadow:0 4px 20px rgba(0,0,0,0.08);--shadow-lg:0 10px 25px rgba(0,0,0,0.15);--shadow-xl:0 20px 40px rgba(0,0,0,0.1);--transition:all 0.3s ease;--transition-fast:all 0.15s ease;}
@@ -58,8 +58,8 @@
         <a href="sanal-pos.html" class="nav-item"><i class="fas fa-credit-card"></i> Sanal Pos Ödeme</a>
         <a href="cari-hesap.html" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Cari Hesabım</a>
         <a href="siparis-gecmisi.html" class="nav-item"><i class="fas fa-clipboard-list"></i> Sipariş Geçmişim</a>
-        <a href="iade-islemleri.html" class="nav-item"><i class="fas fa-undo-alt"></i> İade İşlemlerim</a>
-        <a href="musteri-hizmetleri.html" class="nav-item active"><i class="fas fa-headset"></i> Müşteri Hizmetleri</a>
+        <a href="iade-islemleri.html" class="nav-item active"><i class="fas fa-undo-alt"></i> İade İşlemlerim</a>
+        <a href="musteri-hizmetleri.html" class="nav-item"><i class="fas fa-headset"></i> Müşteri Hizmetleri</a>
         <a href="hesap-ayarlari.html" class="nav-item"><i class="fas fa-user-cog"></i> Hesap Ayarları</a>
         <a href="#" class="nav-item" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
       </nav>
@@ -69,7 +69,7 @@
       <header class="header">
         <div class="welcome-section">
           <div class="welcome-text">
-            <h1 id="welcome-title">Müşteri Hizmetleri</h1>
+            <h1 id="welcome-title">İade İşlemlerim</h1>
           </div>
         </div>
         <div></div>
@@ -80,8 +80,8 @@
           <div class="placeholder-card">
             <div class="placeholder-head">
               <div>
-                <div class="placeholder-title"><i class="fas fa-headset"></i> Müşteri Hizmetleri</div>
-                <div class="placeholder-sub">Destek talepleriniz, mesajlarınız ve sık sorulan sorular bu sayfada yer alacaktır.</div>
+                <div class="placeholder-title"><i class="fas fa-undo-alt"></i> İade İşlemlerim</div>
+                <div class="placeholder-sub">İade talebi açma, durum takibi ve iade geçmişi bu sayfada yer alacaktır.</div>
               </div>
             </div>
             <div class="placeholder-body">
@@ -89,7 +89,7 @@
                 <div class="uc-ico"><i class="fas fa-screwdriver-wrench"></i></div>
                 <div>
                   <div class="uc-h">Yapım aşamasındadır</div>
-                  <div class="uc-p">Destek talebi oluşturma, canlı destek, dosya/ek gönderme ve takip ekranı hazırlanıyor.</div>
+                  <div class="uc-p">İade talebi oluşturma, fotoğraf ekleme, kargo etiketi ve onay süreci hazırlanıyor.</div>
                 </div>
               </div>
             </div>
@@ -112,7 +112,7 @@
         const welcomeTitleEl = document.getElementById('welcome-title');
         if (nameEl) nameEl.textContent = name;
         if (codeEl) codeEl.textContent = `Müşteri Kodu: ${code}`;
-        if (welcomeTitleEl) welcomeTitleEl.textContent = 'Müşteri Hizmetleri';
+        if (welcomeTitleEl) welcomeTitleEl.textContent = 'İade İşlemlerim';
       } catch {}
     }
 

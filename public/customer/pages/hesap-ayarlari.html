@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B2B Trade Pro | Hesap Ayarları</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1e40af;
+      --secondary: #f59e0b;
+      --success: #10b981;
+      --danger: #ef4444;
+      --light: #f8fafc;
+      --gray: #64748b;
+      --gray-light: #e2e8f0;
+      --shadow: 0 4px 20px rgba(0,0,0,0.08);
+      --border-radius: 12px;
+      --transition: all 0.3s ease;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      color: #334155;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .app-container { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 260px;
+      background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 1.5rem 0;
+      box-shadow: var(--shadow);
+      z-index: 100;
+    }
+
+    .logo {
+      padding: 0 1.5rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .logo h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
+    .logo span { color: var(--secondary); }
+
+    .customer-info {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 1rem;
+    }
+
+    .customer-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .customer-code { font-size: 0.875rem; }
+
+    .nav-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0 1rem;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.875rem 1rem;
+      border-radius: var(--border-radius);
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      transition: var(--transition);
+      font-weight: 500;
+    }
+
+    .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.15); color: white; }
+
+    .main-content { flex: 1; padding: 1.5rem; overflow-y: auto; }
+    .page-content { max-width: 1200px; margin: 0 auto; }
+
+    .card {
+      background: #fff;
+      border: 1px solid var(--gray-light);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(2,6,23,0.05);
+    }
+
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    .title { font-weight: 900; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+    .sub { color: var(--gray); font-size: 12px; margin-top: 6px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 0.85fr 1.15fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    @media(max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: #fff;
+      border: 1px solid rgba(226,232,240,0.9);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .panel-title {
+      font-weight: 900;
+      font-size: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f1f5f9;
+      margin-bottom: 10px;
+    }
+
+    .panel-title i { color: var(--primary-dark); }
+
+    .tabs { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .tab {
+      flex: 1;
+      min-width: 190px;
+      border: 1px solid var(--gray-light);
+      background: #fff;
+      border-radius: 14px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tab .t { font-weight: 900; }
+    .tab .d { font-size: 12px; color: var(--gray); margin-top: 2px; }
+
+    .tab.active {
+      border-color: rgba(37,99,235,0.35);
+      background: rgba(37,99,235,0.06);
+      box-shadow: 0 0 0 4px rgba(37,99,235,0.06);
+    }
+
+    .tab-content { display: none; margin-top: 12px; }
+    .tab-content.active { display: block; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .label { font-size: 12px; font-weight: 900; }
+    .input {
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--gray-light);
+      padding: 0 12px;
+      font-weight: 700;
+      outline: none;
+      background: #fff;
+    }
+
+    .input:focus {
+      border-color: rgba(37,99,235,0.5);
+      box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+    }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media(max-width: 680px) { .row { grid-template-columns: 1fr; } }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--gray-light);
+      background: #111827;
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer;
+      transition: var(--transition);
+      height: 40px;
+    }
+
+    .btn.secondary { background: #fff; color: #111827; }
+    .btn.success { background: linear-gradient(135deg, #16a34a 0%, #22c55e 60%); border-color: rgba(34,197,94,0.45); }
+    .btn.danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 60%); border-color: rgba(239,68,68,0.45); }
+
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(37,99,235,0.18);
+      background: rgba(37,99,235,0.06);
+      color: var(--primary-dark);
+      font-weight: 900;
+      font-size: 12px;
+    }
+
+    .kv {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .kv:last-child { border-bottom: 0; }
+
+    .kv .k { color: var(--gray); font-weight: 800; font-size: 13px; }
+    .kv .v { font-weight: 900; font-size: 13px; text-align: right; }
+
+    .switch {
+      width: 54px;
+      height: 32px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      position: relative;
+      cursor: pointer;
+      transition: var(--transition);
+      flex: 0 0 auto;
+      border: 1px solid #e5e7eb;
+    }
+
+    .switch::after {
+      content: '';
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: #fff;
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      transition: var(--transition);
+      box-shadow: 0 6px 16px rgba(2,6,23,0.15);
+    }
+
+    .switch.on { background: rgba(16,185,129,0.18); border-color: rgba(16,185,129,0.35); }
+    .switch.on::after { left: 27px; }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #111827;
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 12px;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.22);
+      display: none;
+      align-items: center;
+      gap: 10px;
+      z-index: 9999;
+      border: 1px solid rgba(255,255,255,0.12);
+      font-weight: 900;
+      font-size: 13px;
+    }
+
+    .toast.show { display: inline-flex; }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="logo"><h1><i class="fas fa-store"></i> B2B<span>TRADE</span></h1></div>
+      <div class="customer-info">
+        <div class="customer-name" id="customer-name">Yükleniyor...</div>
+        <div class="customer-code" id="customer-code">Müşteri Kodu: Yükleniyor...</div>
+      </div>
+      <nav class="nav-menu">
+        <a href="dashboard.html" class="nav-item"><i class="fas fa-home"></i> Anasayfa</a>
+        <a href="sepetim.html" class="nav-item"><i class="fas fa-shopping-cart"></i> Sepetim</a>
+        <a href="kampanya-sepeti.html" class="nav-item"><i class="fas fa-tags"></i> Kampanya Sepetim</a>
+        <a href="sanal-pos.html" class="nav-item"><i class="fas fa-credit-card"></i> Sanal Pos Ödeme</a>
+        <a href="cari-hesap.html" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Cari Hesabım</a>
+        <a href="siparis-gecmisi.html" class="nav-item"><i class="fas fa-clipboard-list"></i> Sipariş Geçmişim</a>
+        <a href="iade-islemleri.html" class="nav-item"><i class="fas fa-undo-alt"></i> İade İşlemlerim</a>
+        <a href="musteri-hizmetleri.html" class="nav-item"><i class="fas fa-headset"></i> Müşteri Hizmetleri</a>
+        <a href="hesap-ayarlari.html" class="nav-item active"><i class="fas fa-user-cog"></i> Hesap Ayarları</a>
+        <a href="#" class="nav-item" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-content">
+        <div class="card">
+          <div class="page-head">
+            <div>
+              <div class="title"><i class="fas fa-user-cog"></i> Hesap Ayarları</div>
+              <div class="sub">Bilgilerini ve güvenlik tercihlerini buradan yönetebilirsin. (Şimdilik UI; backend entegrasyonu sonraki adım)</div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:flex-end;">
+              <span class="pill"><i class="fas fa-shield-halved"></i> Güvenli Oturum</span>
+              <span class="pill"><i class="fas fa-lock"></i> KVKK / GDPR Uyumlu</span>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="panel">
+              <div class="panel-title"><i class="fas fa-id-badge"></i> Özet</div>
+              <div class="kv"><div class="k">Firma / Ünvan</div><div class="v" id="sumName">-</div></div>
+              <div class="kv"><div class="k">Müşteri Kodu</div><div class="v" id="sumCode">-</div></div>
+              <div class="kv"><div class="k">E-posta</div><div class="v" id="sumMail">-</div></div>
+              <div class="kv"><div class="k">Telefon</div><div class="v" id="sumPhone">-</div></div>
+              <div class="kv"><div class="k">Son Giriş</div><div class="v" id="sumLast">-</div></div>
+            </div>
+
+            <div class="panel">
+              <div class="tabs" id="tabs">
+                <div class="tab active" data-tab="profile">
+                  <div><div class="t">Profil</div><div class="d">İletişim ve temel bilgiler</div></div>
+                  <i class="fas fa-user"></i>
+                </div>
+                <div class="tab" data-tab="security">
+                  <div><div class="t">Güvenlik</div><div class="d">Şifre ve oturumlar</div></div>
+                  <i class="fas fa-shield-halved"></i>
+                </div>
+                <div class="tab" data-tab="notify">
+                  <div><div class="t">Bildirimler</div><div class="d">E-posta / SMS tercihleri</div></div>
+                  <i class="fas fa-bell"></i>
+                </div>
+              </div>
+
+              <div class="tab-content active" data-tab-content="profile">
+                <div class="panel-title" style="border-bottom:0; margin-bottom:0; padding-bottom:0;"><i class="fas fa-pen-to-square"></i> Profil Bilgileri</div>
+
+                <div class="row">
+                  <div class="field">
+                    <div class="label">Firma / Ünvan</div>
+                    <input class="input" id="inpCompany" placeholder="Firma adı" />
+                  </div>
+                  <div class="field">
+                    <div class="label">Yetkili / İsim</div>
+                    <input class="input" id="inpContact" placeholder="Yetkili" />
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="field">
+                    <div class="label">E-posta</div>
+                    <input class="input" id="inpEmail" placeholder="mail@firma.com" />
+                  </div>
+                  <div class="field">
+                    <div class="label">Telefon</div>
+                    <input class="input" id="inpPhone" placeholder="0(5xx) xxx xx xx" />
+                  </div>
+                </div>
+
+                <div class="field">
+                  <div class="label">Adres (Opsiyonel)</div>
+                  <input class="input" id="inpAddress" placeholder="Adres" />
+                </div>
+
+                <div class="actions">
+                  <button class="btn secondary" id="btnResetProfile"><i class="fas fa-rotate-left"></i> Geri Al</button>
+                  <button class="btn success" id="btnSaveProfile"><i class="fas fa-check"></i> Kaydet</button>
+                </div>
+              </div>
+
+              <div class="tab-content" data-tab-content="security">
+                <div class="panel-title" style="border-bottom:0; margin-bottom:0; padding-bottom:0;"><i class="fas fa-lock"></i> Güvenlik</div>
+
+                <div class="row">
+                  <div class="field">
+                    <div class="label">Yeni Şifre</div>
+                    <input class="input" id="inpPwd1" type="password" placeholder="••••••••" />
+                  </div>
+                  <div class="field">
+                    <div class="label">Yeni Şifre (Tekrar)</div>
+                    <input class="input" id="inpPwd2" type="password" placeholder="••••••••" />
+                  </div>
+                </div>
+
+                <div class="actions">
+                  <button class="btn success" id="btnChangePassword"><i class="fas fa-key"></i> Şifreyi Güncelle</button>
+                  <button class="btn danger" id="btnEndSessions"><i class="fas fa-right-from-bracket"></i> Tüm Oturumları Kapat</button>
+                </div>
+
+                <div class="sub" style="margin-top:10px;">Not: Şifre değişikliği ve oturum yönetimi backend ile entegre edilecektir. Şimdilik sadece demo uyarısı gösterir.</div>
+              </div>
+
+              <div class="tab-content" data-tab-content="notify">
+                <div class="panel-title" style="border-bottom:0; margin-bottom:0; padding-bottom:0;"><i class="fas fa-bell"></i> Bildirim Tercihleri</div>
+
+                <div class="kv">
+                  <div>
+                    <div style="font-weight:900;">Sipariş Bildirimleri</div>
+                    <div class="sub" style="margin-top:2px;">Durum değişikliklerinde bildirim al</div>
+                  </div>
+                  <div class="switch on" data-switch="order"></div>
+                </div>
+
+                <div class="kv">
+                  <div>
+                    <div style="font-weight:900;">Kampanya Bildirimleri</div>
+                    <div class="sub" style="margin-top:2px;">Yeni kampanyaları kaçırma</div>
+                  </div>
+                  <div class="switch" data-switch="promo"></div>
+                </div>
+
+                <div class="kv">
+                  <div>
+                    <div style="font-weight:900;">Stok Bildirimleri</div>
+                    <div class="sub" style="margin-top:2px;">Takip ettiğin ürün stokta</div>
+                  </div>
+                  <div class="switch on" data-switch="stock"></div>
+                </div>
+
+                <div class="actions">
+                  <button class="btn success" id="btnSaveNotify"><i class="fas fa-check"></i> Tercihleri Kaydet</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"><i class="fas fa-circle-check"></i><span id="toastText">Kaydedildi</span></div>
+
+  <script>
+    function showToast(text) {
+      const t = document.getElementById('toast');
+      const tt = document.getElementById('toastText');
+      if (tt) tt.textContent = String(text || '');
+      if (!t) return;
+      t.classList.add('show');
+      window.clearTimeout(window.__TOAST_T__);
+      window.__TOAST_T__ = window.setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    function getUser() {
+      try {
+        const s = localStorage.getItem('b2b_user_data');
+        return s ? JSON.parse(s) : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function displayCustomerInfo() {
+      try {
+        const u = getUser();
+        if (!u) return;
+        const name = u.musteri_adi || u.kullanici || 'Müşteri';
+        const code = u.cari_kodu || u.customerCode || u.kullanici || '-';
+        const nameEl = document.getElementById('customer-name');
+        const codeEl = document.getElementById('customer-code');
+        if (nameEl) nameEl.textContent = name;
+        if (codeEl) codeEl.textContent = `Müşteri Kodu: ${code}`;
+
+        const sumName = document.getElementById('sumName');
+        const sumCode = document.getElementById('sumCode');
+        const sumMail = document.getElementById('sumMail');
+        const sumPhone = document.getElementById('sumPhone');
+        const sumLast = document.getElementById('sumLast');
+        if (sumName) sumName.textContent = String(name || '-');
+        if (sumCode) sumCode.textContent = String(code || '-');
+        if (sumMail) sumMail.textContent = String(u.email || u.mail || '-');
+        if (sumPhone) sumPhone.textContent = String(u.telefon || u.phone || '-');
+        if (sumLast) sumLast.textContent = new Date().toLocaleString('tr-TR');
+
+        const inpCompany = document.getElementById('inpCompany');
+        const inpContact = document.getElementById('inpContact');
+        const inpEmail = document.getElementById('inpEmail');
+        const inpPhone = document.getElementById('inpPhone');
+        const inpAddress = document.getElementById('inpAddress');
+
+        if (inpCompany) inpCompany.value = String(u.musteri_adi || u.firma || u.company || '');
+        if (inpContact) inpContact.value = String(u.yetkili || u.kullanici || '');
+        if (inpEmail) inpEmail.value = String(u.email || u.mail || '');
+        if (inpPhone) inpPhone.value = String(u.telefon || u.phone || '');
+        if (inpAddress) inpAddress.value = String(u.adres || u.address || '');
+
+        window.__PROFILE_SNAPSHOT__ = {
+          company: inpCompany ? inpCompany.value : '',
+          contact: inpContact ? inpContact.value : '',
+          email: inpEmail ? inpEmail.value : '',
+          phone: inpPhone ? inpPhone.value : '',
+          address: inpAddress ? inpAddress.value : ''
+        };
+      } catch {}
+    }
+
+    function bindTabs() {
+      const tabs = Array.from(document.querySelectorAll('#tabs .tab'));
+      const contents = Array.from(document.querySelectorAll('.tab-content'));
+      tabs.forEach(t => {
+        t.addEventListener('click', () => {
+          const key = t.getAttribute('data-tab');
+          tabs.forEach(x => x.classList.toggle('active', x === t));
+          contents.forEach(c => c.classList.toggle('active', c.getAttribute('data-tab-content') === key));
+        });
+      });
+    }
+
+    function bindSwitches() {
+      const sws = Array.from(document.querySelectorAll('.switch'));
+      sws.forEach(sw => {
+        sw.addEventListener('click', () => {
+          sw.classList.toggle('on');
+        });
+      });
+    }
+
+    function bindActions() {
+      const btnSaveProfile = document.getElementById('btnSaveProfile');
+      const btnResetProfile = document.getElementById('btnResetProfile');
+      const btnChangePassword = document.getElementById('btnChangePassword');
+      const btnEndSessions = document.getElementById('btnEndSessions');
+      const btnSaveNotify = document.getElementById('btnSaveNotify');
+
+      if (btnSaveProfile) {
+        btnSaveProfile.addEventListener('click', () => {
+          showToast('Profil kaydı (demo) alındı');
+        });
+      }
+
+      if (btnResetProfile) {
+        btnResetProfile.addEventListener('click', () => {
+          const s = window.__PROFILE_SNAPSHOT__ || {};
+          const inpCompany = document.getElementById('inpCompany');
+          const inpContact = document.getElementById('inpContact');
+          const inpEmail = document.getElementById('inpEmail');
+          const inpPhone = document.getElementById('inpPhone');
+          const inpAddress = document.getElementById('inpAddress');
+          if (inpCompany) inpCompany.value = s.company || '';
+          if (inpContact) inpContact.value = s.contact || '';
+          if (inpEmail) inpEmail.value = s.email || '';
+          if (inpPhone) inpPhone.value = s.phone || '';
+          if (inpAddress) inpAddress.value = s.address || '';
+          showToast('Geri alındı');
+        });
+      }
+
+      if (btnChangePassword) {
+        btnChangePassword.addEventListener('click', () => {
+          const p1 = String(document.getElementById('inpPwd1')?.value || '');
+          const p2 = String(document.getElementById('inpPwd2')?.value || '');
+          if (!p1 || p1.length < 6) return showToast('Şifre en az 6 karakter olmalı');
+          if (p1 !== p2) return showToast('Şifreler eşleşmiyor');
+          showToast('Şifre güncelleme (demo)');
+        });
+      }
+
+      if (btnEndSessions) {
+        btnEndSessions.addEventListener('click', () => {
+          if (!confirm('Tüm oturumlar kapatılsın mı?')) return;
+          showToast('Oturumlar kapatıldı (demo)');
+        });
+      }
+
+      if (btnSaveNotify) {
+        btnSaveNotify.addEventListener('click', () => {
+          showToast('Bildirim tercihleri (demo)');
+        });
+      }
+
+      document.getElementById('logout-btn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+          localStorage.removeItem('b2b_cart');
+          localStorage.removeItem('b2b_user_data');
+          localStorage.removeItem('b2b_user_type');
+          localStorage.removeItem('b2b_session_id');
+          sessionStorage.clear();
+          window.location.href = '/';
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      displayCustomerInfo();
+      bindTabs();
+      bindSwitches();
+      bindActions();
+    });
+  </script>
+</body>
+</html>

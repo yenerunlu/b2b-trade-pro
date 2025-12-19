@@ -419,21 +419,37 @@
             <div class="logo">
                 <h1><i class="fas fa-store"></i> B2B<span>TRADE</span></h1>
             </div>
+            <div class="customer-info">
+                <div class="customer-name" id="customer-name">Yükleniyor...</div>
+                <div class="customer-code" id="customer-code">Müşteri Kodu: Yükleniyor...</div>
+            </div>
             <nav class="nav-menu">
                 <a href="dashboard.html" class="nav-item">
                     <i class="fas fa-home"></i> Anasayfa
                 </a>
-                <a href="dashboard.html" class="nav-item">
-                    <i class="fas fa-boxes"></i> Alınan Malzemeler
+                <a href="sepetim.html" class="nav-item">
+                    <i class="fas fa-shopping-cart"></i> Sepetim
                 </a>
-                <a href="siparislerim.html" class="nav-item">
-                    <i class="fas fa-clipboard-list"></i> Siparişlerim
+                <a href="kampanya-sepeti.html" class="nav-item">
+                    <i class="fas fa-tags"></i> Kampanya Sepetim
                 </a>
-                <a href="dashboard.html" class="nav-item">
-                    <i class="fas fa-file-invoice-dollar"></i> Cari Borç
-                </a>
-                <a href="dashboard.html" class="nav-item">
+                <a href="sanal-pos.html" class="nav-item">
                     <i class="fas fa-credit-card"></i> Sanal Pos Ödeme
+                </a>
+                <a href="cari-hesap.html" class="nav-item">
+                    <i class="fas fa-file-invoice-dollar"></i> Cari Hesabım
+                </a>
+                <a href="siparis-gecmisi.html" class="nav-item">
+                    <i class="fas fa-clipboard-list"></i> Sipariş Geçmişim
+                </a>
+                <a href="iade-islemleri.html" class="nav-item">
+                    <i class="fas fa-undo-alt"></i> İade İşlemlerim
+                </a>
+                <a href="musteri-hizmetleri.html" class="nav-item">
+                    <i class="fas fa-headset"></i> Müşteri Hizmetleri
+                </a>
+                <a href="hesap-ayarlari.html" class="nav-item">
+                    <i class="fas fa-user-cog"></i> Hesap Ayarları
                 </a>
                 <a href="profil.html" class="nav-item active">
                     <i class="fas fa-user"></i> Profilim
@@ -448,19 +464,17 @@
         <main class="main-content">
             <!-- HEADER -->
             <header class="header">
-                <div class="user-info">
-                    <div class="user-details">
-                        <div class="user-name">Ahmet Yılmaz</div>
-                        <div class="user-code">Müşteri Kodu: S6064</div>
+                <div class="welcome-section">
+                    <div class="welcome-text">
+                        <h1 id="welcome-title">Profilim</h1>
                     </div>
-                    <div class="user-avatar">AY</div>
                 </div>
                 <div class="header-actions">
-                    <a href="siparislerim.html" class="cart-indicator">
+                    <a href="sepetim.html" class="cart-indicator">
                         <i class="fas fa-shopping-cart"></i> Sepetim
                         <span class="cart-count">2</span>
                     </a>
-                    <a href="kampanyasepeti.html" class="campaign-indicator">
+                    <a href="kampanya-sepeti.html" class="campaign-indicator">
                         <i class="fas fa-tags"></i> Kampanya Sepeti
                         <span class="cart-count">3</span>
                     </a>
@@ -762,6 +776,31 @@
     <script>
         // Sadece bu sayfaya özel JavaScript kodları
         document.addEventListener('DOMContentLoaded', function() {
+            try {
+                const s = localStorage.getItem('b2b_user_data');
+                if (s) {
+                    const u = JSON.parse(s);
+                    const name = u.musteri_adi || u.kullanici || 'Müşteri';
+                    const code = u.cari_kodu || u.customerCode || u.kullanici || '-';
+                    const nameEl = document.getElementById('customer-name');
+                    const codeEl = document.getElementById('customer-code');
+                    if (nameEl) nameEl.textContent = name;
+                    if (codeEl) codeEl.textContent = `Müşteri Kodu: ${code}`;
+                }
+            } catch {}
+
+            document.getElementById('logout-btn')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                    localStorage.removeItem('b2b_cart');
+                    localStorage.removeItem('b2b_user_data');
+                    localStorage.removeItem('b2b_user_type');
+                    localStorage.removeItem('b2b_session_id');
+                    sessionStorage.clear();
+                    window.location.href = '/';
+                }
+            });
+
             // Sayfa özel başlatma kodları
             if (typeof ProfilePage !== 'undefined') {
                 ProfilePage.init();

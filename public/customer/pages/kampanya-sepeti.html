@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>B2B Trade Pro | Müşteri Hizmetleri</title>
+  <title>B2B Trade Pro | Kampanya Sepetim</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root{--primary:#2563eb;--primary-dark:#1e40af;--primary-light:#dbeafe;--secondary:#f59e0b;--success:#10b981;--success-dark:#059669;--success-light:#d1fae5;--danger:#ef4444;--warning:#f59e0b;--info:#3b82f6;--light:#f8fafc;--dark:#1e293b;--gray:#64748b;--gray-light:#e2e8f0;--gray-lighter:#f1f5f9;--border-radius:12px;--border-radius-sm:8px;--shadow:0 4px 20px rgba(0,0,0,0.08);--shadow-lg:0 10px 25px rgba(0,0,0,0.15);--shadow-xl:0 20px 40px rgba(0,0,0,0.1);--transition:all 0.3s ease;--transition-fast:all 0.15s ease;}
@@ -35,8 +35,8 @@
     .placeholder-title{display:flex;align-items:center;gap:10px;font-weight:900;font-size:18px;color:var(--dark);}
     .placeholder-sub{color:var(--gray);font-size:0.9rem;margin-top:0.35rem;}
     .placeholder-body{padding:1.5rem 2rem;}
-    .uc-wrap{padding:22px;border-radius:16px;border:1px dashed rgba(245,158,11,0.45);background:linear-gradient(135deg,rgba(245,158,11,0.10),rgba(239,68,68,0.06));display:flex;gap:14px;align-items:flex-start;}
-    .uc-ico{width:48px;height:48px;border-radius:14px;background:rgba(245,158,11,0.16);display:flex;align-items:center;justify-content:center;color:#92400e;font-size:18px;flex:0 0 auto;}
+    .uc-wrap{padding:22px;border-radius:16px;border:1px dashed rgba(37,99,235,0.35);background:linear-gradient(135deg,rgba(37,99,235,0.08),rgba(245,158,11,0.08));display:flex;gap:14px;align-items:flex-start;}
+    .uc-ico{width:48px;height:48px;border-radius:14px;background:rgba(37,99,235,0.12);display:flex;align-items:center;justify-content:center;color:var(--primary-dark);font-size:18px;flex:0 0 auto;}
     .uc-h{font-weight:900;font-size:16px;}
     .uc-p{color:var(--gray);font-size:13px;margin-top:6px;}
 
@@ -54,12 +54,12 @@
       <nav class="nav-menu">
         <a href="dashboard.html" class="nav-item"><i class="fas fa-home"></i> Anasayfa</a>
         <a href="sepetim.html" class="nav-item"><i class="fas fa-shopping-cart"></i> Sepetim</a>
-        <a href="kampanya-sepeti.html" class="nav-item"><i class="fas fa-tags"></i> Kampanya Sepetim</a>
+        <a href="kampanya-sepeti.html" class="nav-item active"><i class="fas fa-tags"></i> Kampanya Sepetim</a>
         <a href="sanal-pos.html" class="nav-item"><i class="fas fa-credit-card"></i> Sanal Pos Ödeme</a>
         <a href="cari-hesap.html" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Cari Hesabım</a>
         <a href="siparis-gecmisi.html" class="nav-item"><i class="fas fa-clipboard-list"></i> Sipariş Geçmişim</a>
         <a href="iade-islemleri.html" class="nav-item"><i class="fas fa-undo-alt"></i> İade İşlemlerim</a>
-        <a href="musteri-hizmetleri.html" class="nav-item active"><i class="fas fa-headset"></i> Müşteri Hizmetleri</a>
+        <a href="musteri-hizmetleri.html" class="nav-item"><i class="fas fa-headset"></i> Müşteri Hizmetleri</a>
         <a href="hesap-ayarlari.html" class="nav-item"><i class="fas fa-user-cog"></i> Hesap Ayarları</a>
         <a href="#" class="nav-item" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
       </nav>
@@ -69,7 +69,7 @@
       <header class="header">
         <div class="welcome-section">
           <div class="welcome-text">
-            <h1 id="welcome-title">Müşteri Hizmetleri</h1>
+            <h1 id="welcome-title">Kampanya Sepetim</h1>
           </div>
         </div>
         <div></div>
@@ -80,8 +80,8 @@
           <div class="placeholder-card">
             <div class="placeholder-head">
               <div>
-                <div class="placeholder-title"><i class="fas fa-headset"></i> Müşteri Hizmetleri</div>
-                <div class="placeholder-sub">Destek talepleriniz, mesajlarınız ve sık sorulan sorular bu sayfada yer alacaktır.</div>
+                <div class="placeholder-title"><i class="fas fa-tags"></i> Kampanya Sepetim</div>
+                <div class="placeholder-sub">Kampanya sepeti ekranı yakında aktif olacaktır.</div>
               </div>
             </div>
             <div class="placeholder-body">
@@ -89,7 +89,7 @@
                 <div class="uc-ico"><i class="fas fa-screwdriver-wrench"></i></div>
                 <div>
                   <div class="uc-h">Yapım aşamasındadır</div>
-                  <div class="uc-p">Destek talebi oluşturma, canlı destek, dosya/ek gönderme ve takip ekranı hazırlanıyor.</div>
+                  <div class="uc-p">Bu bölüm profesyonel kampanya kuralları, hediye ürün/iskonto senaryoları ve kampanya özetleri ile birlikte hazırlanıyor.</div>
                 </div>
               </div>
             </div>
@@ -112,7 +112,7 @@
         const welcomeTitleEl = document.getElementById('welcome-title');
         if (nameEl) nameEl.textContent = name;
         if (codeEl) codeEl.textContent = `Müşteri Kodu: ${code}`;
-        if (welcomeTitleEl) welcomeTitleEl.textContent = 'Müşteri Hizmetleri';
+        if (welcomeTitleEl) welcomeTitleEl.textContent = 'Kampanya Sepetim';
       } catch {}
     }
 

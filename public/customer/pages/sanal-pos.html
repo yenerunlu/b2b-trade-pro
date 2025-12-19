@@ -91,8 +91,8 @@
     .page-content { max-width: 1200px; margin: 0 auto; }
 
     /* Sanal Pos content */
-    .card { background: #fff; border: 1px solid var(--gray-light); border-radius: 12px; padding: 14px; }
-    .grid { display: grid; grid-template-columns: 1.35fr 0.65fr; gap: 12px; }
+    .card { background: #fff; border: 1px solid var(--gray-light); border-radius: 12px; padding: 14px; box-shadow: 0 12px 32px rgba(2,6,23,0.06); }
+    .grid { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 12px; }
     @media(max-width:900px){ .grid{ grid-template-columns: 1fr; } }
     .title { font-weight: 900; font-size: 18px; display:flex; align-items:center; gap:10px; }
     .sub { color: var(--gray); font-size: 12px; margin-top: 6px; }
@@ -106,7 +106,112 @@
     .badge { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; border:1px solid #fde68a; background:#fef3c7; color:#92400e; font-weight:800; font-size:12px; }
     .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:10px; border:1px solid var(--gray-light); background: #111827; color:#fff; font-weight:900; cursor:pointer; }
     .btn.secondary { background:#fff; color:#111827; }
+    .btn.back { background:#fff; color:#111827; border-color: rgba(239,68,68,0.35); box-shadow: 0 0 0 0 rgba(239,68,68,0.0); transition: var(--transition); }
+    .btn.back:hover { border-color: rgba(239,68,68,0.60); box-shadow: 0 0 0 4px rgba(239,68,68,0.10), 0 0 24px rgba(239,68,68,0.35); }
+    .btn.pay { background: linear-gradient(135deg, #16a34a 0%, #22c55e 60%, #84cc16 100%); border-color: rgba(34,197,94,0.45); box-shadow: 0 0 0 0 rgba(34,197,94,0.0); transition: var(--transition); }
+    .btn.pay:hover { border-color: rgba(250,204,21,0.55); box-shadow: 0 0 0 4px rgba(250,204,21,0.10), 0 0 28px rgba(34,197,94,0.45), 0 0 18px rgba(250,204,21,0.35); }
     .actions { display:flex; gap:10px; margin-top:12px; flex-wrap: wrap; }
+
+    .tabs { display:flex; gap:10px; margin-top: 12px; flex-wrap: wrap; }
+    .tab { display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:12px; border:1px solid var(--gray-light); background:#fff; font-weight:900; cursor:pointer; box-shadow: 0 10px 26px rgba(2,6,23,0.05); }
+    .tab.active { border-color: rgba(37,99,235,0.35); background: rgba(37,99,235,0.08); }
+    .tab.pay-tab.active { border-color: rgba(34,197,94,0.45); background: rgba(34,197,94,0.12); box-shadow: 0 0 0 4px rgba(250,204,21,0.06), 0 0 22px rgba(34,197,94,0.28); }
+    .tab-content { display:none; margin-top: 12px; }
+    .tab-content.active { display:block; }
+
+    .stepper { display:flex; gap:10px; margin-top: 12px; flex-wrap: wrap; }
+    .step { flex: 1; min-width: 160px; border:1px solid var(--gray-light); border-radius: 12px; padding: 10px 12px; display:flex; gap:10px; align-items:center; background:#fff; box-shadow: 0 10px 26px rgba(2,6,23,0.05); }
+    .step .dot { width: 28px; height: 28px; border-radius: 10px; display:flex; align-items:center; justify-content:center; font-weight:900; color: var(--gray); background: rgba(100,116,139,0.12); }
+    .step.active { border-color: rgba(37,99,235,0.35); background: rgba(37,99,235,0.06); }
+    .step.active .dot { color: #1e40af; background: rgba(37,99,235,0.18); }
+    .step.done { border-color: rgba(16,185,129,0.35); background: rgba(16,185,129,0.06); }
+    .step.done .dot { color: #065f46; background: rgba(16,185,129,0.18); }
+    .step .lbl { font-weight:900; font-size: 12px; }
+    .step .desc { color: var(--gray); font-size: 12px; margin-top: 2px; }
+
+    .field { display:flex; flex-direction:column; gap: 6px; margin-top: 10px; }
+    .label { font-size: 12px; font-weight: 900; }
+    .input { height: 40px; border-radius: 10px; border:1px solid var(--gray-light); padding: 0 10px; font-weight: 700; outline:none; }
+    .input:focus { border-color: rgba(37,99,235,0.5); box-shadow: 0 0 0 4px rgba(37,99,235,0.12); }
+    .error { display:none; font-size: 12px; font-weight: 900; color: #b91c1c; margin-top: 4px; }
+    .error.show { display:block; }
+
+    .mode { display:flex; gap:10px; margin-top: 12px; flex-wrap: wrap; }
+    .mode-btn { flex: 1; min-width: 200px; display:flex; align-items:center; justify-content:space-between; gap: 10px; padding: 10px 12px; border-radius: 12px; border:1px solid var(--gray-light); background:#fff; cursor:pointer; box-shadow: 0 10px 26px rgba(2,6,23,0.05); }
+    .mode-btn.active { border-color: rgba(37,99,235,0.35); background: rgba(37,99,235,0.06); }
+    .mode-btn.disabled { opacity: 0.6; cursor:not-allowed; }
+    .mode-btn .t { font-weight: 900; }
+    .mode-btn .d { font-size: 12px; color: var(--gray); margin-top: 2px; }
+
+    .card-preview { margin-top: 12px; perspective: 1000px; }
+    .ccard { width: 100%; max-width: 462px; height: 250px; position: relative; transform-style: preserve-3d; transition: transform 650ms cubic-bezier(.2,.9,.2,1); }
+    .ccard.flipped { transform: rotateY(180deg); }
+    .cc-face { position:absolute; inset: 0; border-radius: 18px; backface-visibility: hidden; overflow:hidden; }
+    .cc-front { background: radial-gradient(circle at 20% 10%, rgba(245,158,11,0.35), transparent 45%), radial-gradient(circle at 90% 80%, rgba(37,99,235,0.35), transparent 55%), linear-gradient(135deg, #0b1220, #0f172a 40%, #111827); color:#fff; padding: 18px; }
+    .cc-back { transform: rotateY(180deg); background: linear-gradient(135deg, #0f172a, #111827); color:#fff; padding: 18px; }
+    .chip { width: 46px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #fbbf24, #fde68a); }
+    .cc-top { display:flex; align-items:center; justify-content:space-between; }
+    .cc-brand { font-weight: 900; letter-spacing: 1px; }
+    .cc-num { margin-top: 26px; font-size: 1.15rem; letter-spacing: 2px; font-weight: 900; }
+    .cc-meta { margin-top: 18px; display:flex; justify-content:space-between; gap: 10px; }
+    .cc-meta .k { font-size: 10px; opacity: 0.75; letter-spacing: 0.8px; }
+    .cc-meta .v { font-size: 13px; font-weight: 900; letter-spacing: 0.6px; }
+    .magstripe { height: 48px; background: rgba(0,0,0,0.7); margin-top: 8px; border-radius: 10px; }
+    .cvvline { margin-top: 14px; background: rgba(255,255,255,0.12); border-radius: 10px; padding: 10px; display:flex; justify-content:flex-end; }
+    .cvvbox { width: 82px; background: rgba(255,255,255,0.9); color:#0f172a; border-radius: 10px; padding: 8px 10px; font-weight: 900; letter-spacing: 2px; text-align:right; }
+
+    .inst { margin-top: 12px; display:none; }
+    .inst.show { display:block; }
+    .inst-row { display:flex; align-items:center; justify-content:space-between; gap: 12px; padding: 12px; border-radius: 12px; border:1px solid var(--gray-light); background:#fff; cursor:pointer; margin-top: 10px; box-shadow: 0 10px 26px rgba(2,6,23,0.05); }
+    .inst-row.active { border-color: rgba(16,185,129,0.35); background: rgba(16,185,129,0.06); }
+    .inst-row .h { font-weight: 900; }
+    .inst-row .s { font-size: 12px; color: var(--gray); margin-top: 2px; }
+    .inst-row .tot { font-weight: 900; text-align:right; }
+    .inst-row .mon { font-size: 12px; color: var(--gray); text-align:right; margin-top: 2px; }
+
+    .modal { position: fixed; inset: 0; background: rgba(15,23,42,0.55); display:none; align-items:center; justify-content:center; padding: 20px; z-index: 9999; }
+    .modal.show { display:flex; }
+    .modal-card { width: 100%; max-width: 820px; background:#fff; border-radius: 16px; border:1px solid rgba(15,23,42,0.12); overflow:hidden; box-shadow: 0 25px 70px rgba(0,0,0,0.25); }
+    .modal-head { display:flex; align-items:center; justify-content:space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid rgba(15,23,42,0.08); }
+    .modal-head .h { font-weight: 900; }
+    .modal-body { padding: 16px; }
+
+    /* Receipt (print-safe) */
+    .receipt { font-size: 12px; color: #0f172a; }
+    .receipt-head { display:flex; justify-content:space-between; gap: 10px; align-items:flex-start; }
+    .receipt-title { font-weight: 900; font-size: 14px; line-height: 1.15; }
+    .receipt-meta { text-align:right; }
+    .receipt-meta .no { font-weight: 900; font-size: 12px; }
+    .receipt-meta .dt { font-size: 11px; color: var(--gray); margin-top: 2px; }
+    .receipt-kv { display:grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eef2f7; }
+    .receipt-kv .k { font-size: 11px; color: var(--gray); font-weight: 900; }
+    .receipt-kv .v { font-size: 12px; font-weight: 900; }
+    .receipt-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .receipt-table th, .receipt-table td { padding: 6px 8px; font-size: 11px; border-bottom: 1px solid #eef2f7; vertical-align: top; }
+    .receipt-table th { color: var(--gray); font-weight: 900; }
+    .receipt-table td.r, .receipt-table th.r { text-align:right; white-space: nowrap; }
+    .receipt-foot { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5e7eb; display:flex; justify-content:space-between; gap: 10px; align-items:flex-end; }
+    .receipt-note { font-size: 10px; color: var(--gray); max-width: 65%; }
+    .receipt-total { text-align:right; }
+    .receipt-total .k { font-size: 11px; color: var(--gray); font-weight: 900; }
+    .receipt-total .v { font-size: 14px; font-weight: 900; }
+    @media print {
+      @page { size: A4; margin: 10mm; }
+      html, body { background:#fff !important; }
+      .sidebar, .nav-menu, .actions, .tabs, #btnCloseReceipt { display:none !important; }
+      .modal { position: static; display:block !important; background:#fff !important; padding: 0 !important; }
+      .modal-card { box-shadow:none; border: 0; }
+      .modal-head { padding: 0 0 8px 0; border-bottom: 0; }
+      .modal-body { padding: 0 !important; }
+      .receipt { font-size: 11px; }
+      .receipt-title { font-size: 13px; }
+      .receipt-table th, .receipt-table td { padding: 5px 6px; font-size: 10.5px; }
+      .receipt-kv { margin-top: 8px; padding-top: 8px; }
+      .receipt-foot { margin-top: 8px; padding-top: 8px; }
+      .receipt-note { max-width: 62%; }
+      /* Avoid accidental multi-page breaks */
+      .modal-card, .receipt, .receipt-table, .receipt-foot { break-inside: avoid; page-break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
@@ -136,59 +241,198 @@
     <main class="main-content">
       <div class="page-content">
         <div class="card" style="margin-bottom:12px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap: wrap;">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap: wrap;">
             <div>
               <div class="title"><i class="fas fa-credit-card"></i> Sanal POS Ödeme</div>
-              <div class="sub">"Hemen Al" indirimi bu ekranda uygulanır. Sepet özetine yansımaz.</div>
+              <div class="sub" id="subHint">Kredi kartı ile tek çekim veya taksitli ödeme yapabilirsiniz. "Hemen Al" akışında taksit kapalıdır.</div>
             </div>
-            <span class="badge" id="badge">Hemen Al: %0</span>
-          </div>
-        </div>
-
-        <div class="grid">
-          <div class="card">
-            <div style="font-weight:900;">Seçili Ürünler</div>
-            <div class="sub" id="meta">Yükleniyor...</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Ürün</th>
-                  <th class="r">Adet</th>
-                  <th class="r">Satır Toplam (KDV Dahil)</th>
-                </tr>
-              </thead>
-              <tbody id="items"></tbody>
-            </table>
+            <div style="display:flex; gap:8px; flex-wrap: wrap; align-items:center; justify-content:flex-end;">
+              <span class="badge" id="badge">Hemen Al: %0</span>
+              <span class="badge" id="badgePayable">Ödenecek: 0.00 ₺</span>
+            </div>
           </div>
 
-          <div class="card">
-            <div class="row">
-              <div style="color:var(--gray);">Toplam (KDV Dahil)</div>
-              <div class="amount" id="totalVat">₺0.00</div>
+          <div class="stepper" id="stepper">
+            <div class="step active" data-step="1"><div class="dot">1</div><div><div class="lbl">Ödeme Bilgileri</div><div class="desc">Kart + yöntem</div></div></div>
+            <div class="step" data-step="2"><div class="dot">2</div><div><div class="lbl">Onay</div><div class="desc">Tutar kontrol</div></div></div>
+            <div class="step" data-step="3"><div class="dot">3</div><div><div class="lbl">Sonuç</div><div class="desc">Başarılı / hata</div></div></div>
+            <div class="step" data-step="4"><div class="dot">4</div><div><div class="lbl">Makbuz</div><div class="desc">Yazdır / görüntüle</div></div></div>
+          </div>
+
+          <div class="tabs">
+            <div class="tab pay-tab active" data-tab="pay"><i class="fas fa-lock"></i> Ödeme Yap</div>
+            <div class="tab" data-tab="history"><i class="fas fa-clock-rotate-left"></i> Ödeme Geçmişi</div>
+          </div>
+
+          <div class="tab-content active" data-tab-content="pay">
+            <div class="grid" style="margin-top: 12px;">
+              <div>
+                <div class="mode" id="mode">
+                  <div class="mode-btn active" data-mode="single">
+                    <div>
+                      <div class="t">Tek Çekim</div>
+                      <div class="d">Komisyon yok</div>
+                    </div>
+                    <i class="fas fa-circle-check"></i>
+                  </div>
+                  <div class="mode-btn" data-mode="installment" id="modeInstallment">
+                    <div>
+                      <div class="t">Taksitli</div>
+                      <div class="d">Komisyonlar gösterilir</div>
+                    </div>
+                    <i class="fas fa-layer-group"></i>
+                  </div>
+                </div>
+                <div class="sub" id="buyNowWarn" style="display:none;"><i class="fas fa-circle-info"></i> Hemen Al ödemelerinde taksit kapalıdır.</div>
+
+                <div class="card" style="margin-top:12px;">
+                  <div class="title" style="font-size:15px;"><i class="fas fa-id-card"></i> Kart Bilgileri</div>
+
+                  <div class="field">
+                    <div class="label">Kart Üzerindeki İsim</div>
+                    <input class="input" id="inpName" placeholder="Örn: ALI VELI" autocomplete="cc-name" />
+                  </div>
+                  <div class="field">
+                    <div class="label">Kart Numarası</div>
+                    <input class="input" id="inpNumber" placeholder="1234 5678 9012 3456" inputmode="numeric" autocomplete="cc-number" />
+                    <div class="error" id="errNumber">Kart numarası geçersiz</div>
+                  </div>
+                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="field">
+                      <div class="label">Son Kullanma (AA/YY)</div>
+                      <input class="input" id="inpExp" placeholder="12/27" inputmode="numeric" autocomplete="cc-exp" />
+                      <div class="error" id="errExp">Tarih geçersiz</div>
+                    </div>
+                    <div class="field">
+                      <div class="label">CVV</div>
+                      <input class="input" id="inpCvv" placeholder="123" inputmode="numeric" autocomplete="cc-csc" />
+                      <div class="error" id="errCvv">CVV geçersiz</div>
+                    </div>
+                  </div>
+
+                  <div class="inst" id="instWrap">
+                    <div class="title" style="font-size: 15px; margin-top: 8px;"><i class="fas fa-calculator"></i> Taksit Seçenekleri</div>
+                    <div class="sub">Komisyonlar şimdilik örnek veridir; admin panelden yönetim sonra bağlanacak.</div>
+                    <div id="instList"></div>
+                  </div>
+                </div>
+
+                <div class="card" style="margin-top:12px;">
+                  <div style="font-weight:900;">Seçili Ürünler</div>
+                  <div class="sub" id="meta">Yükleniyor...</div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Ürün</th>
+                        <th class="r">Adet</th>
+                        <th class="r">Satır Toplam (KDV Dahil)</th>
+                      </tr>
+                    </thead>
+                    <tbody id="items"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <div class="card">
+                  <div class="title" style="font-size:15px;"><i class="fas fa-credit-card"></i> Kart Önizleme</div>
+                  <div class="card-preview">
+                    <div class="ccard" id="ccard">
+                      <div class="cc-face cc-front">
+                        <div class="cc-top">
+                          <div class="chip"></div>
+                          <div class="cc-brand" id="ccBrand">B2B PAY</div>
+                        </div>
+                        <div class="cc-num" id="ccNumber">•••• •••• •••• ••••</div>
+                        <div class="cc-meta">
+                          <div>
+                            <div class="k">KART SAHİBİ</div>
+                            <div class="v" id="ccName">AD SOYAD</div>
+                          </div>
+                          <div style="text-align:right;">
+                            <div class="k">SKT</div>
+                            <div class="v" id="ccExp">MM/YY</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="cc-face cc-back">
+                        <div class="magstripe"></div>
+                        <div class="cvvline"><div class="cvvbox" id="ccCvv">•••</div></div>
+                        <div class="sub" style="margin-top:12px; color: rgba(255,255,255,0.75);">Kart bilgileriniz kaydedilmez.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="row" style="margin-top: 12px;"><div style="color:var(--gray);">Toplam (KDV Dahil)</div><div class="amount" id="totalVat">₺0.00</div></div>
+                  <div class="row"><div style="color:var(--gray);">Hemen Al İndirimi</div><div class="amount" id="buyNowDisc">-₺0.00</div></div>
+                  <div class="row" id="rowCommission" style="display:none;"><div style="color:var(--gray);">Komisyon</div><div class="amount" id="commission">₺0.00</div></div>
+                  <div class="row"><div style="font-weight:900;">Ödenecek Tutar</div><div class="amount" id="payable">₺0.00</div></div>
+
+                  <div class="actions">
+                    <button class="btn back" onclick="window.location.href='sepetim.html'"><i class="fas fa-arrow-left"></i> Sepete Dön</button>
+                    <button class="btn pay" id="btnPay"><i class="fas fa-lock"></i> Ödemeyi Tamamla</button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="row">
-              <div style="color:var(--gray);">Hemen Al İndirimi</div>
-              <div class="amount" id="buyNowDisc">-₺0.00</div>
-            </div>
-            <div class="row">
-              <div style="font-weight:900;">Ödenecek Tutar</div>
-              <div class="amount" id="payable">₺0.00</div>
-            </div>
-            <div class="actions">
-              <button class="btn secondary" onclick="window.location.href='sepetim.html'">
-                <i class="fas fa-arrow-left"></i> Sepete Dön
-              </button>
-              <button class="btn" onclick="completePayment()">
-                <i class="fas fa-lock"></i> Ödemeyi Tamamla
-              </button>
-            </div>
-            <div class="sub" style="margin-top:10px;">
-              Not: Bu sayfa yalnızca hesaplama + indirim uygulamasını gösterir. Provizyon entegrasyonu sonra eklenebilir.
+          </div>
+
+          <div class="tab-content" data-tab-content="history">
+            <div class="card" style="margin-top: 12px;">
+              <div class="title" style="font-size:16px;"><i class="fas fa-clock-rotate-left"></i> Ödeme Geçmişi</div>
+              <div class="sub">Şimdilik örnek veridir. Daha sonra LOGOGO3 tablolarından çekilecek.</div>
+
+              <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px;">
+                <div class="field" style="margin-top:0; flex:1; min-width: 180px;">
+                  <div class="label">Başlangıç</div>
+                  <input class="input" id="fStart" type="date" />
+                </div>
+                <div class="field" style="margin-top:0; flex:1; min-width: 180px;">
+                  <div class="label">Bitiş</div>
+                  <input class="input" id="fEnd" type="date" />
+                </div>
+                <div class="field" style="margin-top:0; min-width: 200px;">
+                  <div class="label">Durum</div>
+                  <select class="input" id="fStatus">
+                    <option value="">Tümü</option>
+                    <option value="SUCCESS">Başarılı</option>
+                    <option value="FAILED">Başarısız</option>
+                  </select>
+                </div>
+                <button class="btn" id="btnApplyFilter" style="height:40px; align-self:flex-end;"><i class="fas fa-filter"></i> Filtrele</button>
+              </div>
+
+              <table style="width:100%; border-collapse: collapse; margin-top: 12px;">
+                <thead>
+                  <tr>
+                    <th style="text-align:left; color:var(--gray); font-weight:900; padding: 10px; border-bottom: 1px solid #f3f4f6;">Tarih</th>
+                    <th style="text-align:left; color:var(--gray); font-weight:900; padding: 10px; border-bottom: 1px solid #f3f4f6;">Makbuz No</th>
+                    <th style="text-align:left; color:var(--gray); font-weight:900; padding: 10px; border-bottom: 1px solid #f3f4f6;">Tip</th>
+                    <th style="text-align:right; color:var(--gray); font-weight:900; padding: 10px; border-bottom: 1px solid #f3f4f6;">Tutar</th>
+                    <th style="text-align:left; color:var(--gray); font-weight:900; padding: 10px; border-bottom: 1px solid #f3f4f6;">Durum</th>
+                    <th style="text-align:right; color:var(--gray); font-weight:900; padding: 10px; border-bottom: 1px solid #f3f4f6;">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody id="historyRows"></tbody>
+              </table>
             </div>
           </div>
         </div>
       </div>
     </main>
+  </div>
+
+  <div class="modal" id="receiptModal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div class="h"><i class="fas fa-receipt"></i> Ödeme Makbuzu</div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn secondary" onclick="window.print()"><i class="fas fa-print"></i> Yazdır</button>
+          <button class="btn danger" id="btnCloseReceipt"><i class="fas fa-xmark"></i> Kapat</button>
+        </div>
+      </div>
+      <div class="modal-body" id="receiptBody"></div>
+    </div>
   </div>
 
 <script>
@@ -279,14 +523,233 @@
     return convertToTry(net, cc);
   }
 
+  function todayDDMMYYYY() {
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = String(d.getFullYear());
+    return `${dd}${mm}${yyyy}`;
+  }
+
+  function getCustomerCode() {
+    try {
+      const s = localStorage.getItem('b2b_user_data');
+      if (!s) return 'XXXX';
+      const u = JSON.parse(s);
+      return String(u.cari_kodu || u.customerCode || u.kullanici || 'XXXX');
+    } catch {
+      return 'XXXX';
+    }
+  }
+
+  function formatCardNumber(raw) {
+    const digits = String(raw || '').replace(/\D/g, '').slice(0, 16);
+    return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+  }
+
+  function normalizeExp(raw) {
+    const d = String(raw || '').replace(/\D/g, '').slice(0, 4);
+    if (d.length <= 2) return d;
+    return `${d.slice(0, 2)}/${d.slice(2, 4)}`;
+  }
+
+  function detectCardBrand(digitsRaw) {
+    const d = String(digitsRaw || '').replace(/\D/g, '');
+    if (!d) return 'B2B PAY';
+    if (/^4/.test(d)) return 'VISA';
+    if (/^(5[1-5])/.test(d) || /^(2[2-7])/.test(d)) return 'MASTERCARD';
+    if (/^3[47]/.test(d)) return 'AMEX';
+    return 'B2B PAY';
+  }
+
+  function openReceiptModal(html) {
+    const modal = document.getElementById('receiptModal');
+    const body = document.getElementById('receiptBody');
+    if (body) body.innerHTML = html;
+    if (modal) modal.classList.add('show');
+  }
+
+  function closeReceiptModal() {
+    const modal = document.getElementById('receiptModal');
+    if (modal) modal.classList.remove('show');
+  }
+
+  function bindTabs() {
+    const tabs = Array.from(document.querySelectorAll('.tab'));
+    const contents = Array.from(document.querySelectorAll('.tab-content'));
+    tabs.forEach(t => {
+      t.addEventListener('click', () => {
+        const key = t.getAttribute('data-tab');
+        tabs.forEach(x => x.classList.toggle('active', x === t));
+        contents.forEach(c => c.classList.toggle('active', c.getAttribute('data-tab-content') === key));
+      });
+    });
+  }
+
+  function bindMode() {
+    const st = window.__POS_STATE__ || { mode: 'single', installmentCount: 1, isBuyNow: false };
+    const buttons = Array.from(document.querySelectorAll('#mode .mode-btn'));
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mode = btn.getAttribute('data-mode');
+        if (!mode) return;
+        if (mode === 'installment' && (st.isBuyNow || btn.classList.contains('disabled'))) return;
+        st.mode = mode;
+        buttons.forEach(x => x.classList.toggle('active', x === btn));
+        const instWrap = document.getElementById('instWrap');
+        if (instWrap) instWrap.classList.toggle('show', mode === 'installment');
+        const rowComm = document.getElementById('rowCommission');
+        if (rowComm) rowComm.style.display = mode === 'installment' ? 'flex' : 'none';
+      });
+    });
+    window.__POS_STATE__ = st;
+  }
+
+  function bindCardPreview() {
+    const nameEl = document.getElementById('inpName');
+    const numberEl = document.getElementById('inpNumber');
+    const expEl = document.getElementById('inpExp');
+    const cvvEl = document.getElementById('inpCvv');
+
+    const ccard = document.getElementById('ccard');
+    const ccName = document.getElementById('ccName');
+    const ccNumber = document.getElementById('ccNumber');
+    const ccExp = document.getElementById('ccExp');
+    const ccCvv = document.getElementById('ccCvv');
+    const ccBrand = document.getElementById('ccBrand');
+
+    if (nameEl && ccName) {
+      nameEl.addEventListener('input', () => {
+        const v = String(nameEl.value || '').toUpperCase().slice(0, 26);
+        ccName.textContent = v || 'AD SOYAD';
+      });
+    }
+    if (numberEl && ccNumber && ccBrand) {
+      numberEl.addEventListener('input', () => {
+        const formatted = formatCardNumber(numberEl.value);
+        numberEl.value = formatted;
+        const digits = formatted.replace(/\D/g, '');
+        ccNumber.textContent = formatted || '•••• •••• •••• ••••';
+        ccBrand.textContent = detectCardBrand(digits);
+      });
+    }
+    if (expEl && ccExp) {
+      expEl.addEventListener('input', () => {
+        const v = normalizeExp(expEl.value);
+        expEl.value = v;
+        ccExp.textContent = v || 'MM/YY';
+      });
+    }
+    if (cvvEl && ccCvv) {
+      cvvEl.addEventListener('input', () => {
+        const v = String(cvvEl.value || '').replace(/\D/g, '').slice(0, 4);
+        cvvEl.value = v;
+        ccCvv.textContent = v ? v.replace(/\d/g, '•') : '•••';
+      });
+    }
+    if (cvvEl && ccard) {
+      cvvEl.addEventListener('focus', () => ccard.classList.add('flipped'));
+      cvvEl.addEventListener('blur', () => ccard.classList.remove('flipped'));
+    }
+  }
+
+  function bindPayment() {
+    const btnPay = document.getElementById('btnPay');
+    if (!btnPay) return;
+
+    btnPay.addEventListener('click', () => {
+      const customerCode = getCustomerCode();
+      const receiptNo = `POS-${customerCode}-${todayDDMMYYYY()}`;
+      const paid = Number(window.__PAYABLE__ || 0);
+      const items = Array.isArray(window.__CART_ITEMS__) ? window.__CART_ITEMS__ : [];
+      const mode = (window.__POS_STATE__ && window.__POS_STATE__.mode) ? window.__POS_STATE__.mode : 'single';
+      const modeLabel = mode === 'installment' ? 'Taksitli' : 'Tek Çekim';
+
+      const maxRows = 12;
+      const headItems = (items || []).slice(0, maxRows);
+      const hiddenCount = Math.max(0, (items || []).length - headItems.length);
+
+      const html = `
+        <div class="receipt">
+          <div class="receipt-head">
+            <div>
+              <div class="receipt-title">Ödeme Makbuzu</div>
+            </div>
+            <div class="receipt-meta">
+              <div class="no">${receiptNo}</div>
+              <div class="dt">${new Date().toLocaleString('tr-TR')}</div>
+            </div>
+          </div>
+
+          <div class="receipt-kv">
+            <div>
+              <div class="k">Müşteri Kodu</div>
+              <div class="v">${customerCode}</div>
+            </div>
+            <div>
+              <div class="k">Ödeme Tipi</div>
+              <div class="v">${modeLabel}</div>
+            </div>
+          </div>
+
+          <table class="receipt-table">
+            <thead>
+              <tr>
+                <th>Ürün</th>
+                <th class="r">Adet</th>
+                <th class="r">Tutar</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${headItems.map(it => {
+                const line = calcLineNetTry(it) * 1.20;
+                const label = `${String(it.code||'')} - ${String(it.name||'')}`.trim();
+                return `<tr><td>${label}</td><td class="r">${Number(it.quantity||0)}</td><td class="r">${formatTRY(line)}</td></tr>`;
+              }).join('') || '<tr><td colspan="3">-</td></tr>'}
+              ${hiddenCount > 0 ? `<tr><td colspan="3" style="font-size:10px; color: var(--gray); padding-top:8px;">+ ${hiddenCount} ürün daha</td></tr>` : ''}
+            </tbody>
+          </table>
+
+          <div class="receipt-foot">
+            <div class="receipt-note">Bu makbuz bilgilendirme amaçlıdır.</div>
+            <div class="receipt-total">
+              <div class="k">Ödenen Tutar</div>
+              <div class="v">${formatTRY(paid)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      openReceiptModal(html);
+    });
+  }
+
   async function init() {
     await loadExchangeRates();
     const buyNowRate = await loadBuyNowRate();
 
+    const url = new URL(window.location.href);
+    const source = String(url.searchParams.get('source') || '').trim().toLowerCase();
+    const isBuyNow = source === 'buynow' || source === 'hemenal' || source === 'hemen-al';
+
+    window.__POS_STATE__ = window.__POS_STATE__ || { mode: 'single', installmentCount: 1, isBuyNow: false };
+    window.__POS_STATE__.isBuyNow = isBuyNow;
+    window.__POS_STATE__.buyNowRate = buyNowRate;
+
     const badge = document.getElementById('badge');
     if (badge) badge.textContent = `Hemen Al: %${buyNowRate}`;
 
+    const buyNowWarn = document.getElementById('buyNowWarn');
+    if (buyNowWarn) buyNowWarn.style.display = isBuyNow ? 'block' : 'none';
+
+    const modeInstallment = document.getElementById('modeInstallment');
+    if (modeInstallment) {
+      if (isBuyNow) modeInstallment.classList.add('disabled');
+      else modeInstallment.classList.remove('disabled');
+    }
+
     const items = getSelectedCartItems();
+    window.__CART_ITEMS__ = items;
     const meta = document.getElementById('meta');
     const tbody = document.getElementById('items');
 
@@ -316,11 +779,10 @@
     document.getElementById('buyNowDisc').textContent = `-${formatTRY(discountAmountNet)}`;
     document.getElementById('payable').textContent = formatTRY(totalVatTry);
 
-    window.__PAYABLE__ = totalVatTry;
-  }
+    const badgePayable = document.getElementById('badgePayable');
+    if (badgePayable) badgePayable.textContent = `Ödenecek: ${formatTRY(totalVatTry)}`;
 
-  function completePayment() {
-    alert(`Ödenecek Tutar: ${formatTRY(window.__PAYABLE__ || 0)}\n(Bu ekran sadece hesaplama gösterir.)`);
+    window.__PAYABLE__ = totalVatTry;
   }
 
   function displayCustomerInfo() {
@@ -353,6 +815,21 @@
         }
       });
     }
+
+    bindTabs();
+    bindMode();
+    bindCardPreview();
+    bindPayment();
+
+    const btnCloseReceipt = document.getElementById('btnCloseReceipt');
+    if (btnCloseReceipt) btnCloseReceipt.addEventListener('click', closeReceiptModal);
+    const modal = document.getElementById('receiptModal');
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeReceiptModal();
+      });
+    }
+
     init();
   });
 </script>
