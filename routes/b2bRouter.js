@@ -141,7 +141,12 @@ router.get('/products',
 
 router.get('/products/search', 
     cacheControl(60),
-    b2bController.searchProductsForCustomer
+    async (req, res) => {
+        return res.status(410).json({
+            success: false,
+            error: 'Bu arama endpointi devre dışı. Sadece MeiliSearch kullanılabilir.'
+        });
+    }
 );
 
 router.get('/filters',

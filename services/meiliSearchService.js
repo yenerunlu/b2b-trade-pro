@@ -5,6 +5,7 @@ const { logoConfig } = require('../config/database');
 const DEFAULT_INDEX = 'items';
 
 let indexPromise = null;
+let logoPoolPromise = null;
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -82,6 +83,22 @@ function getClient() {
     const host = process.env.MEILI_HOST || 'http://127.0.0.1:7700';
     const apiKey = process.env.MEILI_API_KEY || 'masterKey';
     return new MeiliSearch({ host, apiKey });
+}
+
+function getLogoPool() {
+    if (logoPoolPromise) return logoPoolPromise;
+
+    logoPoolPromise = (async () => {
+        const pool = new sql.ConnectionPool(logoConfig);
+        await pool.connect();
+        return pool;
+    })();
+
+    logoPoolPromise.catch(() => {
+        logoPoolPromise = null;
+    });
+
+    return logoPoolPromise;
 }
 
 async function ensureIndex() {
@@ -162,7 +179,7 @@ async function ensureIndex() {
 }
 
 async function fetchItemsFromLogo(limit = 5000, offset = 0) {
-    const pool = await sql.connect(logoConfig);
+    const pool = await getLogoPool();
     const request = pool.request();
 
     request.input('limit', sql.Int, limit);
@@ -178,7 +195,7 @@ async function fetchItemsFromLogo(limit = 5000, offset = 0) {
             I.PRODUCERCODE as oemCode,
             I.STGRPCODE as manufacturer,
             ISNULL(SUM(CASE WHEN S.INVENNO IN (0,1,2,3) THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) as totalStock
-        FROM LG_013_ITEMS I
+        FROM dbo.LG_013_ITEMS I
         LEFT JOIN LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
         WHERE I.ACTIVE = 0
           AND I.CARDTYPE = 1

@@ -23,8 +23,10 @@ git pull --ff-only origin "$BRANCH"
 echo "Restarting PM2 process(es): $PM2_PROCESS"
 for p in $PM2_PROCESS; do
   if pm2 describe "$p" >/dev/null 2>&1; then
-    pm2 restart "$p"
+    pm2 restart "$p" --update-env
   fi
 done
+
+pm2 save
 
 echo "Done. Smoke test: https://b2b.irazoto.com"

@@ -1948,17 +1948,16 @@
                 }
 
                 const headers = setAuthHeaders();
-                const response = await fetch('/api/b2b/search/meili-search-enriched', {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify({
-                        query: q,
-                        customerCode: 'S1981',
-                        limit: pageSize,
-                        offset: offset,
-                        manufacturerCodes: manufacturerCodes,
-                        vehicleModels: []
-                    })
+                const qs = new URLSearchParams({
+                    limit: String(pageSize),
+                    offset: String(offset),
+                    search: q,
+                    manufacturer: manufacturer
+                });
+
+                const response = await fetch(`/api/b2b/admin/products?${qs.toString()}`, {
+                    method: 'GET',
+                    headers: headers
                 });
                 
                 if (!response.ok) {
@@ -1971,8 +1970,8 @@
                     throw new Error(result.error || result.message || 'API başarısız');
                 }
 
-                const apiProducts = result.results || [];
-                totalProducts = Number(result.total_results || 0);
+                const apiProducts = result.data || [];
+                totalProducts = Number(result.pagination?.total || 0);
                 totalPages = Math.max(1, Math.ceil(totalProducts / pageSize));
                 
                 console.log(`✅ Sayfa ${currentPage} yüklendi: ${apiProducts.length} ürün (Toplam: ${totalProducts}, Sayfa: ${currentPage}/${totalPages})`);
@@ -1998,10 +1997,11 @@
 
         function processAndDisplayProducts(apiProducts) {
             currentProducts = apiProducts.map(product => {
-                const merkezStock = parseInt(product.centralStock) || 0;
-                const ikitelliStock = parseInt(product.ikitelliStock) || 0;
-                const bostanciStock = parseInt(product.bostanciStock) || 0;
-                const depotStock = parseInt(product.depotStock) || 0;
+                const stockObj = product.stock || {};
+                const merkezStock = parseInt(product.centralStock ?? stockObj.merkez) || 0;
+                const ikitelliStock = parseInt(product.ikitelliStock ?? stockObj.ikitelli) || 0;
+                const bostanciStock = parseInt(product.bostanciStock ?? stockObj.bostanci) || 0;
+                const depotStock = parseInt(product.depotStock ?? stockObj.depot) || 0;
                 const totalStock = merkezStock + ikitelliStock + bostanciStock + depotStock;
                 
                 const manualDiscounts = product.manualDiscounts || [0, 0, 0, 0, 0];
