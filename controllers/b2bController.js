@@ -3,6 +3,7 @@ const sql = require('mssql');
 
 class B2BController {
     constructor() {
+        const { b2bConfig } = require('../config/database');
         this.logoConfig = {
             server: '5.180.186.54',
             database: 'LOGOGO3',
@@ -13,6 +14,8 @@ class B2BController {
                 trustServerCertificate: true
             }
         };
+
+        this.b2bConfig = b2bConfig;
         
         this.logoPool = null;
         this.b2bPool = null;
@@ -21,8 +24,7 @@ class B2BController {
 
     async getGlobalSettingsForCustomer(req, res) {
         try {
-            const { b2bConfig } = require('../config/database');
-            const pool = await sql.connect(b2bConfig);
+            const pool = await this.getB2BConnection();
 
             const GLOBAL_CUSTOMER_CODE = '__GLOBAL__';
             const result = await pool.request()
@@ -398,11 +400,13 @@ class B2BController {
 
     async getLogoConnection() {
         try {
-            if (!this.logoPool || !this.logoPool.connected) {
-                this.logoPool = await sql.connect(this.logoConfig);
-                console.log('✅ Logo veritabanı bağlantısı başarılı');
-            }
-            return this.logoPool;
+            if (this.logoPool && this.logoPool.connected) return this.logoPool;
+
+            const pool = new sql.ConnectionPool(this.logoConfig);
+            await pool.connect();
+            this.logoPool = pool;
+            console.log('✅ Logo veritabanı bağlantısı başarılı');
+            return pool;
         } catch (error) {
             console.error('❌ Logo veritabanı bağlantı hatası:', error);
             throw error;
@@ -411,11 +415,13 @@ class B2BController {
 
     async getB2BConnection() {
         try {
-            if (!this.b2bPool || !this.b2bPool.connected) {
-                this.b2bPool = await sql.connect(this.b2bConfig);
-                console.log('✅ B2B veritabanı bağlantısı başarılı');
-            }
-            return this.b2bPool;
+            if (this.b2bPool && this.b2bPool.connected) return this.b2bPool;
+
+            const pool = new sql.ConnectionPool(this.b2bConfig);
+            await pool.connect();
+            this.b2bPool = pool;
+            console.log('✅ B2B veritabanı bağlantısı başarılı');
+            return pool;
         } catch (error) {
             console.error('❌ B2B veritabanı bağlantı hatası:', error);
             throw error;
@@ -1854,9 +1860,9 @@ class B2BController {
                         ELSE 'TL'
                     END as currency
 
-                FROM LG_013_ITEMS I
-                LEFT JOIN LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
-                LEFT JOIN LG_013_PRCLIST P ON P.CARDREF = I.LOGICALREF
+                FROM dbo.LG_013_ITEMS I
+                LEFT JOIN dbo.LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
+                LEFT JOIN dbo.LG_013_PRCLIST P ON P.CARDREF = I.LOGICALREF
                     AND P.PTYPE IN (1, 2)
                     AND P.PRIORITY = 0
                     AND P.ACTIVE IN (0, 1)
@@ -1870,9 +1876,9 @@ class B2BController {
             
             const countQuery = `
                 SELECT COUNT(DISTINCT I.LOGICALREF) as totalCount
-                FROM LG_013_ITEMS I
-                LEFT JOIN LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
-                LEFT JOIN LG_013_PRCLIST P ON P.CARDREF = I.LOGICALREF
+                FROM dbo.LG_013_ITEMS I
+                LEFT JOIN dbo.LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
+                LEFT JOIN dbo.LG_013_PRCLIST P ON P.CARDREF = I.LOGICALREF
                     AND P.PTYPE IN (1, 2)
                     AND P.PRIORITY = 0
                     AND P.ACTIVE IN (0, 1)
