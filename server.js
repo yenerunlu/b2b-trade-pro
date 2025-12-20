@@ -10,6 +10,8 @@ const sqlite3 = require('sqlite3');
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 3000;
 
+app.set('trust proxy', 1);
+
 // ====================================================
 // 🚀 0.0 - TEMEL KONFİGÜRASYON
 // ====================================================
@@ -21,6 +23,26 @@ const PASSWORD_CHANGES_FILE = path.join(__dirname, 'password_changes.json');
 const LOCAL_DB_PATH = process.env.B2B_LOCAL_DB_PATH || '/var/lib/b2b-app/b2b_local.db';
 
 let localAuthDb = null;
+
+async function openSqliteDb(filePath) {
+    const dirPath = path.dirname(filePath);
+    try {
+        await fs.mkdir(dirPath, { recursive: true });
+    } catch (e) {
+        // ignore
+    }
+
+    return await new Promise((resolve, reject) => {
+        const db = new sqlite3.Database(
+            filePath,
+            sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
+            (err) => {
+                if (err) return reject(err);
+                resolve(db);
+            }
+        );
+    });
+}
 
 // ====================================================
 // 🚀 0.1 - CACHE MEKANİZMASI
@@ -773,7 +795,7 @@ function sqliteAll(db, sqlText, params = []) {
 
 async function getLocalAuthDb() {
     if (localAuthDb) return localAuthDb;
-    localAuthDb = new sqlite3.Database(LOCAL_DB_PATH);
+    localAuthDb = await openSqliteDb(LOCAL_DB_PATH);
     await sqliteRun(localAuthDb, 'PRAGMA journal_mode = WAL');
     await sqliteRun(localAuthDb, 'PRAGMA foreign_keys = ON');
     await sqliteRun(localAuthDb, `
@@ -1352,12 +1374,12 @@ async function getAllDiscountsForItem(itemRef, itemCode, manufacturerCode, custo
 // ====================================================
 // 🚀 2.0 - GELİŞMİŞ LOGIN SİSTEMİ
 // ====================================================
-app.post('/api/auth/login', async (req, res) => {
+async function handleAuthLogin(req, res) {
     const startTime = Date.now();
-    
+
     try {
         const { kullanici, sifre } = req.body;
-        
+
         logger.info('Login denendi', { kullanici });
 
         if (!kullanici || !sifre) {
@@ -1619,7 +1641,10 @@ app.post('/api/auth/login', async (req, res) => {
 
         res.status(statusCode).json(errorResponse);
     }
-});
+}
+
+app.post('/api/auth/login', handleAuthLogin);
+app.post('/api/b2b/auth/login', handleAuthLogin);
 
 // ====================================================
 // 🚀 2.1 - ŞİFRE DEĞİŞTİRME ENDPOINT'İ

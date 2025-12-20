@@ -51,7 +51,10 @@ const authenticateCustomer = (req, res, next) => {
 
 // Akıllı arama (POST - gerçek akıllı arama)
 router.post('/smart-search', authenticateCustomer, async (req, res) => {
-    await b2bSearchController.smartSearch(req, res);
+    return res.status(410).json({
+        success: false,
+        error: 'Bu arama endpointi devre dışı. Sadece MeiliSearch kullanılabilir.'
+    });
 });
 
 // Meilisearch - Autocomplete
@@ -86,30 +89,10 @@ router.post('/meili-reindex', authenticateCustomer, async (req, res) => {
 
 // Akıllı arama (GET - test ve debug için)
 router.get('/smart-search', authenticateCustomer, async (req, res) => {
-    try {
-        const query = req.query.q || req.query.query || '';
-        const customerCode = req.query.customerCode || req.query.customer_code || '';
-
-        if (!query || query.trim().length < 2) {
-            return res.status(400).json({
-                success: false,
-                error: 'En az 2 karakter girin'
-            });
-        }
-
-        console.log(`🔍 [GET] Smart search test: "${query}" - Customer: ${customerCode}`);
-
-        res.json({
-            success: true,
-            message: 'Smart search GET endpoint aktif',
-            query,
-            customerCode,
-            note: 'Asıl işlev için POST /api/b2b/search/smart-search kullanın'
-        });
-    } catch (error) {
-        console.error('GET smart-search error:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
+    return res.status(410).json({
+        success: false,
+        error: 'Bu arama endpointi devre dışı. Sadece MeiliSearch kullanılabilir.'
+    });
 });
 
 // Arama istatistikleri (admin için)

@@ -4,7 +4,6 @@ const router = express.Router();
 const b2bController = require('../controllers/b2bController');
 const b2bAdminController = require('../controllers/b2bAdminController');
 const b2bSearchRouter = require('./b2bSearchRouter');
-const smartSearchController = require('../controllers/smart-search');
 
 const rateLimit = require('express-rate-limit');
 const limiter = rateLimit({
@@ -24,12 +23,12 @@ const adminAuthMiddleware = (req, res, next) => {
         const userType = req.headers['x-user-type'];
         const userCode = req.headers['x-user-code'];
         
-        console.log(`🔐 Auth Middleware: userType=${userType}, userCode=${userCode}`);
+        console.log(` Auth Middleware: userType=${userType}, userCode=${userCode}`);
         
         if (!userDataHeader && !userType) {
             if (req.session && req.session.user) {
                 req.user = req.session.user;
-                console.log(`✅ Session auth: ${req.user.user_type}`);
+                console.log(` Session auth: ${req.user.user_type}`);
                 return next();
             }
             
@@ -44,14 +43,14 @@ const adminAuthMiddleware = (req, res, next) => {
             if (req.headers['x-user-data-base64']) {
                 const decodedString = Buffer.from(req.headers['x-user-data-base64'], 'base64').toString('utf-8');
                 userData = JSON.parse(decodedString);
-                console.log('✅ Base64 kullanıcı verisi decode edildi');
+                console.log(' Base64 kullanıcı verisi decode edildi');
             } else if (req.headers['x-user-data']) {
                 userData = JSON.parse(req.headers['x-user-data']);
-                console.log('✅ Standart kullanıcı verisi parse edildi');
+                console.log(' Standart kullanıcı verisi parse edildi');
             }
         } catch (e) {
             userData = null;
-            console.error('❌ Kullanıcı verisi parse hatası:', e.message);
+            console.error(' Kullanıcı verisi parse hatası:', e.message);
         }
 
         const isAdmin = userType === 'admin' || 
@@ -71,10 +70,10 @@ const adminAuthMiddleware = (req, res, next) => {
             ...userData
         };
         
-        console.log(`✅ Admin auth başarılı: ${req.user.user_code}`);
+        console.log(` Admin auth başarılı: ${req.user.user_code}`);
         next();
     } catch (error) {
-        console.error('❌ Auth middleware hatası:', error);
+        console.error(' Auth middleware hatası:', error);
         res.status(500).json({
             success: false,
             error: 'Yetkilendirme hatası'
@@ -99,7 +98,7 @@ const requestLogger = (req, res, next) => {
     
     res.send = function(data) {
         const duration = Date.now() - startTime;
-        console.log(`🌐 ${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms`);
+        console.log(` ${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms`);
         
         if (req.originalUrl.includes('/api/b2b/admin/') && res.statusCode >= 400) {
             // DB log yazımı geçici olarak devre dışı (şema/trigger uyuşmazlığı 500 tetikliyor)
@@ -161,26 +160,10 @@ router.get('/global-settings',
 router.post('/products/smart-search',
     cacheControl(0),
     async (req, res) => {
-        try {
-            const { searchTerm, customerCode, limit = 50 } = req.body || {};
-
-            if (!searchTerm || searchTerm.trim().length < 2) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'En az 2 karakter girin'
-                });
-            }
-
-            const result = await smartSearchController.smartSearch(searchTerm, customerCode, limit);
-            res.json(result);
-        } catch (error) {
-            console.error('Smart search API error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Arama sırasında bir hata oluştu',
-                error: error.message
-            });
-        }
+        return res.status(410).json({
+            success: false,
+            error: 'Bu arama endpointi devre dışı. Sadece MeiliSearch kullanılabilir.'
+        });
     }
 );
 

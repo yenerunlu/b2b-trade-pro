@@ -2885,11 +2885,7 @@
                 
             } catch (error) {
                 console.error('❌ Akıllı arama hatası:', error);
-                try {
-                    await performFallbackSearch(searchTerm);
-                } catch (e) {
-                    showToast('Arama geçici olarak kullanılamıyor', 'error');
-                }
+                showToast('Arama geçici olarak kullanılamıyor', 'error');
                 
             } finally {
                 hideLoading();
@@ -2936,23 +2932,7 @@
         }
 
         async function performFallbackSearch(searchTerm) {
-            console.log('🔄 Fallback arama başlatılıyor:', searchTerm);
-            
-            try {
-                const response = await fetch(`/api/b2b/products/search?q=${encodeURIComponent(searchTerm)}&customerCode=${currentUser.cari_kodu}`, {
-                    headers: setAuthHeaders('customer')
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    displayFallbackResults(result, searchTerm);
-                } else {
-                    showToast('Arama geçici olarak kullanılamıyor', 'error');
-                }
-            } catch (error) {
-                console.error('Fallback arama hatası:', error);
-                showToast('Arama sistemi geçici olarak kullanılamıyor', 'error');
-            }
+            showToast('Arama geçici olarak kullanılamıyor', 'error');
         }
 
         function getSelectedOptions(selectEl) {

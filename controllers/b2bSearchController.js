@@ -544,76 +544,17 @@ class B2BSearchController {
             const hasAnyFilter = manufacturerFilter.length > 0 || vehicleModelFilter.length > 0;
 
             const q = String(query || '').trim();
-            if (!q && !hasAnyFilter) {
+            if (!q) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Arama yapın veya filtre seçin'
+                    error: 'Arama yapın'
                 });
             }
 
             const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
             const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
 
-            // Filter-only search: do NOT use Meilisearch with '*' because it returns arbitrary hits.
-            // Instead, query Logo DB directly with pagination so that manufacturer/model filters always work.
-            if (!q && hasAnyFilter) {
-                const activeWarehouses = await this.getActiveWarehouses(customerCode);
-                const { rows: logoRows, total } = await this.getLogoProductsByFiltersPaginated({
-                    limit: safeLimit,
-                    offset: safeOffset,
-                    manufacturerCodes: manufacturerFilter,
-                    vehicleModels: vehicleModelFilter
-                });
-
-                const products = (logoRows || []).map(item => {
-                    const centralStock = Number(item.central_stock || 0);
-                    const ikitelliStock = Number(item.ikitelli_stock || 0);
-                    const bostanciStock = Number(item.bostanci_stock || 0);
-                    const depotStock = Number(item.depot_stock || 0);
-
-                    const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
-                        if (inv === 0) return sum + centralStock;
-                        if (inv === 1) return sum + ikitelliStock;
-                        if (inv === 2) return sum + bostanciStock;
-                        if (inv === 3) return sum + depotStock;
-                        return sum;
-                    }, 0);
-
-                    const unitPrice = this.formatPrice(item.price || 0);
-                    const currencyCode = Number(item.currency_code || 160);
-
-                    return {
-                        code: item.item_code,
-                        name: item.item_name,
-                        oemCode: item.oem_code,
-                        manufacturer: item.manufacturer,
-                        centralStock,
-                        ikitelliStock,
-                        bostanciStock,
-                        depotStock,
-                        unitPrice,
-                        currencyCode,
-                        finalPrice: unitPrice,
-                        totalDiscountRate: 0,
-                        discounts: [],
-                        totalStock
-                    };
-                });
-
-                const enrichedProducts = this.enrichProductsWithDiscounts(products, discountCfg);
-
-                enrichedProducts.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
-
-                return res.json({
-                    success: true,
-                    query: '',
-                    total_results: Number(total || 0),
-                    results: enrichedProducts,
-                    response_time_ms: Date.now() - startTime
-                });
-            }
-
-            const meiliQuery = q || '*';
+            const meiliQuery = q;
             let meiliResult = null;
             let meiliHits = [];
             try {
@@ -623,60 +564,15 @@ class B2BSearchController {
                 });
                 meiliHits = (meiliResult && Array.isArray(meiliResult.hits)) ? meiliResult.hits : [];
             } catch (meiliErr) {
-                console.error('❌ Meili search failed, fallback to Logo DB:', meiliErr && meiliErr.message ? meiliErr.message : meiliErr);
+                const msg = meiliErr && meiliErr.message ? meiliErr.message : String(meiliErr);
+                console.error('❌ Meili search failed:', msg);
 
-                const activeWarehouses = await this.getActiveWarehouses(customerCode);
-                const fallbackRows = await this.getLogoProductsBySearchQuery(q, safeLimit, {
-                    manufacturerCodes: manufacturerFilter,
-                    vehicleModels: vehicleModelFilter,
-                    offset: safeOffset
-                });
-
-                const products = (fallbackRows || []).map(item => {
-                    const centralStock = Number(item.central_stock || 0);
-                    const ikitelliStock = Number(item.ikitelli_stock || 0);
-                    const bostanciStock = Number(item.bostanci_stock || 0);
-                    const depotStock = Number(item.depot_stock || 0);
-
-                    const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
-                        if (inv === 0) return sum + centralStock;
-                        if (inv === 1) return sum + ikitelliStock;
-                        if (inv === 2) return sum + bostanciStock;
-                        if (inv === 3) return sum + depotStock;
-                        return sum;
-                    }, 0);
-
-                    const unitPrice = this.formatPrice(item.price || 0);
-                    const currencyCode = Number(item.currency_code || 160);
-
-                    return {
-                        code: item.item_code,
-                        name: item.item_name,
-                        oemCode: item.oem_code,
-                        manufacturer: item.manufacturer,
-                        centralStock,
-                        ikitelliStock,
-                        bostanciStock,
-                        depotStock,
-                        unitPrice,
-                        currencyCode,
-                        finalPrice: unitPrice,
-                        totalDiscountRate: 0,
-                        discounts: [],
-                        totalStock
-                    };
-                });
-
-                const enrichedProducts = this.enrichProductsWithDiscounts(products, discountCfg);
-                enrichedProducts.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
-
-                return res.json({
-                    success: true,
+                return res.status(503).json({
+                    success: false,
+                    error: 'MeiliSearch kullanılamıyor',
+                    details: msg,
                     query: meiliQuery,
-                    total_results: enrichedProducts.length,
-                    results: enrichedProducts,
-                    response_time_ms: Date.now() - startTime,
-                    match_type: 'FALLBACK_DB'
+                    response_time_ms: Date.now() - startTime
                 });
             }
             const logicalrefs = Array.from(
@@ -700,8 +596,8 @@ class B2BSearchController {
 
             const activeWarehouses = await this.getActiveWarehouses(customerCode);
             const logoRows = await this.getLogoProductsByLogicalrefs(logicalrefs, safeLimit, {
-                manufacturerCodes: manufacturerFilter,
-                vehicleModels: vehicleModelFilter
+                manufacturerCodes: hasAnyFilter ? manufacturerFilter : [],
+                vehicleModels: hasAnyFilter ? vehicleModelFilter : []
             });
 
             const products = (logoRows || []).map(item => {
@@ -760,15 +656,11 @@ class B2BSearchController {
         } catch (error) {
             const msg = (error && error.message) ? error.message : String(error);
             console.error('❌ Meili enriched search error:', msg);
-            // Frontend throws on non-2xx, so never return 500 here.
-            return res.json({
-                success: true,
+            return res.status(500).json({
+                success: false,
+                error: msg,
                 query: String(query || '').trim(),
-                total_results: 0,
-                results: [],
-                response_time_ms: Date.now() - startTime,
-                match_type: 'ERROR_DEGRADED',
-                error: msg
+                response_time_ms: Date.now() - startTime
             });
         }
     }
