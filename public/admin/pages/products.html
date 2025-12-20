@@ -1955,15 +1955,22 @@
                     manufacturer: manufacturer
                 });
 
-                const response = await fetch(`/api/b2b/admin/products?${qs.toString()}`, {
+                let response = await fetch(`/api/b2b/admin/products-meili?${qs.toString()}`, {
                     method: 'GET',
                     headers: headers
                 });
-                
+
+                if (!response.ok) {
+                    response = await fetch(`/api/b2b/admin/products?${qs.toString()}`, {
+                        method: 'GET',
+                        headers: headers
+                    });
+                }
+
                 if (!response.ok) {
                     throw new Error(`API hatası: ${response.status} ${response.statusText}`);
                 }
-                
+
                 const result = await response.json();
                 
                 if (!result.success) {

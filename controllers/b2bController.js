@@ -1,5 +1,6 @@
 // /home/yunlu/b2b-app/controllers/b2bController.js - TAM GÜNCELLEME
 const sql = require('mssql');
+const meiliSearchService = require('../services/meiliSearchService');
 
 class B2BController {
     constructor() {
@@ -1985,6 +1986,212 @@ class B2BController {
         }
     }
 
+    async getProductsForAdminMeili(req, res) {
+        try {
+            const {
+                limit = 100,
+                offset = 0,
+                search = '',
+                manufacturer = ''
+            } = req.query;
+
+            const q = String(search || '').trim();
+            const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
+            const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
+
+            if (!q && !String(manufacturer || '').trim()) {
+                return res.json({
+                    success: true,
+                    message: 'Admin ürünleri başarıyla yüklendi',
+                    data: [],
+                    pagination: {
+                        total: 0,
+                        limit: safeLimit,
+                        offset: safeOffset,
+                        hasMore: false
+                    },
+                    filters: {
+                        search: q,
+                        manufacturer: String(manufacturer || '').trim()
+                    },
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            const meiliResult = await meiliSearchService.search(q, { limit: safeLimit, offset: safeOffset });
+            let hits = Array.isArray(meiliResult?.hits) ? meiliResult.hits : [];
+
+            const manufacturerFilter = String(manufacturer || '').trim();
+            if (manufacturerFilter) {
+                const mf = manufacturerFilter.toLowerCase();
+                hits = hits.filter(h => String(h?.manufacturer || '').toLowerCase() === mf);
+            }
+
+            const logicalrefs = Array.from(
+                new Set(
+                    hits
+                        .map(h => h && h.id)
+                        .filter(v => Number.isFinite(Number(v)))
+                        .map(v => Number(v))
+                )
+            );
+
+            if (logicalrefs.length === 0) {
+                const totalHits =
+                    (typeof meiliResult?.estimatedTotalHits === 'number')
+                        ? meiliResult.estimatedTotalHits
+                        : (typeof meiliResult?.nbHits === 'number')
+                            ? meiliResult.nbHits
+                            : 0;
+
+                return res.json({
+                    success: true,
+                    message: 'Admin ürünleri başarıyla yüklendi',
+                    data: [],
+                    pagination: {
+                        total: totalHits,
+                        limit: safeLimit,
+                        offset: safeOffset,
+                        hasMore: (safeOffset + safeLimit) < totalHits
+                    },
+                    filters: {
+                        search: q,
+                        manufacturer: manufacturerFilter
+                    },
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            const pool = await this.getLogoConnection();
+            const request = pool.request();
+            request.input('refs', sql.NVarChar(sql.MAX), logicalrefs.join(','));
+
+            const query = `
+                SELECT
+                    I.LOGICALREF as id,
+                    I.CODE as productCode,
+                    I.NAME as productName,
+                    I.PRODUCERCODE as oemCode,
+                    I.STGRPCODE as manufacturer,
+                    I.CYPHCODE as category,
+                    I.SPECODE as vehicleModel,
+                    I.SPECODE2 as centralShelf,
+                    I.SPECODE3 as bostanciShelf,
+                    I.SPECODE4 as ikitelliShelf,
+                    I.ACTIVE as isActive,
+
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 0 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) as centralStock,
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 1 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) as ikitelliStock,
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 2 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) as bostanciStock,
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 3 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) as depotStock,
+                    ISNULL(SUM(S.ONHAND - S.RESERVED), 0) as totalStock,
+
+                    ISNULL(P.PRICE, 0) as unitPrice,
+                    ISNULL(P.CURRENCY, 160) as currencyCode,
+                    CASE ISNULL(P.CURRENCY, 160)
+                        WHEN 1 THEN 'USD'
+                        WHEN 20 THEN 'EUR'
+                        WHEN 17 THEN 'GBP'
+                        WHEN 160 THEN 'TL'
+                        ELSE 'TL'
+                    END as currency
+                FROM dbo.LG_013_ITEMS I
+                LEFT JOIN dbo.LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
+                LEFT JOIN dbo.LG_013_PRCLIST P ON P.CARDREF = I.LOGICALREF
+                    AND P.PTYPE IN (1, 2)
+                    AND P.PRIORITY = 0
+                    AND P.ACTIVE IN (0, 1)
+                WHERE I.ACTIVE = 0
+                  AND I.CARDTYPE = 1
+                  AND I.LOGICALREF IN (
+                      SELECT TRY_CAST(value AS INT)
+                      FROM STRING_SPLIT(@refs, ',')
+                  )
+                GROUP BY I.LOGICALREF, I.CODE, I.NAME, I.PRODUCERCODE, I.STGRPCODE,
+                         I.CYPHCODE, I.SPECODE, I.SPECODE2, I.SPECODE3, I.SPECODE4, I.ACTIVE,
+                         P.PRICE, P.CURRENCY
+            `;
+
+            const productsResult = await request.query(query);
+            const products = productsResult.recordset || [];
+
+            const globalVisibilityMap = await this.getItemVisibilityOverrides('__GLOBAL__', products.map(p => p.productCode));
+
+            const formattedProducts = products.map(item => {
+                const overrideEntry = globalVisibilityMap.get(item.productCode);
+                const visible = this.resolveVisibility(overrideEntry);
+
+                const unitPrice = parseFloat(item.unitPrice) || 0;
+                const currencyCode = Number(item.currencyCode || 160);
+
+                return {
+                    code: item.productCode,
+                    name: item.productName,
+                    manufacturer: item.manufacturer || 'Belirsiz',
+                    category: item.category || 'Genel',
+                    price: {
+                        original: unitPrice,
+                        currency: currencyCode
+                    },
+                    stock: {
+                        total: parseInt(item.totalStock) || 0,
+                        merkez: parseInt(item.centralStock) || 0,
+                        ikitelli: parseInt(item.ikitelliStock) || 0,
+                        bostanci: parseInt(item.bostanciStock) || 0,
+                        depot: parseInt(item.depotStock) || 0
+                    },
+                    active: item.isActive === 0,
+                    visibleToCustomers: visible,
+                    oemCode: item.oemCode || '',
+                    vehicleModel: item.vehicleModel || '',
+                    shelves: {
+                        central: item.centralShelf || '',
+                        bostanci: item.bostanciShelf || '',
+                        ikitelli: item.ikitelliShelf || ''
+                    },
+                    hasCampaign: false,
+                    globalDiscount: 10,
+                    discounts: [
+                        { type: 'ITEM', rate: 10, description: 'Temel İskonto (%10)' }
+                    ],
+                    currency: item.currency || 'TL',
+                    unitPrice
+                };
+            });
+
+            const totalHits =
+                (typeof meiliResult?.estimatedTotalHits === 'number')
+                    ? meiliResult.estimatedTotalHits
+                    : (typeof meiliResult?.nbHits === 'number')
+                        ? meiliResult.nbHits
+                        : formattedProducts.length;
+
+            return res.json({
+                success: true,
+                message: 'Admin ürünleri başarıyla yüklendi',
+                data: formattedProducts,
+                pagination: {
+                    total: totalHits,
+                    limit: safeLimit,
+                    offset: safeOffset,
+                    hasMore: (safeOffset + safeLimit) < totalHits
+                },
+                filters: {
+                    search: q,
+                    manufacturer: manufacturerFilter
+                },
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            const msg = (error && error.message) ? error.message : String(error);
+            console.error('❌ ADMIN ürün (meili) hatası:', msg);
+            return res.status(500).json({
+                success: false,
+                error: msg
+            });
+        }
+    }
+
     async updateProductStatusForAdmin(req, res) {
         try {
             const { productCode, active } = req.body || {};
@@ -2122,6 +2329,7 @@ module.exports = {
     healthCheck: (req, res) => b2bController.healthCheck(req, res),
     getExchangeRates: (req, res) => b2bController.getExchangeRates(req, res),
     getProductsForAdmin: (req, res) => b2bController.getProductsForAdmin(req, res),
+    getProductsForAdminMeili: (req, res) => b2bController.getProductsForAdminMeili(req, res),
     updateProductStatusForAdmin: (req, res) => b2bController.updateProductStatusForAdmin(req, res),
     updateProductForAdmin: (req, res) => b2bController.updateProductForAdmin(req, res),
     getProductsForCustomer: (req, res) => b2bController.getProductsForCustomer(req, res),

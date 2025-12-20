@@ -247,6 +247,11 @@ router.get('/admin/products',
     b2bController.getProductsForAdmin
 );
 
+router.get('/admin/products-meili',
+    cacheControl(60),
+    b2bController.getProductsForAdminMeili
+);
+
 router.put('/admin/products/status',
     cacheControl(0),
     b2bController.updateProductStatusForAdmin
