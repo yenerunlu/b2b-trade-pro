@@ -807,8 +807,8 @@
                 
                 if (dbResult.success) {
                     console.log('✅ LOCALSTORAGE GİRİŞ BAŞARILI:', dbResult.user);
-                    this.handleSuccessfulLogin(dbResult.user);
-                    return;
+                    // Not: Server-side güvenlik (role cookie) için API login yine de çalışmalı.
+                    // LocalStorage doğrulamasını sadece UX/diagnostic için tutuyoruz.
                 }
 
                 // 2. Eğer localStorage'da yoksa API'ye dene
