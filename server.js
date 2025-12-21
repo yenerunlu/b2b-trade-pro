@@ -709,6 +709,74 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+function parseCookieHeader(cookieHeader) {
+    const out = {};
+    if (!cookieHeader || typeof cookieHeader !== 'string') return out;
+    const parts = cookieHeader.split(';');
+    for (const p of parts) {
+        const idx = p.indexOf('=');
+        if (idx <= 0) continue;
+        const k = p.slice(0, idx).trim();
+        const v = p.slice(idx + 1).trim();
+        if (!k) continue;
+        out[k] = decodeURIComponent(v || '');
+    }
+    return out;
+}
+
+function getRoleFromRequest(req) {
+    try {
+        const cookies = parseCookieHeader(req.headers.cookie);
+        const role = cookies?.b2b_role ? String(cookies.b2b_role).toLowerCase().trim() : '';
+        if (role) return role;
+    } catch (e) {}
+    return '';
+}
+
+function redirectToLogin(req, res) {
+    // Preserve original path for potential return-to logic later
+    const nextUrl = encodeURIComponent(req.originalUrl || '/');
+    return res.redirect(`/login.html?next=${nextUrl}`);
+}
+
+// Protect static sections by role
+app.use((req, res, next) => {
+    try {
+        const path = String(req.path || '');
+        // Always allow API and login assets
+        if (path.startsWith('/api/')) return next();
+        if (path === '/' || path === '/login.html') return next();
+        if (path.startsWith('/shared/')) return next();
+        if (path === '/change-password.html') return next();
+        if (path.startsWith('/customer/change-password')) return next();
+
+        const role = getRoleFromRequest(req);
+
+        // Block admin entrypoints
+        if (path === '/dashboard.html' || path.startsWith('/admin/')) {
+            if (role === 'admin') return next();
+            return redirectToLogin(req, res);
+        }
+
+        // Block sales portal
+        if (path.startsWith('/sales/')) {
+            if (role === 'sales' || role === 'admin') return next();
+            return redirectToLogin(req, res);
+        }
+
+        // Customer portal
+        if (path.startsWith('/customer/')) {
+            if (role === 'customer') return next();
+            return redirectToLogin(req, res);
+        }
+
+        return next();
+    } catch (e) {
+        return redirectToLogin(req, res);
+    }
+});
+
 app.use(express.static('public'));
 
 // ====================================================
@@ -1459,6 +1527,12 @@ async function handleAuthLogin(req, res) {
                 ? 'change-password'
                 : (role === 'admin' ? 'admin' : 'sales');
 
+            res.cookie('b2b_role', String(role), {
+                httpOnly: true,
+                sameSite: 'lax',
+                secure: false,
+                path: '/'
+            });
             return res.json({
                 success: true,
                 message: 'Giriş başarılı',
@@ -1521,6 +1595,12 @@ async function handleAuthLogin(req, res) {
                 isLogoUser: false
             };
             
+            res.cookie('b2b_role', 'admin', {
+                httpOnly: true,
+                sameSite: 'lax',
+                secure: false,
+                path: '/'
+            });
             return res.json({
                 success: true,
                 message: 'Admin girişi başarılı',
@@ -1580,6 +1660,12 @@ async function handleAuthLogin(req, res) {
                 isLogoUser: false
             };
             
+            res.cookie('b2b_role', 'sales', {
+                httpOnly: true,
+                sameSite: 'lax',
+                secure: false,
+                path: '/'
+            });
             return res.json({
                 success: true,
                 message: 'Plasiyer girişi başarılı',
@@ -1695,6 +1781,13 @@ async function handleAuthLogin(req, res) {
             customerName: customer.MusteriAdi,
             ilk_giris,
             isS1981
+        });
+
+        res.cookie('b2b_role', 'customer', {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: false,
+            path: '/'
         });
 
         res.json({
