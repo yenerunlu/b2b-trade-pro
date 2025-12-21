@@ -544,7 +544,7 @@ class B2BSearchController {
             const hasAnyFilter = manufacturerFilter.length > 0 || vehicleModelFilter.length > 0;
 
             const q = String(query || '').trim();
-            if (!q) {
+            if (!q && !hasAnyFilter) {
                 return res.status(400).json({
                     success: false,
                     error: 'Arama yapın'
@@ -553,6 +553,62 @@ class B2BSearchController {
 
             const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
             const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
+
+            if (!q && hasAnyFilter) {
+                const activeWarehouses = await this.getActiveWarehouses(customerCode);
+                const { rows, total } = await this.getLogoProductsByFiltersPaginated({
+                    limit: safeLimit,
+                    offset: safeOffset,
+                    manufacturerCodes: manufacturerFilter,
+                    vehicleModels: vehicleModelFilter
+                });
+
+                const products = (rows || []).map(item => {
+                    const centralStock = Number(item.central_stock || 0);
+                    const ikitelliStock = Number(item.ikitelli_stock || 0);
+                    const bostanciStock = Number(item.bostanci_stock || 0);
+                    const depotStock = Number(item.depot_stock || 0);
+
+                    const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
+                        if (inv === 0) return sum + centralStock;
+                        if (inv === 1) return sum + ikitelliStock;
+                        if (inv === 2) return sum + bostanciStock;
+                        if (inv === 3) return sum + depotStock;
+                        return sum;
+                    }, 0);
+
+                    const unitPrice = this.formatPrice(item.price || 0);
+                    const currencyCode = Number(item.currency_code || 160);
+
+                    return {
+                        code: item.item_code,
+                        name: item.item_name,
+                        oemCode: item.oem_code,
+                        manufacturer: item.manufacturer,
+                        centralStock,
+                        ikitelliStock,
+                        bostanciStock,
+                        depotStock,
+                        unitPrice,
+                        currencyCode,
+                        finalPrice: unitPrice,
+                        totalDiscountRate: 0,
+                        discounts: [],
+                        totalStock
+                    };
+                });
+
+                const enrichedProducts = this.enrichProductsWithDiscounts(products, discountCfg);
+                enrichedProducts.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
+
+                return res.json({
+                    success: true,
+                    query: '',
+                    total_results: Number(total || 0),
+                    results: enrichedProducts,
+                    response_time_ms: Date.now() - startTime
+                });
+            }
 
             const meiliQuery = q;
             let meiliResult = null;
@@ -1296,10 +1352,10 @@ class B2BSearchController {
         });
 
         const manufacturerWhere = manufacturerPlaceholders.length > 0
-            ? ` AND I.STGRPCODE IN (${manufacturerPlaceholders.join(', ')})`
+            ? ` AND LTRIM(RTRIM(I.STGRPCODE)) IN (${manufacturerPlaceholders.join(', ')})`
             : '';
         const vehicleWhere = vehiclePlaceholders.length > 0
-            ? ` AND I.SPECODE IN (${vehiclePlaceholders.join(', ')})`
+            ? ` AND LTRIM(RTRIM(I.SPECODE)) IN (${vehiclePlaceholders.join(', ')})`
             : '';
 
         const countQuery = `
@@ -1351,7 +1407,7 @@ class B2BSearchController {
                 I.NAME,
                 I.PRODUCERCODE,
                 I.STGRPCODE
-            ORDER BY I.CODE
+            ORDER BY I.CODE, I.LOGICALREF
             OFFSET @offset ROWS
             FETCH NEXT @limit ROWS ONLY
         `;
