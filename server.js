@@ -809,7 +809,7 @@ app.use((req, res, next) => {
 
         // Customer portal
         if (path.startsWith('/customer/')) {
-            if (role === 'customer') return next();
+            if (role === 'customer' || role === 'admin') return next();
             return redirectToLogin(req, res);
         }
 

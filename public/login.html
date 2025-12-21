@@ -572,8 +572,11 @@
         }
     }
 
+    window.B2B_SIGNATURE_QUOTES_ENABLED = false;
+
     function advanceSignatureQuote() {
         try {
+            if (!window.B2B_SIGNATURE_QUOTES_ENABLED) return;
             const host = document.getElementById('signatureQuote');
             if (!host) return;
 
@@ -593,6 +596,11 @@
             const content = window.B2B_LOGIN_CONTENT || {};
             const host = document.getElementById('signatureQuote');
             if (!host) return;
+
+            if (!window.B2B_SIGNATURE_QUOTES_ENABLED) {
+                host.style.display = 'none';
+                return;
+            }
 
             const loginCard = document.querySelector('.login-container');
             if (!loginCard) return;
@@ -1054,6 +1062,11 @@
                     
                     // Otomatik yönlendirme yapma, sadece bilgi ver
                     this.showSuccess(`${userData.kullanici} olarak önceden giriş yapılmış. Tekrar giriş yapabilirsiniz.`);
+
+                    try {
+                        sessionStorage.removeItem('b2b_user_data');
+                    } catch (e) {
+                    }
                     
                 } catch (error) {
                     console.error('❌ Session verisi okuma hatası:', error);
@@ -1360,17 +1373,22 @@
             const userType = userInfo.type;
             let redirectUrl = '/customer/pages/dashboard.html';
 
+            const isAllowedNextForRole = (nextPath, role) => {
+                const p = String(nextPath || '');
+                const r = String(role || '').toLowerCase().trim();
+                if (!p.startsWith('/') || p.startsWith('//') || p.toLowerCase().startsWith('/login')) return false;
+                if (r === 'admin') return p.startsWith('/admin/') || p.startsWith('/sales/');
+                if (r === 'sales' || r === 'plasiyer') return p.startsWith('/sales/');
+                if (r === 'customer' || r === 'musteri') return p.startsWith('/customer/');
+                return false;
+            };
+
             try {
                 const params = new URLSearchParams(window.location.search || '');
                 const rawNext = params.get('next');
                 if (rawNext) {
                     const nextPath = decodeURIComponent(rawNext);
-                    if (
-                        typeof nextPath === 'string' &&
-                        nextPath.startsWith('/') &&
-                        !nextPath.startsWith('//') &&
-                        !nextPath.toLowerCase().startsWith('/login')
-                    ) {
+                    if (isAllowedNextForRole(nextPath, userType)) {
                         redirectUrl = nextPath;
                     }
                 }
@@ -1459,7 +1477,15 @@
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🚀 SAYFA YÜKLENDİ - Modern Login başlatılıyor');
         window.modernLogin = new ModernLogin();
-        initSignatureQuote();
+        if (window.B2B_SIGNATURE_QUOTES_ENABLED) {
+            initSignatureQuote();
+        } else {
+            try {
+                const host = document.getElementById('signatureQuote');
+                if (host) host.style.display = 'none';
+            } catch (e) {
+            }
+        }
         
         // Input alanlarına otomatik focus
         setTimeout(() => {
