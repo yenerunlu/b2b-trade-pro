@@ -3122,9 +3122,22 @@
                 const hadAnyBefore = (selectedManufacturers && selectedManufacturers.length > 0) || (selectedVehicleModels && selectedVehicleModels.length > 0);
                 selectedManufacturers = [];
                 selectedVehicleModels = [];
+                if (searchInput) searchInput.value = '';
+                lastSearchTerm = '';
                 renderFilterLists();
                 renderFilterChips();
                 currentPage = 0;
+
+                hasSearched = false;
+                allProducts = [];
+                displayedProducts = [];
+                lastTotalResults = 0;
+                renderB2BProducts([]);
+                updateAllItemCounts();
+                renderPaginationMeta();
+
+                const metaEl = document.getElementById('table-meta');
+                if (metaEl) metaEl.textContent = '0 ürün';
 
                 clearLastSearchState();
 

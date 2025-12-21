@@ -1992,7 +1992,7 @@
                 });
 
                 let response;
-                if (q) {
+                if (q && !vehicleModel) {
                     response = await fetch(`/api/b2b/admin/products-meili?${qs.toString()}`, {
                         method: 'GET',
                         headers: headers
