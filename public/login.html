@@ -347,9 +347,6 @@
                     <i class="fas fa-lock"></i>
                     <input type="password" id="currentPassword" placeholder="Mevcut şifrenizi girin" required>
                 </div>
-                <div class="change-password-note">
-                    İlk girişte varsayılan şifre: YUNLU
-                </div>
             </div>
 
             <div class="form-group">
@@ -357,6 +354,9 @@
                 <div class="input-wrapper">
                     <i class="fas fa-key"></i>
                     <input type="password" id="newPassword" placeholder="Yeni şifrenizi girin" required>
+                </div>
+                <div class="change-password-note">
+                    Şifre kuralı: En az 6 karakter, en az 1 harf ve 1 rakam (büyük/küçük harf fark etmez)
                 </div>
             </div>
 
@@ -376,7 +376,7 @@
 
         <!-- Telif Hakkı -->
         <div class="copyright">
-            © 2024 Tüm hakları saklıdır.
+            © 2025 Tüm hakları saklıdır.
         </div>
     </div>
 
@@ -659,6 +659,18 @@
 
             if (!mevcut || !yeni || !tekrar) {
                 this.showError('Tüm alanlar zorunludur!');
+                return;
+            }
+
+            if (yeni.length < 6) {
+                this.showError('Yeni şifre en az 6 karakter olmalıdır!');
+                return;
+            }
+
+            const hasLetter = /[a-zA-Z]/.test(yeni);
+            const hasDigit = /\d/.test(yeni);
+            if (!hasLetter || !hasDigit) {
+                this.showError('Yeni şifre en az 1 harf ve 1 rakam içermelidir!');
                 return;
             }
 

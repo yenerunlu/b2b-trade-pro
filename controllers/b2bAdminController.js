@@ -15,20 +15,57 @@ async function getLogoPool() {
     return __logoPool;
 }
 
+const THEME_PRESET_CODES = {
+    bursa_gok_mavisi: 1,
+    edirne_ali: 2,
+    iznik_gokcesi: 3,
+    konya_yesili: 4,
+    kayseri_bakiri: 5,
+    kapadokya_sarisi: 6,
+    antalya_deniz_mavisi: 7,
+    erzurum_agi: 8,
+    ankara_topragi: 9,
+    diyarbakir_karasi: 10,
+    izmir_moru: 11,
+    van_goycesi: 12,
+    sivas_gumusu: 13,
+    trabzon_yesili: 14,
+    canakkale_bozu: 15,
+
+    // Backward-compatible ids
+    platin: 101,
+    altin: 102,
+    modern: 103,
+    professional: 104,
+    kurumsal: 105,
+    ocean: 106,
+    forest: 107,
+    graphite: 108,
+    royal: 109,
+    sunrise: 110
+};
+
+const THEME_PRESET_CODES_REV = Object.fromEntries(
+    Object.entries(THEME_PRESET_CODES).map(([k, v]) => [String(v), k])
+);
+
 class B2BAdminController {
     constructor() {
-        this.b2bConfig = b2bConfig;
-        
-        this.b2bPool = null;
         this.cache = new Map();
+        this.logoConnection = null;
+        this.b2bConnection = null;
+        this.b2bConfig = b2bConfig;
         this._defaultSettingsColumnsCache = null;
+        this._customerOverridesColumnsCache = null;
+        this._customerOverridesValueIsNumericCache = null;
+        this._customerOverridesValueDataTypeCache = null;
     }
 
     async getDefaultSettingsColumns(pool) {
         if (this._defaultSettingsColumnsCache) return this._defaultSettingsColumnsCache;
         const result = await pool.request().query(`
             SELECT COLUMN_NAME
-            FROM INFORMATION_SCHEMA.COLUMNS
+            FROM B2B_TRADE_PRO.INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = 'dbo'
               AND TABLE_NAME = 'b2b_default_settings'
         `);
@@ -42,6 +79,92 @@ class B2BAdminController {
         if (cols.has('setting_id')) return 'setting_id';
         if (cols.has('id')) return 'id';
         return 'setting_id';
+    }
+
+    async getCustomerOverridesColumns(pool) {
+        if (this._customerOverridesColumnsCache) return this._customerOverridesColumnsCache;
+        const result = await pool.request().query(`
+            SELECT COLUMN_NAME
+            FROM B2B_TRADE_PRO.INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = 'b2b_customer_overrides'
+        `);
+        const set = new Set((result.recordset || []).map(r => String(r.COLUMN_NAME || '').toLowerCase()));
+        this._customerOverridesColumnsCache = set;
+        return set;
+    }
+
+    async getCustomerOverridesValueIsNumeric(pool) {
+        if (this._customerOverridesValueIsNumericCache !== null && this._customerOverridesValueIsNumericCache !== undefined) {
+            return this._customerOverridesValueIsNumericCache;
+        }
+
+        const result = await pool.request().query(`
+            SELECT TOP 1 DATA_TYPE
+            FROM B2B_TRADE_PRO.INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = 'b2b_customer_overrides'
+              AND LOWER(COLUMN_NAME) = 'value'
+        `);
+        const dt = String(result.recordset?.[0]?.DATA_TYPE || '').toLowerCase();
+        const numericTypes = new Set(['int', 'bigint', 'smallint', 'tinyint', 'decimal', 'numeric', 'float', 'real', 'money', 'smallmoney']);
+        const isNumeric = numericTypes.has(dt);
+        this._customerOverridesValueIsNumericCache = isNumeric;
+        return isNumeric;
+    }
+
+    async getCustomerOverridesValueDataType(pool) {
+        if (this._customerOverridesValueDataTypeCache) return this._customerOverridesValueDataTypeCache;
+        const result = await pool.request().query(`
+            SELECT TOP 1 DATA_TYPE
+            FROM B2B_TRADE_PRO.INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = 'b2b_customer_overrides'
+              AND LOWER(COLUMN_NAME) = 'value'
+        `);
+        const dt = String(result.recordset?.[0]?.DATA_TYPE || '').toLowerCase();
+        this._customerOverridesValueDataTypeCache = dt;
+        return dt;
+    }
+
+    bindCustomerOverrideValue(request, value, valueDataType) {
+        const dt = String(valueDataType || '').toLowerCase();
+        if (dt === 'decimal' || dt === 'numeric' || dt === 'money' || dt === 'smallmoney') {
+            const n = Number(value);
+            return request.input('value', sql.Decimal(18, 4), Number.isFinite(n) ? n : 0);
+        }
+        if (dt === 'int' || dt === 'bigint' || dt === 'smallint' || dt === 'tinyint') {
+            const n = parseInt(value, 10);
+            return request.input('value', sql.Int, Number.isFinite(n) ? n : 0);
+        }
+        if (dt === 'float' || dt === 'real') {
+            const n = Number(value);
+            return request.input('value', sql.Float, Number.isFinite(n) ? n : 0);
+        }
+        // default string
+        return request.input('value', sql.NVarChar(100), String(value));
+    }
+
+    themePresetToDbValue(presetId, valueIsNumeric) {
+        const id = String(presetId || '').trim();
+        if (!valueIsNumeric) return id;
+        const code = THEME_PRESET_CODES[id];
+        return Number.isFinite(Number(code)) ? Number(code) : Number(THEME_PRESET_CODES.bursa_gok_mavisi);
+    }
+
+    dbValueToThemePreset(dbValue) {
+        if (dbValue === null || dbValue === undefined) return null;
+        const s = String(dbValue).trim();
+        if (!s) return null;
+        // If value is numeric code
+        if (/^\d+$/.test(s) && THEME_PRESET_CODES_REV[s]) return THEME_PRESET_CODES_REV[s];
+        // Otherwise assume string preset id
+        return s;
+    }
+
+    async getCustomerOverridesIdColumn(pool) {
+        const cols = await this.getCustomerOverridesColumns(pool);
+        if (cols.has('id')) return 'id';
+        if (cols.has('override_id')) return 'override_id';
+        if (cols.has('setting_id')) return 'setting_id';
+        return 'id';
     }
 
     normalizeOverrideValue(settingType, valueType, value) {
@@ -231,6 +354,462 @@ class B2BAdminController {
         } catch (e) {
             await tx.rollback();
             throw e;
+        }
+    }
+
+    // ====================================================
+    // 🚀 4.1 CUSTOMER THEME OVERRIDE
+    // ====================================================
+    async setCustomerThemePreset(req, res) {
+        try {
+            const userData = this.decodeUserData(req);
+            const role = String(userData?.rol || userData?.user_type || '').toLowerCase();
+            if (role !== 'customer') {
+                return res.status(403).json({ success: false, error: 'Bu işlem için müşteri oturumu gereklidir' });
+            }
+
+            const customerCode = String(userData?.cari_kodu || userData?.customerCode || userData?.kullanici || '').toUpperCase().trim();
+            if (!customerCode) {
+                return res.status(400).json({ success: false, error: 'Müşteri kodu bulunamadı' });
+            }
+
+            const { preset_id } = req.body || {};
+            const preset = (preset_id === null || preset_id === undefined) ? '' : String(preset_id).trim();
+            if (!preset) {
+                return res.status(400).json({ success: false, error: 'preset_id zorunludur' });
+            }
+
+            const pool = await this.getB2BConnection();
+            const cols = await this.getCustomerOverridesColumns(pool);
+            const idCol = await this.getCustomerOverridesIdColumn(pool);
+            const hasIsActive = cols.has('is_active');
+            const hasValueType = cols.has('value_type');
+            const hasCreatedBy = cols.has('created_by');
+            const hasUpdatedBy = cols.has('updated_by');
+            const hasCreatedAt = cols.has('created_at');
+            const hasUpdatedAt = cols.has('updated_at');
+            const hasDescription = cols.has('description');
+
+            const valueIsNumeric = await this.getCustomerOverridesValueIsNumeric(pool);
+            const valueDataType = await this.getCustomerOverridesValueDataType(pool);
+
+            if (hasIsActive) {
+                const deactivateParts = ['is_active = 0'];
+                if (hasUpdatedAt) deactivateParts.push('updated_at = GETDATE()');
+                if (hasUpdatedBy) deactivateParts.push('updated_by = @customerCode');
+
+                await pool.request()
+                    .input('customerCode', sql.VarChar(50), customerCode)
+                    .query(`
+                        UPDATE B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                        SET ${deactivateParts.join(', ')}
+                        WHERE customer_code = @customerCode
+                          AND setting_type = 'customer_theme_preset'
+                          AND item_code IS NULL
+                          AND is_active = 1
+                    `);
+            } else {
+                // If schema doesn't support is_active, keep the table clean by removing older overrides.
+                await pool.request()
+                    .input('customerCode', sql.VarChar(50), customerCode)
+                    .query(`
+                        DELETE FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                        WHERE customer_code = @customerCode
+                          AND setting_type = 'customer_theme_preset'
+                          AND item_code IS NULL
+                    `);
+            }
+
+            // Clear override and fall back to global theme.
+            if (preset === '__GLOBAL__') {
+                if (hasIsActive) {
+                    const parts = ['is_active = 0'];
+                    if (hasUpdatedAt) parts.push('updated_at = GETDATE()');
+                    if (hasUpdatedBy) parts.push('updated_by = @customerCode');
+                    await pool.request()
+                        .input('customerCode', sql.VarChar(50), customerCode)
+                        .query(`
+                            UPDATE B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                            SET ${parts.join(', ')}
+                            WHERE customer_code = @customerCode
+                              AND setting_type = 'customer_theme_preset'
+                              AND item_code IS NULL
+                        `);
+                } else {
+                    await pool.request()
+                        .input('customerCode', sql.VarChar(50), customerCode)
+                        .query(`
+                            DELETE FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                            WHERE customer_code = @customerCode
+                              AND setting_type = 'customer_theme_preset'
+                              AND item_code IS NULL
+                        `);
+                }
+
+                this.clearB2BCache('b2b_public_settings');
+                return res.json({
+                    success: true,
+                    message: 'Tema global ayara döndürüldü',
+                    preset_id: String(preset),
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            // UPSERT to satisfy UNIQUE KEY constraint
+            const setParts = ['value = @value'];
+            if (hasValueType) setParts.push("value_type = 'text'");
+            if (hasDescription) setParts.push("description = 'Customer theme preset override'");
+            if (hasIsActive) setParts.push('is_active = 1');
+            if (hasUpdatedAt) setParts.push('updated_at = GETDATE()');
+            if (hasUpdatedBy) setParts.push('updated_by = @customerCode');
+
+            const insertCols = ['customer_code', 'setting_type', 'item_code', 'value'];
+            const insertVals = ['@customerCode', "'customer_theme_preset'", 'NULL', '@value'];
+            if (hasValueType) { insertCols.push('value_type'); insertVals.push("'text'"); }
+            if (hasDescription) { insertCols.push('description'); insertVals.push("'Customer theme preset override'"); }
+            if (hasIsActive) { insertCols.push('is_active'); insertVals.push('1'); }
+            if (hasCreatedAt) { insertCols.push('created_at'); insertVals.push('GETDATE()'); }
+            if (hasUpdatedAt) { insertCols.push('updated_at'); insertVals.push('GETDATE()'); }
+            if (hasCreatedBy) { insertCols.push('created_by'); insertVals.push('@customerCode'); }
+            if (hasUpdatedBy) { insertCols.push('updated_by'); insertVals.push('@customerCode'); }
+
+            const dbValue = this.themePresetToDbValue(preset, valueIsNumeric);
+
+            const reqq = pool.request().input('customerCode', sql.VarChar(50), customerCode);
+            this.bindCustomerOverrideValue(reqq, dbValue, valueDataType);
+            await reqq.query(`
+                IF EXISTS (
+                    SELECT 1
+                    FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                    WHERE customer_code = @customerCode
+                      AND setting_type = 'customer_theme_preset'
+                      AND item_code IS NULL
+                )
+                BEGIN
+                    UPDATE B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                    SET ${setParts.join(', ')}
+                    WHERE customer_code = @customerCode
+                      AND setting_type = 'customer_theme_preset'
+                      AND item_code IS NULL
+                END
+                ELSE
+                BEGIN
+                    INSERT INTO B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                        (${insertCols.join(', ')})
+                    VALUES
+                        (${insertVals.join(', ')})
+                END
+            `);
+
+            this.clearB2BCache('b2b_public_settings');
+
+            return res.json({
+                success: true,
+                message: 'Tema kaydedildi',
+                preset_id: String(preset),
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            let columnTypes = null;
+            try {
+                const pool = await this.getB2BConnection();
+                const r = await pool.request().query(`
+                    SELECT COLUMN_NAME, DATA_TYPE
+                    FROM B2B_TRADE_PRO.INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'b2b_customer_overrides'
+                    ORDER BY ORDINAL_POSITION
+                `);
+                columnTypes = (r.recordset || []).map(x => ({
+                    column: x.COLUMN_NAME,
+                    data_type: x.DATA_TYPE
+                }));
+            } catch (e) {
+                columnTypes = null;
+            }
+
+            const details = {
+                message: error?.message,
+                code: error?.code,
+                number: error?.number,
+                state: error?.state,
+                class: error?.class,
+                lineNumber: error?.lineNumber,
+                procName: error?.procName,
+                serverName: error?.serverName,
+                originalError: error?.originalError?.message,
+                precedingErrors: Array.isArray(error?.precedingErrors)
+                    ? error.precedingErrors.map(e => ({ message: e.message, number: e.number, code: e.code }))
+                    : undefined,
+                customer_overrides_column_types: columnTypes
+            };
+            console.error('❌ Customer theme preset kaydetme hatası:', details);
+            return res.status(500).json({
+                success: false,
+                error: error?.message || 'Sunucu hatası',
+                details,
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
+    // ====================================================
+    // 🚀 3. AYAR UPSERT (KEY İLE)
+    // ====================================================
+    async upsertSettingByKey(req, res) {
+        const __retried = Boolean(req && req.__b2b_upsert_retried);
+
+        try {
+            const userData = this.decodeUserData(req);
+
+            if (!this.checkAdminAuth(req)) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Bu işlem için admin yetkisi gereklidir'
+                });
+            }
+
+            const { setting_key, setting_value, setting_type = 'text', description = '', is_active = 1 } = req.body || {};
+            if (!setting_key || setting_value === undefined) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'setting_key ve setting_value zorunludur'
+                });
+            }
+
+            const userCode = userData?.user_code || userData?.cari_kodu || 'admin';
+            const pool = await this.getB2BConnection();
+
+            const cols = await this.getDefaultSettingsColumns(pool);
+            const idCol = await this.getDefaultSettingsIdColumn(pool);
+
+            const hasIsActive = cols.has('is_active');
+            const hasDescription = cols.has('description');
+            const hasSettingType = cols.has('setting_type');
+            const hasUpdatedAt = cols.has('updated_at');
+            const hasUpdatedBy = cols.has('updated_by');
+            const hasCreatedAt = cols.has('created_at');
+            const hasCreatedBy = cols.has('created_by');
+
+            const isActiveValue = (is_active === 0 || is_active === '0') ? 0 : 1;
+
+            const updateParts = [
+                'setting_value = @value'
+            ];
+            const insertCols = ['setting_key', 'setting_value'];
+            const insertVals = ['@key', '@value'];
+
+            if (hasSettingType) {
+                updateParts.push('setting_type = @type');
+                insertCols.push('setting_type');
+                insertVals.push('@type');
+            }
+            if (hasDescription) {
+                updateParts.push('description = @description');
+                insertCols.push('description');
+                insertVals.push('@description');
+            }
+            if (hasIsActive) {
+                updateParts.push('is_active = @isActive');
+                insertCols.push('is_active');
+                insertVals.push('@isActive');
+            }
+            if (hasUpdatedAt) updateParts.push('updated_at = GETDATE()');
+            if (hasUpdatedBy) {
+                updateParts.push('updated_by = @updatedBy');
+                insertCols.push('updated_by');
+                insertVals.push('@updatedBy');
+            }
+            if (hasCreatedAt) {
+                insertCols.push('created_at');
+                insertVals.push('GETDATE()');
+            }
+            if (hasUpdatedAt) {
+                insertCols.push('updated_at');
+                insertVals.push('GETDATE()');
+            }
+            if (hasCreatedBy) {
+                insertCols.push('created_by');
+                insertVals.push('@updatedBy');
+            }
+
+            const query = `
+                IF EXISTS (
+                    SELECT TOP 1 ${idCol} FROM B2B_TRADE_PRO.dbo.b2b_default_settings
+                    WHERE setting_key = @key
+                )
+                BEGIN
+                    UPDATE B2B_TRADE_PRO.dbo.b2b_default_settings
+                    SET ${updateParts.join(',\n                        ')}
+                    WHERE setting_key = @key
+                END
+                ELSE
+                BEGIN
+                    INSERT INTO B2B_TRADE_PRO.dbo.b2b_default_settings
+                        (${insertCols.join(', ')})
+                    VALUES
+                        (${insertVals.join(', ')})
+                END
+            `;
+
+            const reqq = pool.request()
+                .input('key', sql.VarChar(100), String(setting_key))
+                .input('value', sql.VarChar(500), String(setting_value))
+                .input('updatedBy', sql.VarChar(50), String(userCode));
+
+            if (hasSettingType) reqq.input('type', sql.VarChar(50), String(setting_type || 'text'));
+            if (hasDescription) reqq.input('description', sql.NVarChar(500), String(description || ''));
+            if (hasIsActive) reqq.input('isActive', sql.Int, isActiveValue);
+
+            await reqq.query(query);
+
+            this.clearB2BCache('b2b_settings');
+            this.clearB2BCache('b2b_public_settings');
+
+            res.json({
+                success: true,
+                message: 'Ayar kaydedildi',
+                setting_key: String(setting_key),
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            const msg = String(error?.message || '');
+            if (!__retried && msg.toLowerCase().includes("invalid column name") && msg.toLowerCase().includes('is_active')) {
+                // Schema mismatch (or stale cache): refresh columns cache and retry once.
+                this._defaultSettingsColumnsCache = null;
+                try {
+                    req.__b2b_upsert_retried = true;
+                } catch (e) {}
+                return this.upsertSettingByKey(req, res);
+            }
+
+            const details = {
+                message: error?.message,
+                code: error?.code,
+                number: error?.number,
+                state: error?.state,
+                class: error?.class,
+                lineNumber: error?.lineNumber,
+                procName: error?.procName,
+                serverName: error?.serverName,
+                originalError: error?.originalError?.message,
+                precedingErrors: Array.isArray(error?.precedingErrors)
+                    ? error.precedingErrors.map(e => ({ message: e.message, number: e.number, code: e.code }))
+                    : undefined
+            };
+            console.error('❌ Ayar upsert hatası:', details);
+            res.status(500).json({
+                success: false,
+                error: error?.message || 'Sunucu hatası',
+                details,
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
+    // ====================================================
+    // 🚀 4. PUBLIC SETTINGS (MÜŞTERİ/PLASİYER)
+    // ====================================================
+    async getPublicSettings(req, res) {
+        try {
+            const pool = await this.getB2BConnection();
+
+            const cols = await this.getDefaultSettingsColumns(pool);
+            const hasIsActive = cols.has('is_active');
+
+            // If a customer is calling this endpoint and has a personal override, it must win over global.
+            let customerCode = null;
+            try {
+                const userDataBase64 = req.headers['x-user-data-base64'];
+                if (userDataBase64) {
+                    const decoded = Buffer.from(String(userDataBase64), 'base64').toString('utf-8');
+                    const userData = JSON.parse(decoded);
+                    const role = String(userData?.rol || userData?.user_type || '').toLowerCase();
+                    if (role === 'customer') {
+                        customerCode = String(userData?.cari_kodu || userData?.customerCode || userData?.kullanici || '').toUpperCase().trim();
+                    }
+                }
+            } catch (e) {
+                customerCode = null;
+            }
+
+            let overrideTheme = null;
+            if (customerCode) {
+                const overrideIdCol = await this.getCustomerOverridesIdColumn(pool);
+                const valueIsNumeric = await this.getCustomerOverridesValueIsNumeric(pool);
+                const overrideQuery = `
+                    SELECT TOP 1 value
+                    FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                    WHERE customer_code = @customerCode
+                      AND setting_type = 'customer_theme_preset'
+                      AND item_code IS NULL
+                      ${await (async () => {
+                          try {
+                              const ocols = await this.getCustomerOverridesColumns(pool);
+                              return ocols.has('is_active') ? 'AND is_active = 1' : '';
+                          } catch (e) {
+                              return '';
+                          }
+                      })()}
+                    ORDER BY ${overrideIdCol} DESC
+                `;
+                const overrideRes = await pool.request()
+                    .input('customerCode', sql.VarChar(50), customerCode)
+                    .query(overrideQuery);
+                const row = overrideRes.recordset?.[0];
+                if (row && row.value != null && String(row.value).trim().length > 0) {
+                    const decoded = this.dbValueToThemePreset(row.value);
+                    overrideTheme = decoded ? String(decoded) : null;
+                }
+            }
+
+            const cacheKey = 'b2b_public_settings';
+            // Only use cache for anonymous / non-customer requests.
+            if (!customerCode && this.cache.has(cacheKey)) {
+                return res.json(this.cache.get(cacheKey));
+            }
+
+            const query = `
+                SELECT setting_key, setting_value
+                ${cols.has('setting_type') ? ', setting_type' : ''}
+                FROM B2B_TRADE_PRO.dbo.b2b_default_settings
+                WHERE 1=1
+                  ${hasIsActive ? 'AND (is_active = 1 OR is_active IS NULL)' : ''}
+                  AND setting_key IN (
+                    'customer_theme_preset'
+                  )
+            `;
+            const result = await pool.request().query(query);
+
+            const obj = {};
+            for (const r of (result.recordset || [])) {
+                obj[String(r.setting_key)] = (r.setting_value === null || r.setting_value === undefined)
+                    ? null
+                    : String(r.setting_value);
+            }
+
+            if (overrideTheme) {
+                obj.customer_theme_preset = overrideTheme;
+            }
+
+            const responseData = {
+                success: true,
+                data: obj,
+                timestamp: new Date().toISOString()
+            };
+
+            if (!customerCode) {
+                this.cache.set(cacheKey, responseData);
+                setTimeout(() => this.cache.delete(cacheKey), 60 * 1000);
+            }
+
+            res.json(responseData);
+        } catch (error) {
+            console.error('❌ Public settings hatası:', error.message);
+            res.status(500).json({
+                success: false,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            });
         }
     }
 
@@ -486,7 +1065,7 @@ class B2BAdminController {
         try {
             if (!this.b2bPool || !this.b2bPool.connected) {
                 console.log("🔗 B2B_TRADE_PRO bağlanıyor...");
-                this.b2bPool = await new sql.ConnectionPool(this.b2bConfig).connect();
+                this.b2bPool = await new sql.ConnectionPool(b2bConfig).connect();
                 this.b2bPool.on('error', err => {
                     console.error('❌ B2B_TRADE_PRO bağlantı hatası:', err.message);
                     this.b2bPool = null;
@@ -1684,6 +2263,9 @@ const b2bAdminController = new B2BAdminController();
 module.exports = {
     getSettings: (req, res) => b2bAdminController.getSettings(req, res),
     updateSettings: (req, res) => b2bAdminController.updateSettings(req, res),
+    upsertSettingByKey: (req, res) => b2bAdminController.upsertSettingByKey(req, res),
+    getPublicSettings: (req, res) => b2bAdminController.getPublicSettings(req, res),
+    setCustomerThemePreset: (req, res) => b2bAdminController.setCustomerThemePreset(req, res),
     getOrderDistributionSettings: (req, res) => b2bAdminController.getOrderDistributionSettings(req, res),
     updateOrderDistributionSettings: (req, res) => b2bAdminController.updateOrderDistributionSettings(req, res),
     getCampaigns: (req, res) => b2bAdminController.getCampaigns(req, res),

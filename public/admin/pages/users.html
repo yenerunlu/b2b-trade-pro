@@ -316,7 +316,7 @@
         <div class="header">
             <div class="title">
                 <h1>Kullanıcı Hesapları</h1>
-                <p>Admin / Plasiyer / Müşteri hesaplarını tek yerden yönet.</p>
+                <p>Admin / Plasiyer ve özel kullanıcıları tek yerden yönet.</p>
             </div>
             <div class="actions">
                 <button class="btn" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Yenile</button>
@@ -336,7 +336,6 @@
                         <option value="">Tümü</option>
                         <option value="admin">Admin</option>
                         <option value="sales">Plasiyer</option>
-                        <option value="customer">Müşteri</option>
                     </select>
                 </div>
                 <div class="field">
@@ -367,10 +366,11 @@
                             <th>Hata</th>
                             <th>Son Giriş</th>
                             <th>İşlemler</th>
+                            <th>Sil</th>
                         </tr>
                     </thead>
                     <tbody id="tbody">
-                        <tr><td colspan="10" style="color:#64748b;">Yükleniyor...</td></tr>
+                        <tr><td colspan="11" style="color:#64748b;">Yükleniyor...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -403,7 +403,6 @@
                         <select class="select" id="formRole">
                             <option value="admin">Admin</option>
                             <option value="sales">Plasiyer</option>
-                            <option value="customer">Müşteri</option>
                         </select>
                     </div>
                     <div class="field">
@@ -566,7 +565,7 @@
             count.textContent = `${state.rows.length} kayıt`;
 
             if (!state.rows.length) {
-                tbody.innerHTML = '<tr><td colspan="10" style="color:#64748b;">Kayıt bulunamadı.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="color:#64748b;">Kayıt bulunamadı.</td></tr>';
                 return;
             }
 
@@ -594,6 +593,11 @@
                                 ${unlockBtn}
                             </div>
                         </td>
+                        <td>
+                            <div class="row-actions">
+                                <button class="icon-btn" title="Sil" onclick="deleteUser('${r.user_code}')"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                        </td>
                     </tr>
                 `;
             }).join('');
@@ -612,7 +616,7 @@
             const url = `/api/admin/auth-users?${params.toString()}`;
 
             const tbody = document.getElementById('tbody');
-            tbody.innerHTML = '<tr><td colspan="10" style="color:#64748b;">Yükleniyor...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="color:#64748b;">Yükleniyor...</td></tr>';
 
             const res = await fetch(url, { headers: setAuthHeaders() });
             const data = await res.json();
@@ -632,7 +636,7 @@
 
             document.getElementById('formUserCode').value = '';
             document.getElementById('formUserCode').disabled = false;
-            document.getElementById('formRole').value = 'customer';
+            document.getElementById('formRole').value = 'sales';
             document.getElementById('formName').value = '';
             document.getElementById('formEmail').value = '';
             document.getElementById('formActive').value = '1';
@@ -681,6 +685,27 @@
             const data = await res.json();
             if (!res.ok || !data.success) {
                 alert(data.error || 'Kilit açılamadı');
+                return;
+            }
+            await loadUsers();
+        }
+
+        async function deleteUser(userCode) {
+            if (!userCode) return;
+            if (userCode === 'ADMIN') {
+                alert('ADMIN kullanıcısı silinemez');
+                return;
+            }
+
+            if (!confirm(`${userCode} kullanıcısı silinsin mi?`)) return;
+
+            const res = await fetch(`/api/admin/auth-users/${encodeURIComponent(userCode)}`, {
+                method: 'DELETE',
+                headers: setAuthHeaders()
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                alert(data.error || 'Kullanıcı silinemedi');
                 return;
             }
             await loadUsers();
@@ -802,6 +827,7 @@
         window.openEdit = openEdit;
         window.openReset = openReset;
         window.unlockUser = unlockUser;
+        window.deleteUser = deleteUser;
 
         document.addEventListener('DOMContentLoaded', () => {
             wire();

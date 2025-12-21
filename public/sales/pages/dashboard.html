@@ -452,6 +452,38 @@
     </div>
 
     <script>
+        async function applyThemeFromSettings() {
+            const PRESETS = {
+                platin: { primary: '#64748b', primaryDark: '#334155', secondary: '#94a3b8' },
+                altin: { primary: '#b45309', primaryDark: '#92400e', secondary: '#f59e0b' },
+                modern: { primary: '#2563eb', primaryDark: '#1e40af', secondary: '#f59e0b' },
+                professional: { primary: '#0f172a', primaryDark: '#334155', secondary: '#0ea5e9' },
+                kurumsal: { primary: '#1d4ed8', primaryDark: '#1e3a8a', secondary: '#22c55e' },
+                ocean: { primary: '#0891b2', primaryDark: '#0e7490', secondary: '#2563eb' },
+                forest: { primary: '#166534', primaryDark: '#14532d', secondary: '#f59e0b' },
+                graphite: { primary: '#111827', primaryDark: '#374151', secondary: '#f97316' }
+            };
+
+            try {
+                const res = await fetch('/api/b2b/public/settings', { method: 'GET' });
+                const json = await res.json();
+                if (!res.ok || !json.success) return;
+                const presetId = json.data && json.data.customer_theme_preset ? String(json.data.customer_theme_preset) : '';
+                if (!presetId) return;
+                const preset = PRESETS[presetId];
+                if (!preset) return;
+
+                const root = document.documentElement;
+                root.style.setProperty('--primary', preset.primary);
+                root.style.setProperty('--primary-dark', preset.primaryDark);
+                root.style.setProperty('--secondary', preset.secondary);
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        applyThemeFromSettings();
+
         // Base64 encoding fonksiyonu
         function encodeUserDataToBase64(userData) {
             try {

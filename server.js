@@ -995,6 +995,9 @@ app.get('/api/admin/auth-users', requireAdmin, async (req, res) => {
         if (role && String(role).trim()) {
             where.push('role = ?');
             params.push(String(role).trim());
+        } else {
+            where.push('role != ?');
+            params.push('customer');
         }
 
         if (active === '1' || active === '0') {
@@ -1050,6 +1053,10 @@ app.post('/api/admin/auth-users', requireAdmin, async (req, res) => {
         const code = String(user_code).toUpperCase().trim();
         const r = String(role).trim();
 
+        if (String(r).toLowerCase() === 'customer') {
+            return res.status(400).json({ success: false, error: 'Bu ekrandan müşteri kullanıcısı oluşturulamaz' });
+        }
+
         let password_hash = null;
         if (password && String(password).trim()) {
             password_hash = await bcrypt.hash(String(password).toUpperCase().trim(), 10);
@@ -1071,6 +1078,33 @@ app.post('/api/admin/auth-users', requireAdmin, async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('❌ Admin auth-users create error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.delete('/api/admin/auth-users/:userCode', requireAdmin, async (req, res) => {
+    try {
+        const userCode = String(req.params.userCode || '').toUpperCase().trim();
+        if (!userCode) {
+            return res.status(400).json({ success: false, error: 'userCode zorunludur' });
+        }
+        if (userCode === 'ADMIN') {
+            return res.status(400).json({ success: false, error: 'ADMIN kullanıcısı silinemez' });
+        }
+
+        const user = await getAuthUser(userCode);
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'Kullanıcı bulunamadı' });
+        }
+        if (String(user.role || '').toLowerCase() === 'customer') {
+            return res.status(400).json({ success: false, error: 'Müşteri kullanıcıları bu ekrandan silinemez' });
+        }
+
+        const db = await getLocalAuthDb();
+        await sqliteRun(db, 'DELETE FROM auth_users WHERE user_code = ?', [userCode]);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Admin auth-users delete error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -1391,6 +1425,57 @@ async function handleAuthLogin(req, res) {
         const userCode = kullanici.toUpperCase().trim();
         const password = sifre.toUpperCase().trim();
 
+        const authUser = await getAuthUser(userCode);
+
+        if (authUser && String(authUser.role || '').toLowerCase() !== 'customer') {
+            if (authUser.active !== 1) {
+                throw new LogoAPIError('Kullanıcı aktif değil', 'login', { userCode });
+            }
+
+            if (authUser.locked_until && Date.parse(authUser.locked_until) > Date.now()) {
+                throw new LogoAPIError('Hesap geçici olarak kilitli', 'login', { userCode });
+            }
+
+            const needsPasswordSetup = !authUser.password_hash;
+            if (needsPasswordSetup) {
+                if (password !== 'YUNLU') {
+                    await recordAuthFailure(userCode);
+                    throw new LogoAPIError('Geçersiz şifre', 'login', { userCode });
+                }
+            } else {
+                const passwordMatch = await bcrypt.compare(password, authUser.password_hash);
+                if (!passwordMatch) {
+                    await recordAuthFailure(userCode);
+                    throw new LogoAPIError('Geçersiz şifre', 'login', { userCode });
+                }
+            }
+
+            await resetAuthFailures(userCode);
+            await recordAuthSuccess(userCode, req.ip);
+
+            const role = String(authUser.role || '').toLowerCase();
+            const ilk_giris = (authUser.must_change_password === 1) || needsPasswordSetup;
+            const redirect = ilk_giris
+                ? 'change-password'
+                : (role === 'admin' ? 'admin' : 'sales');
+
+            return res.json({
+                success: true,
+                message: 'Giriş başarılı',
+                user: {
+                    kullanici: userCode,
+                    rol: role,
+                    email: authUser.email || null,
+                    musteri_adi: authUser.customer_name || null,
+                    ilk_giris: ilk_giris,
+                    isLogoUser: false
+                },
+                redirect,
+                timestamp: new Date().toISOString(),
+                responseTime: Date.now() - startTime
+            });
+        }
+
         if (userCode === 'ADMIN') {
             console.log('🔐 ADMIN giriş denemesi');
 
@@ -1506,10 +1591,6 @@ async function handleAuthLogin(req, res) {
         }
 
         console.log('🔐 LOGO MÜŞTERİ giriş denemesi:', userCode);
-        
-        if (!userCode.startsWith('S') && !userCode.startsWith('M')) {
-            throw new ValidationError('Geçerli bir müşteri kodu giriniz (S veya M ile başlar)', 'login', 'userCode');
-        }
 
         if (userCode === 'S1981') {
             if (password !== 'YUNLU') {
@@ -1517,7 +1598,7 @@ async function handleAuthLogin(req, res) {
             }
         }
 
-        const customerAuth = await getAuthUser(userCode);
+        const customerAuth = authUser;
         if (customerAuth && customerAuth.active !== 1) {
             throw new LogoAPIError('Müşteri aktif değil', 'login', { userCode });
         }
@@ -1689,8 +1770,15 @@ app.post('/api/auth/change-password', async (req, res) => {
             throw new ValidationError('Yeni şifreler eşleşmiyor', 'change-password', 'password_match');
         }
 
-        if (yeni_sifre.length < 4) {
-            throw new ValidationError('Şifre en az 4 karakter olmalıdır', 'change-password', 'password_length');
+        if (String(yeni_sifre).length < 6) {
+            throw new ValidationError('Şifre en az 6 karakter olmalıdır', 'change-password', 'password_length');
+        }
+
+        const rawNewPassword = String(yeni_sifre);
+        const hasLetter = /[a-zA-Z]/.test(rawNewPassword);
+        const hasDigit = /\d/.test(rawNewPassword);
+        if (!hasLetter || !hasDigit) {
+            throw new ValidationError('Şifre en az 1 harf ve 1 rakam içermelidir', 'change-password', 'password_format');
         }
 
         const userCode = kullanici.toUpperCase().trim();
@@ -1726,10 +1814,6 @@ app.post('/api/auth/change-password', async (req, res) => {
                 timestamp: new Date().toISOString(),
                 responseTime: Date.now() - startTime
             });
-        }
-
-        if (!userCode.startsWith('S') && !userCode.startsWith('M')) {
-            throw new ValidationError('Geçerli bir müşteri kodu giriniz (S veya M ile başlar)', 'change-password', 'userCode');
         }
 
         const pool = await getLogoConnection();

@@ -277,6 +277,22 @@ router.put('/admin/settings',
     b2bAdminController.updateSettings
 );
 
+router.post('/admin/settings/upsert',
+    cacheControl(0),
+    b2bAdminController.upsertSettingByKey
+);
+
+router.get('/public/settings',
+    cacheControl(60),
+    b2bAdminController.getPublicSettings
+);
+
+router.post('/customer/settings/theme',
+    cacheControl(0),
+    customerAuthMiddleware,
+    b2bAdminController.setCustomerThemePreset
+);
+
 router.get('/admin/order-settings',
     cacheControl(60),
     b2bAdminController.getOrderDistributionSettings
