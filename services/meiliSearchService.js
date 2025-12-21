@@ -80,8 +80,12 @@ function buildCompactHaystack(hit) {
 }
 
 function getClient() {
-    const host = process.env.MEILI_HOST || 'http://127.0.0.1:7700';
-    const apiKey = process.env.MEILI_API_KEY || 'masterKey';
+    const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+    const host = process.env.MEILI_HOST || (isProd ? 'http://127.0.0.1:7700' : 'http://127.0.0.1:7700');
+    const apiKey = process.env.MEILI_API_KEY;
+    if (isProd && (!apiKey || !String(apiKey).trim())) {
+        throw new Error('MEILI_API_KEY is required in production');
+    }
     return new MeiliSearch({ host, apiKey });
 }
 
@@ -289,7 +293,7 @@ async function autocomplete(query, { limit = 15 } = {}) {
     return hits.slice(0, safeLimit);
 }
 
-async function search(query, { limit = 50, offset = 0 } = {}) {
+async function search(query, { limit = 50, offset = 0, matchingStrategy } = {}) {
     const nq = normalizeQuery(query);
     if (!nq.cleaned || nq.cleaned.length < 2) return { hits: [], estimatedTotalHits: 0 };
 
@@ -300,10 +304,16 @@ async function search(query, { limit = 50, offset = 0 } = {}) {
     const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
     const candidateLimit = Math.min(Math.max(safeLimit * 10, 200), 1000);
 
+    const meiliOptions = {};
+    if (matchingStrategy === 'all' || matchingStrategy === 'last') {
+        meiliOptions.matchingStrategy = matchingStrategy;
+    }
+
     const resp = await index.search(qForSearch, {
         limit: candidateLimit,
         offset: safeOffset,
-        attributesToRetrieve: ['id', 'itemCode', 'oemCode', 'manufacturer', 'name', 'name2', 'name3', 'totalStock']
+        attributesToRetrieve: ['id', 'itemCode', 'oemCode', 'manufacturer', 'name', 'name2', 'name3', 'totalStock'],
+        ...meiliOptions
     });
 
     let hits = resp.hits || [];

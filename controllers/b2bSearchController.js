@@ -721,6 +721,214 @@ class B2BSearchController {
         }
     }
 
+    async meiliSearchEnrichedSmart(req, res) {
+        const startTime = Date.now();
+        const {
+            query,
+            customerCode = (req.user && (req.user.cari_kodu || req.user.customerCode)) || 'S1981',
+            limit = 100,
+            offset = 0,
+            manufacturerCodes = [],
+            vehicleModels = []
+        } = req.body || {};
+
+        try {
+            const discountCfg = await this.loadCustomerDiscountConfig(customerCode);
+            const manufacturerFilter = Array.from(Array.isArray(manufacturerCodes) ? manufacturerCodes : [])
+                .map(v => String(v || '').trim())
+                .filter(Boolean);
+            const vehicleModelFilter = Array.from(Array.isArray(vehicleModels) ? vehicleModels : [])
+                .map(v => String(v || '').trim())
+                .filter(Boolean);
+            const hasAnyFilter = manufacturerFilter.length > 0 || vehicleModelFilter.length > 0;
+
+            const q = String(query || '').trim();
+            if (!q && !hasAnyFilter) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Arama yapın'
+                });
+            }
+
+            const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
+            const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
+
+            if (!q && hasAnyFilter) {
+                const activeWarehouses = await this.getActiveWarehouses(customerCode);
+                const { rows, total } = await this.getLogoProductsByFiltersPaginated({
+                    limit: safeLimit,
+                    offset: safeOffset,
+                    manufacturerCodes: manufacturerFilter,
+                    vehicleModels: vehicleModelFilter
+                });
+
+                const products = (rows || []).map(item => {
+                    const centralStock = Number(item.central_stock || 0);
+                    const ikitelliStock = Number(item.ikitelli_stock || 0);
+                    const bostanciStock = Number(item.bostanci_stock || 0);
+                    const depotStock = Number(item.depot_stock || 0);
+
+                    const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
+                        if (inv === 0) return sum + centralStock;
+                        if (inv === 1) return sum + ikitelliStock;
+                        if (inv === 2) return sum + bostanciStock;
+                        if (inv === 3) return sum + depotStock;
+                        return sum;
+                    }, 0);
+
+                    const unitPrice = this.formatPrice(item.price || 0);
+                    const currencyCode = Number(item.currency_code || 160);
+
+                    return {
+                        code: item.item_code,
+                        name: item.item_name,
+                        oemCode: item.oem_code,
+                        manufacturer: item.manufacturer,
+                        centralStock,
+                        ikitelliStock,
+                        bostanciStock,
+                        depotStock,
+                        unitPrice,
+                        currencyCode,
+                        finalPrice: unitPrice,
+                        totalDiscountRate: 0,
+                        discounts: [],
+                        totalStock
+                    };
+                });
+
+                const enrichedProducts = this.enrichProductsWithDiscounts(products, discountCfg);
+                enrichedProducts.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
+
+                return res.json({
+                    success: true,
+                    query: '',
+                    total_results: Number(total || 0),
+                    results: enrichedProducts,
+                    response_time_ms: Date.now() - startTime
+                });
+            }
+
+            const meiliQuery = q;
+            let meiliResult;
+            let meiliHits = [];
+            try {
+                meiliResult = await meiliSearchService.search(meiliQuery, {
+                    limit: safeLimit,
+                    offset: safeOffset,
+                    matchingStrategy: 'all'
+                });
+                meiliHits = (meiliResult && Array.isArray(meiliResult.hits)) ? meiliResult.hits : [];
+
+                if (meiliHits.length === 0) {
+                    meiliResult = await meiliSearchService.search(meiliQuery, {
+                        limit: safeLimit,
+                        offset: safeOffset
+                    });
+                    meiliHits = (meiliResult && Array.isArray(meiliResult.hits)) ? meiliResult.hits : [];
+                }
+            } catch (meiliErr) {
+                const msg = meiliErr && meiliErr.message ? meiliErr.message : String(meiliErr);
+                console.error('❌ Meili smart search failed:', msg);
+
+                return res.status(503).json({
+                    success: false,
+                    error: 'MeiliSearch kullanılamıyor',
+                    details: msg,
+                    query: meiliQuery,
+                    response_time_ms: Date.now() - startTime
+                });
+            }
+
+            const logicalrefs = Array.from(
+                new Set(
+                    meiliHits
+                        .map(h => h && h.id)
+                        .filter(v => Number.isFinite(Number(v)))
+                        .map(v => Number(v))
+                )
+            );
+
+            if (logicalrefs.length === 0) {
+                return res.json({
+                    success: true,
+                    query: meiliQuery,
+                    total_results: 0,
+                    results: [],
+                    response_time_ms: Date.now() - startTime
+                });
+            }
+
+            const activeWarehouses = await this.getActiveWarehouses(customerCode);
+            const logoRows = await this.getLogoProductsByLogicalrefs(logicalrefs, safeLimit, {
+                manufacturerCodes: hasAnyFilter ? manufacturerFilter : [],
+                vehicleModels: hasAnyFilter ? vehicleModelFilter : []
+            });
+
+            const products = (logoRows || []).map(item => {
+                const centralStock = Number(item.central_stock || 0);
+                const ikitelliStock = Number(item.ikitelli_stock || 0);
+                const bostanciStock = Number(item.bostanci_stock || 0);
+                const depotStock = Number(item.depot_stock || 0);
+
+                const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
+                    if (inv === 0) return sum + centralStock;
+                    if (inv === 1) return sum + ikitelliStock;
+                    if (inv === 2) return sum + bostanciStock;
+                    if (inv === 3) return sum + depotStock;
+                    return sum;
+                }, 0);
+
+                const unitPrice = this.formatPrice(item.price || 0);
+                const currencyCode = Number(item.currency_code || 160);
+
+                return {
+                    code: item.item_code,
+                    name: item.item_name,
+                    oemCode: item.oem_code,
+                    manufacturer: item.manufacturer,
+                    centralStock,
+                    ikitelliStock,
+                    bostanciStock,
+                    depotStock,
+                    unitPrice,
+                    currencyCode,
+                    finalPrice: unitPrice,
+                    totalDiscountRate: 0,
+                    discounts: [],
+                    totalStock
+                };
+            });
+
+            const enrichedProducts = this.enrichProductsWithDiscounts(products, discountCfg);
+            enrichedProducts.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
+
+            const totalResults =
+                (typeof meiliResult?.estimatedTotalHits === 'number')
+                    ? meiliResult.estimatedTotalHits
+                    : (typeof meiliResult?.nbHits === 'number')
+                        ? meiliResult.nbHits
+                        : products.length;
+
+            res.json({
+                success: true,
+                query: meiliQuery,
+                total_results: totalResults,
+                results: enrichedProducts,
+                response_time_ms: Date.now() - startTime
+            });
+        } catch (error) {
+            const msg = (error && error.message) ? error.message : String(error);
+            console.error('❌ Meili enriched smart search error:', msg);
+            return res.status(500).json({
+                success: false,
+                error: msg,
+                query: String(query || '').trim(),
+                response_time_ms: Date.now() - startTime
+            });
+        }
+    }
+
     async getCustomerStockVisibility(customerCode) {
         try {
             const pool = await sql.connect(b2bConfig);

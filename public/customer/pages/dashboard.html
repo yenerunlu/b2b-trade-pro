@@ -2835,7 +2835,7 @@
             console.log(`🔍 Akıllı arama başlatıldı: "${searchTerm}"`);
             
             try {
-                const response = await fetch('/api/b2b/search/meili-search-enriched', {
+                const response = await fetch('/api/b2b/search/meili-search-enriched-smart', {
                     method: 'POST',
                     headers: debugHeaders,
                     body: JSON.stringify({

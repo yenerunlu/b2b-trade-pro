@@ -232,13 +232,7 @@ router.get('/health',
 
 router.use('/admin', (req, res, next) => {
     console.log(`🛡️ Admin route kontrolü: ${req.originalUrl}`);
-    
-    if (req.method === 'GET' && (req.originalUrl.includes('/api/b2b/admin/products') || req.originalUrl.includes('/api/b2b/admin/filters'))) {
-        console.log('✅ /admin/products için auth gerektirmeden geçiliyor');
-        return next();
-    }
-    
-    console.log('🔐 Diğer admin endpoint\'leri için auth uygulanıyor');
+    console.log('🔐 Admin endpoint\'leri için auth uygulanıyor');
     return adminAuthMiddleware(req, res, next);
 });
 

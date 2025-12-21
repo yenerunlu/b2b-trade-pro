@@ -77,6 +77,11 @@ router.post('/meili-search-enriched', authenticateCustomer, async (req, res) => 
     await b2bSearchController.meiliSearchEnriched(req, res);
 });
 
+// Meilisearch - Search (customer-only smart strategy: fewer noisy results)
+router.post('/meili-search-enriched-smart', authenticateCustomer, async (req, res) => {
+    await b2bSearchController.meiliSearchEnrichedSmart(req, res);
+});
+
 // Alias: Search
 router.post('/search', authenticateCustomer, async (req, res) => {
     await meiliSearchController.search(req, res);

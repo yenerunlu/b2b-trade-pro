@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Giriş Yap</title>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;700&display=swap" rel="stylesheet">
+
     <style>
         * { 
             margin: 0; 
@@ -13,13 +17,68 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            position: relative;
+        }
+
+        .signature-quote {
+            position: absolute;
+            width: min(360px, 30vw);
+            color: rgba(15, 23, 42, 0.78);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1800ms ease;
+            z-index: 10;
+            top: 50%;
+        }
+
+        .signature-quote.visible {
+            opacity: 1;
+        }
+
+        .signature-quote.left {
+            left: 24px;
+            text-align: left;
+        }
+
+        .signature-quote.right {
+            right: 24px;
+            text-align: right;
+        }
+
+        .signature-quote.top {
+            transform: translateY(0);
+        }
+
+        .signature-quote.middle {
+            transform: translateY(-50%);
+        }
+
+        .signature-quote.bottom {
+            transform: translateY(-100%);
+        }
+
+        .signature-quote .quote-text {
+            font-family: 'Dancing Script', cursive;
+            font-weight: 600;
+            font-size: clamp(20px, 2.25vw, 32px);
+            line-height: 1.35;
+            letter-spacing: 0.2px;
+        }
+
+        .signature-quote .quote-author {
+            margin-top: 10px;
+            font-family: 'Dancing Script', cursive;
+            font-weight: 700;
+            font-size: clamp(18px, 2vw, 28px);
+            color: rgba(15, 23, 42, 0.6);
+            text-align: right;
         }
         
         .login-container {
@@ -222,6 +281,18 @@
             color: #9ca3af;
             font-size: 0.85rem;
         }
+
+        @media (max-width: 1024px) {
+            .signature-quote {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .signature-quote {
+                display: none;
+            }
+        }
         
         /* Responsive */
         @media (max-width: 480px) {
@@ -293,6 +364,11 @@
     </style>
 </head>
 <body>
+    <div class="signature-quote" id="signatureQuote">
+        <div class="quote-text" id="quoteText"></div>
+        <div class="quote-author" id="quoteAuthor"></div>
+    </div>
+
     <div class="login-container">
         <!-- Logo ve Marka Alanı -->
         <div class="brand-section">
@@ -384,6 +460,173 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
 
 <script>
+    window.B2B_LOGIN_CONTENT = {
+        quotes: [
+            { text: 'Risk almayanlar, hep başkalarının başarı hikâyesini dinler.', author: '' },
+            { text: 'Bugün ter dökmeyen, yarın zaferi kutlayamaz.', author: 'Anatole France' },
+            { text: 'Bir şeye başlayıp başarısız olmaktan daha kötü tek şey, hiçbir şeye başlamamaktır.', author: 'Seth Godin' },
+            { text: 'Kalite, kimse bakmıyorken de doğru olanı yapmaktır.', author: 'Henry Ford' },
+            { text: 'Ağacın kalitesi özünden belli olurken, insanın kalitesi söylediği sözlerden belli olur.', author: '' },
+            { text: 'Gerçek başarı, asla vazgeçmeyenlerindir.', author: '' },
+            { text: "Zafer, zafer benimdir diyebilenindir. Başarı ise 'başaracağım' diye başlayarak sonunda 'başardım' diyenindir.", author: 'Mustafa Kemal Atatürk' },
+            { text: 'Sessizce sıkı çalışın, bırakın başarı sesiniz olsun.', author: 'Frank Ocean' },
+            { text: 'Bize gösterdiğiniz ilgi ve nezaket için size çok teşekkür ediyoruz. Desteğinizi asla unutmayacağız. Size minnettarız.', author: '' }
+        ]
+    };
+
+    function getExitQuoteOnce() {
+        try {
+            const shouldShow = localStorage.getItem('b2b_login_show_exit_quote') === '1';
+            if (!shouldShow) return null;
+            localStorage.removeItem('b2b_login_show_exit_quote');
+            return {
+                text: 'Sunmuş olduğunuz katkılar için teşekkür eder, sonraki süreçlerde de güzel çalışmalar ortaya koymayı temenni ederiz.',
+                author: ''
+            };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function getNextQuoteSequential() {
+        const quotes = Array.isArray(window.B2B_LOGIN_CONTENT?.quotes) ? window.B2B_LOGIN_CONTENT.quotes : [];
+        if (quotes.length === 0) return null;
+
+        let cursor = 0;
+        try {
+            cursor = Number(localStorage.getItem('b2b_login_quote_cursor') || '0');
+        } catch (e) {
+            cursor = 0;
+        }
+
+        if (!Number.isFinite(cursor) || cursor < 0) cursor = 0;
+        const idx = cursor % quotes.length;
+        localStorage.setItem('b2b_login_quote_cursor', String(idx + 1));
+        return quotes[idx];
+    }
+
+    function setQuote(q) {
+        const qt = document.getElementById('quoteText');
+        const qa = document.getElementById('quoteAuthor');
+        if (qt) qt.textContent = q?.text ? String(q.text) : '';
+        if (qa) qa.textContent = q?.author ? String(q.author) : '';
+    }
+
+    function applyNextSignaturePlacement() {
+        try {
+            const host = document.getElementById('signatureQuote');
+            const loginCard = document.querySelector('.login-container');
+            if (!host || !loginCard) return;
+
+            const lastSide = localStorage.getItem('b2b_login_quote_side') || 'right';
+            const nextSide = lastSide === 'right' ? 'left' : 'right';
+            localStorage.setItem('b2b_login_quote_side', nextSide);
+
+            const lastPos = Number(localStorage.getItem('b2b_login_quote_pos') || '0');
+            const nextPos = (lastPos + 1) % 3;
+            localStorage.setItem('b2b_login_quote_pos', String(nextPos));
+
+            host.classList.remove('left', 'right', 'top', 'middle', 'bottom');
+            host.classList.add(nextSide);
+
+            const posClass = nextPos === 0 ? 'top' : nextPos === 1 ? 'middle' : 'bottom';
+            host.classList.add(posClass);
+
+            const rect = loginCard.getBoundingClientRect();
+            const anchorY = nextPos === 0 ? rect.top : nextPos === 1 ? (rect.top + rect.height / 2) : rect.bottom;
+            const safeTop = Math.max(18, Math.min(window.innerHeight - 18, anchorY));
+            host.style.top = `${Math.round(safeTop)}px`;
+        } catch (e) {
+        }
+    }
+
+    function advanceSignatureQuote() {
+        try {
+            const host = document.getElementById('signatureQuote');
+            if (!host) return;
+
+            host.classList.remove('visible');
+            setTimeout(() => {
+                applyNextSignaturePlacement();
+                const q = getNextQuoteSequential();
+                setQuote(q);
+                requestAnimationFrame(() => host.classList.add('visible'));
+            }, 250);
+        } catch (e) {
+        }
+    }
+
+    function initSignatureQuote() {
+        try {
+            const content = window.B2B_LOGIN_CONTENT || {};
+            const host = document.getElementById('signatureQuote');
+            if (!host) return;
+
+            const loginCard = document.querySelector('.login-container');
+            if (!loginCard) return;
+
+            host.classList.remove('left', 'right', 'top', 'middle', 'bottom', 'visible');
+            applyNextSignaturePlacement();
+
+            const exitQ = getExitQuoteOnce();
+            const q0 = exitQ || getNextQuoteSequential();
+            setQuote(q0);
+
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    host.classList.add('visible');
+                }, 80);
+            });
+
+            const usernameInput = document.getElementById('username');
+            if (usernameInput) {
+                usernameInput.addEventListener('blur', () => {
+                    if (String(usernameInput.value || '').trim().length > 0) {
+                        advanceSignatureQuote();
+                    }
+                });
+                usernameInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        if (String(usernameInput.value || '').trim().length > 0) {
+                            advanceSignatureQuote();
+                        }
+                    }
+                });
+            }
+
+            const passwordInput = document.getElementById('password');
+            if (passwordInput) {
+                let advancedByPassword = false;
+                passwordInput.addEventListener('keydown', () => {
+                    if (advancedByPassword) return;
+                    advancedByPassword = true;
+                    advanceSignatureQuote();
+                });
+                passwordInput.addEventListener('input', (e) => {
+                    if (advancedByPassword) return;
+                    if (e && e.isTrusted) {
+                        advancedByPassword = true;
+                        advanceSignatureQuote();
+                    }
+                });
+            }
+
+            window.addEventListener('beforeunload', () => {
+                try {
+                    localStorage.setItem('b2b_login_show_exit_quote', '1');
+                } catch (e) {
+                }
+            });
+
+            if (!window.__b2bQuoteIntervalId) {
+                window.__b2bQuoteIntervalId = setInterval(() => {
+                    advanceSignatureQuote();
+                }, 10000);
+            }
+        } catch (e) {
+        }
+    }
+
     // ====================================================
     // 🚀 B2B LOGIN SİSTEMİ - BASE64 DESTEKLİ
     // ====================================================
@@ -1085,6 +1328,23 @@
             const userType = userInfo.type;
             let redirectUrl = '/customer/pages/dashboard.html';
 
+            try {
+                const params = new URLSearchParams(window.location.search || '');
+                const rawNext = params.get('next');
+                if (rawNext) {
+                    const nextPath = decodeURIComponent(rawNext);
+                    if (
+                        typeof nextPath === 'string' &&
+                        nextPath.startsWith('/') &&
+                        !nextPath.startsWith('//') &&
+                        !nextPath.toLowerCase().startsWith('/login')
+                    ) {
+                        redirectUrl = nextPath;
+                    }
+                }
+            } catch (e) {
+            }
+
             if (userInfo.redirect === 'change-password') {
                 this.pendingLogin = {
                     username: userInfo.kullanici,
@@ -1098,18 +1358,18 @@
             
             switch(userType) {
                 case 'admin':
-                    redirectUrl = '/admin/pages/dashboard.html';
+                    redirectUrl = redirectUrl || '/admin/pages/dashboard.html';
                     break;
                 case 'plasiyer':
                 case 'sales':
-                    redirectUrl = '/sales/pages/dashboard.html';
+                    redirectUrl = redirectUrl || '/sales/pages/dashboard.html';
                     break;
                 case 'musteri':
                 case 'customer':
-                    redirectUrl = '/customer/pages/dashboard.html';
+                    redirectUrl = redirectUrl || '/customer/pages/dashboard.html';
                     break;
                 default:
-                    redirectUrl = '/customer/pages/dashboard.html';
+                    redirectUrl = redirectUrl || '/customer/pages/dashboard.html';
             }
             
             console.log('🎯 YÖNLENDİRME URL:', redirectUrl);
@@ -1124,6 +1384,13 @@
             
             // Başarı mesajını gizle
             document.getElementById('successMessage').style.display = 'none';
+
+            try {
+                if (typeof window.advanceSignatureQuote === 'function') {
+                    window.advanceSignatureQuote();
+                }
+            } catch (e) {
+            }
         }
 
         showSuccess(message) {
@@ -1160,6 +1427,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🚀 SAYFA YÜKLENDİ - Modern Login başlatılıyor');
         window.modernLogin = new ModernLogin();
+        initSignatureQuote();
         
         // Input alanlarına otomatik focus
         setTimeout(() => {
