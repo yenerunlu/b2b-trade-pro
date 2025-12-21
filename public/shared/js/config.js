@@ -11,7 +11,9 @@ const B2BConfig = {
 
     // API Configuration
     api: {
-        baseURL: "http://192.168.219.128:8081",
+        baseURL: (typeof window !== 'undefined' && window.location && window.location.origin)
+            ? window.location.origin
+            : "http://192.168.219.128:8081",
         endpoints: {
             auth: {
                 login: "/api/auth/login",
