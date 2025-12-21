@@ -72,6 +72,8 @@
 
   <div class="toast" id="toast"></div>
 
+  <script src="/shared/js/portal-theme.js"></script>
+
   <script>
     function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)}
     function encodeUserDataToBase64(userData){try{return btoa(unescape(encodeURIComponent(JSON.stringify(userData))))}catch(e){return ''}}
@@ -96,12 +98,22 @@
     ];
 
     const DEFAULT_THEME_ID='bursa_gok_mavisi';
-    const state={tab:'theme',savedTheme:null,selectedTheme:null};
+    const state={tab:'theme',savedThemes:{customer:null,sales:null,admin:null},selectedTheme:null,targets:{customer:true,sales:false,admin:false}};
 
-    function setApplyEnabled(){document.getElementById('applyBtn').disabled=!state.selectedTheme||state.selectedTheme===state.savedTheme}
+    function getSavedThemeFor(target){return state.savedThemes&&state.savedThemes[target]!=null?String(state.savedThemes[target]):null}
+    function hasAnyTargetSelected(){return !!(state.targets.customer||state.targets.sales||state.targets.admin)}
+    function wouldChangeAnything(){
+      if(!state.selectedTheme) return false;
+      if(!hasAnyTargetSelected()) return false;
+      if(state.targets.customer && state.selectedTheme!==getSavedThemeFor('customer')) return true;
+      if(state.targets.sales && state.selectedTheme!==getSavedThemeFor('sales')) return true;
+      if(state.targets.admin && state.selectedTheme!==getSavedThemeFor('admin')) return true;
+      return false;
+    }
+    function setApplyEnabled(){document.getElementById('applyBtn').disabled=!wouldChangeAnything()}
     function setResetEnabled(){
-      const current=state.selectedTheme||state.savedTheme||DEFAULT_THEME_ID;
-      document.getElementById('resetBtn').disabled=state.tab!=='theme'||current===DEFAULT_THEME_ID;
+      const current=state.selectedTheme||getSavedThemeFor('customer')||DEFAULT_THEME_ID;
+      document.getElementById('resetBtn').disabled=state.tab!=='theme'||(!hasAnyTargetSelected()&&current===DEFAULT_THEME_ID);
     }
     function setStatus(msg){document.getElementById('st').textContent=msg}
 
@@ -117,16 +129,36 @@
       document.getElementById('h').textContent='Müşteri Teması';
       document.getElementById('p').textContent='Tema seç, anında önizle, beğenirsen uygula.';
 
-      const active=state.selectedTheme||state.savedTheme||DEFAULT_THEME_ID;
+      const fallback=DEFAULT_THEME_ID;
+      const active=state.selectedTheme||getSavedThemeFor('customer')||getSavedThemeFor('sales')||getSavedThemeFor('admin')||fallback;
       const pr=PRESETS.find(x=>x.id===active)||PRESETS[0];
       const chips=PRESETS.map(x=>`<button class="chip ${x.id===active?'active':''}" onclick="selectTheme('${x.id}')">${x.name}</button>`).join('');
       const pv=pr.pv;
+
+      const targetRow=`
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 2px">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:800;color:var(--text);cursor:pointer">
+            <input type="checkbox" id="tCustomer" ${state.targets.customer?'checked':''} onchange="toggleTarget('customer',this.checked)">
+            Müşteriye uygula
+            <span style="color:var(--muted);font-weight:650">(override olanlar etkilenmez)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:800;color:var(--text);cursor:pointer">
+            <input type="checkbox" id="tSales" ${state.targets.sales?'checked':''} onchange="toggleTarget('sales',this.checked)">
+            Plasiyere uygula
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:800;color:var(--text);cursor:pointer">
+            <input type="checkbox" id="tAdmin" ${state.targets.admin?'checked':''} onchange="toggleTarget('admin',this.checked)">
+            Admine uygula
+          </label>
+        </div>
+      `;
 
       document.getElementById('panel').innerHTML=`
         <div class="grid">
           <div class="card">
             <h3>Tema Seçimi</h3>
             <div class="chips">${chips}</div>
+            ${targetRow}
             <div class="note">Seçim yaptığında önizleme güncellenir. Beğenirsen "Temayı Uygula" ile canlıya alabilirsin.</div>
           </div>
           <div class="card">
@@ -153,14 +185,25 @@
 
     window.selectTheme=function(id){state.selectedTheme=id;setApplyEnabled();render()};
 
+    window.toggleTarget=function(target,checked){
+      state.targets[target]=!!checked;
+      setApplyEnabled();
+      setResetEnabled();
+    };
+
     async function loadSavedTheme(){
       setStatus('Yükleniyor...');
       try{
         const res=await fetch('/api/b2b/public/settings');
         const json=await res.json();
         if(res.ok&&json&&json.success){
-          const t=json.data&&json.data.customer_theme_preset?String(json.data.customer_theme_preset):null;
-          state.savedTheme=t;state.selectedTheme=null;
+          const d=json.data||{};
+          state.savedThemes={
+            customer:d.customer_theme_preset?String(d.customer_theme_preset):null,
+            sales:d.sales_theme_preset?String(d.sales_theme_preset):null,
+            admin:d.admin_theme_preset?String(d.admin_theme_preset):null
+          };
+          state.selectedTheme=null;
         }
         setStatus('Hazır');
         render();
@@ -168,14 +211,26 @@
     }
 
     async function applyTheme(){
-      if(!state.selectedTheme||state.selectedTheme===state.savedTheme) return;
+      if(!state.selectedTheme) return;
+      if(!hasAnyTargetSelected()) {toast('En az 1 hedef seçmelisin');return;}
       setStatus('Kaydediliyor...');
       try{
-        const res=await fetch('/api/b2b/admin/settings/upsert',{method:'POST',headers:setAuthHeaders(),body:JSON.stringify({setting_key:'customer_theme_preset',setting_value:state.selectedTheme,setting_type:'text',description:'Müşteri paneli tema preset',is_active:1})});
-        const json=await res.json();
-        if(!res.ok||!json.success) throw new Error(json.error||'Kaydedilemedi');
-        state.savedTheme=state.selectedTheme;state.selectedTheme=null;
-        toast('Tema kaydedildi');
+        const ops=[];
+        if(state.targets.customer) ops.push({k:'customer_theme_preset',d:'Müşteri paneli tema preset'});
+        if(state.targets.sales) ops.push({k:'sales_theme_preset',d:'Plasiyer paneli tema preset'});
+        if(state.targets.admin) ops.push({k:'admin_theme_preset',d:'Admin panel tema preset'});
+
+        for(const op of ops){
+          const res=await fetch('/api/b2b/admin/settings/upsert',{method:'POST',headers:setAuthHeaders(),body:JSON.stringify({setting_key:op.k,setting_value:state.selectedTheme,setting_type:'text',description:op.d,is_active:1})});
+          const json=await res.json();
+          if(!res.ok||!json.success) throw new Error((json&&json.error)?json.error:'Kaydedilemedi');
+        }
+
+        if(state.targets.customer) state.savedThemes.customer=state.selectedTheme;
+        if(state.targets.sales) state.savedThemes.sales=state.selectedTheme;
+        if(state.targets.admin) state.savedThemes.admin=state.selectedTheme;
+        state.selectedTheme=null;
+        toast('Tema uygulandı');
       }catch(e){toast('Kaydedilemedi: '+e.message)}
       setStatus('Hazır');
       render();
@@ -183,8 +238,9 @@
 
     async function resetToDefaultTheme(){
       if(state.tab!=='theme') return;
-      const current=state.selectedTheme||state.savedTheme||DEFAULT_THEME_ID;
-      if(current===DEFAULT_THEME_ID) return;
+      if(!hasAnyTargetSelected()) {toast('En az 1 hedef seçmelisin');return;}
+      const current=state.selectedTheme||getSavedThemeFor('customer')||DEFAULT_THEME_ID;
+      if(current===DEFAULT_THEME_ID && (!state.targets.sales&&!state.targets.admin)) return;
       state.selectedTheme=DEFAULT_THEME_ID;
       render();
       await applyTheme();

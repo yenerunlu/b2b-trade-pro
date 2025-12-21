@@ -7,6 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs').promises;
 const bcrypt = require('bcrypt');
 const sqlite3 = require('sqlite3');
+const { logoConfig, b2bConfig } = require('./config/database');
 
 const app = express();
 const port = parseInt(process.env.PORT, 10) || 3000;
@@ -502,47 +503,7 @@ const getCacheConfig = (action) => {
 // ====================================================
 // 🚀 0.2 - CONNECTION POOL YÖNETİMİ
 // ====================================================
-// 1. Logo GO3 config
-const logoConfig = {
-    server: '5.180.186.54',
-    database: 'LOGOGO3',
-    user: 'sa',
-    password: 'Logo12345678',
-    options: {
-        encrypt: true,
-        trustServerCertificate: true,
-        connectTimeout: 30000,
-        requestTimeout: 60000,
-        enableArithAbort: true
-    },
-    pool: {
-        max: 10,
-        min: 1,
-        idleTimeoutMillis: 30000,
-        acquireTimeoutMillis: 60000
-    }
-};
-
-// 2. B2B_TRADE_PRO config
-const b2bConfig = {
-    server: '5.180.186.54',
-    database: 'B2B_TRADE_PRO',
-    user: 'sa',
-    password: 'Logo12345678',
-    options: {
-        encrypt: true,
-        trustServerCertificate: true,
-        connectTimeout: 30000,
-        requestTimeout: 60000,
-        enableArithAbort: true
-    },
-    pool: {
-        max: 5,
-        min: 1,
-        idleTimeoutMillis: 30000,
-        acquireTimeoutMillis: 60000
-    }
-};
+// 1-2. MSSQL config'leri env üzerinden okunur (bkz: ./config/database.js)
 
 // 3. Connection Pool Yönetimi
 let logoConnectionPool = null;
@@ -809,7 +770,7 @@ app.use((req, res, next) => {
 
         // Customer portal
         if (path.startsWith('/customer/')) {
-            if (role === 'customer' || role === 'admin') return next();
+            if (role === 'customer') return next();
             return redirectToLogin(req, res);
         }
 

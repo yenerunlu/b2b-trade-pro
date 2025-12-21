@@ -1383,18 +1383,6 @@
                 return false;
             };
 
-            try {
-                const params = new URLSearchParams(window.location.search || '');
-                const rawNext = params.get('next');
-                if (rawNext) {
-                    const nextPath = decodeURIComponent(rawNext);
-                    if (isAllowedNextForRole(nextPath, userType)) {
-                        redirectUrl = nextPath;
-                    }
-                }
-            } catch (e) {
-            }
-
             if (userInfo.redirect === 'change-password') {
                 this.pendingLogin = {
                     username: userInfo.kullanici,
@@ -1408,18 +1396,30 @@
             
             switch(userType) {
                 case 'admin':
-                    redirectUrl = redirectUrl || '/admin/pages/dashboard.html';
+                    redirectUrl = '/admin/pages/dashboard.html';
                     break;
                 case 'plasiyer':
                 case 'sales':
-                    redirectUrl = redirectUrl || '/sales/pages/dashboard.html';
+                    redirectUrl = '/sales/pages/dashboard.html';
                     break;
                 case 'musteri':
                 case 'customer':
-                    redirectUrl = redirectUrl || '/customer/pages/dashboard.html';
+                    redirectUrl = '/customer/pages/dashboard.html';
                     break;
                 default:
-                    redirectUrl = redirectUrl || '/customer/pages/dashboard.html';
+                    redirectUrl = '/customer/pages/dashboard.html';
+            }
+
+            try {
+                const params = new URLSearchParams(window.location.search || '');
+                const rawNext = params.get('next');
+                if (rawNext) {
+                    const nextPath = decodeURIComponent(rawNext);
+                    if (isAllowedNextForRole(nextPath, userType)) {
+                        redirectUrl = nextPath;
+                    }
+                }
+            } catch (e) {
             }
             
             console.log('🎯 YÖNLENDİRME URL:', redirectUrl);

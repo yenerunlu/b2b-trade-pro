@@ -1,6 +1,5 @@
 (function () {
   const PRESETS = {
-    // Backward-compatible ids (older presets)
     platin: { name: 'Platin', primary: '#64748b', primaryDark: '#334155', secondary: '#94a3b8' },
     altin: { name: 'Altın', primary: '#b45309', primaryDark: '#92400e', secondary: '#f59e0b' },
     modern: { name: 'Modern', primary: '#2563eb', primaryDark: '#1e40af', secondary: '#f59e0b' },
@@ -12,7 +11,6 @@
     royal: { name: 'Royal', primary: '#6d28d9', primaryDark: '#4c1d95', secondary: '#f59e0b' },
     sunrise: { name: 'Sunrise', primary: '#ea580c', primaryDark: '#9a3412', secondary: '#2563eb' },
 
-    // City series (requested list)
     bursa_gok_mavisi: { name: "Bursa'nın Gök Mavisi", primary: '#007fff', primaryDark: '#005bb5', secondary: '#eab308' },
     edirne_ali: { name: "Edirne'nın Alı", primary: '#c1121f', primaryDark: '#7f0f14', secondary: '#f4c430' },
     iznik_gokcesi: { name: "İznik'ın Gökçesi", primary: '#1b6ca8', primaryDark: '#124a73', secondary: '#f59e0b' },
@@ -30,32 +28,39 @@
     canakkale_bozu: { name: "Çanakkale'nın Bozu", primary: '#8b7d6b', primaryDark: '#5f5548', secondary: '#2563eb' }
   };
 
-  function encodeUserDataToBase64(userData) {
-    try {
-      return btoa(unescape(encodeURIComponent(JSON.stringify(userData))));
-    } catch (e) {
-      return '';
-    }
+  function clamp(n, a, b) {
+    return Math.min(Math.max(n, a), b);
   }
 
-  function getUser() {
-    try {
-      const s = localStorage.getItem('b2b_user_data');
-      return s ? JSON.parse(s) : null;
-    } catch (e) {
-      return null;
-    }
+  function hexToRgb(hex) {
+    const h = String(hex || '').replace('#', '').trim();
+    if (h.length !== 6) return null;
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    if (![r, g, b].every(v => Number.isFinite(v))) return null;
+    return { r, g, b };
   }
 
-  function getCustomerAuthHeaders() {
-    const u = getUser();
-    const base64 = localStorage.getItem('b2b_user_data_base64') || (u ? encodeUserDataToBase64(u) : '');
-    const h = { 'Content-Type': 'application/json' };
-    if (base64) h['x-user-data-base64'] = base64;
-    return h;
+  function rgbToHex(rgb) {
+    const r = clamp(Math.round(rgb.r), 0, 255).toString(16).padStart(2, '0');
+    const g = clamp(Math.round(rgb.g), 0, 255).toString(16).padStart(2, '0');
+    const b = clamp(Math.round(rgb.b), 0, 255).toString(16).padStart(2, '0');
+    return `#${r}${g}${b}`;
   }
 
-  function applyPreset(presetId) {
+  function mix(hexA, hexB, t) {
+    const a = hexToRgb(hexA);
+    const b = hexToRgb(hexB);
+    if (!a || !b) return hexA;
+    return rgbToHex({
+      r: a.r + (b.r - a.r) * t,
+      g: a.g + (b.g - a.g) * t,
+      b: a.b + (b.b - a.b) * t
+    });
+  }
+
+  function applyForCustomerLike(presetId) {
     const id = presetId ? String(presetId) : '';
     const preset = PRESETS[id];
     if (!preset) return false;
@@ -66,48 +71,57 @@
     return true;
   }
 
-  async function fetchEffectivePresetId() {
-    const res = await fetch('/api/b2b/public/settings', {
-      method: 'GET',
-      headers: getCustomerAuthHeaders()
-    });
-    const json = await res.json();
-    if (!res.ok || !json || !json.success) {
-      throw new Error((json && json.error) ? json.error : 'Settings alınamadı');
-    }
-    const raw = (json.data && json.data.customer_theme_preset) ? String(json.data.customer_theme_preset) : '';
-    const id = raw && PRESETS[raw] ? raw : 'bursa_gok_mavisi';
-    return id;
+  function applyForAdmin(presetId) {
+    const id = presetId ? String(presetId) : '';
+    const preset = PRESETS[id];
+    if (!preset) return false;
+
+    const root = document.documentElement;
+    root.style.setProperty('--color-primary', preset.primary);
+    root.style.setProperty('--color-primary-dark', preset.primaryDark);
+
+    const primaryLight = mix(preset.primary, '#ffffff', 0.35);
+    const primaryBg = mix(preset.primary, '#ffffff', 0.9);
+
+    root.style.setProperty('--color-primary-light', primaryLight);
+    root.style.setProperty('--color-primary-bg', primaryBg);
+    return true;
   }
 
-  async function applyEffectiveTheme() {
+  async function fetchPublicSettings() {
+    const res = await fetch('/api/b2b/public/settings', { method: 'GET' });
+    const json = await res.json();
+    if (!res.ok || !json || !json.success) throw new Error('Settings alınamadı');
+    return json.data || {};
+  }
+
+  function getPortal() {
+    const p = String(window.location.pathname || '').toLowerCase();
+    if (p.startsWith('/admin/')) return 'admin';
+    if (p.startsWith('/sales/')) return 'sales';
+    return 'unknown';
+  }
+
+  async function applyPortalTheme() {
     try {
-      const presetId = await fetchEffectivePresetId();
-      applyPreset(presetId);
-      window.B2BTheme._appliedPresetId = presetId;
-      return presetId;
+      const portal = getPortal();
+      const data = await fetchPublicSettings();
+
+      if (portal === 'admin') {
+        const id = (data && data.admin_theme_preset) ? String(data.admin_theme_preset) : 'bursa_gok_mavisi';
+        applyForAdmin(PRESETS[id] ? id : 'bursa_gok_mavisi');
+      } else if (portal === 'sales') {
+        const id = (data && data.sales_theme_preset) ? String(data.sales_theme_preset) : 'bursa_gok_mavisi';
+        applyForCustomerLike(PRESETS[id] ? id : 'bursa_gok_mavisi');
+      }
     } catch (e) {
       // ignore
-      return null;
     }
   }
 
-  function getPresetList() {
-    return Object.keys(PRESETS).map(id => ({ id, name: PRESETS[id]?.name || id }));
-  }
-
-  window.B2BTheme = {
-    presets: PRESETS,
-    getPresetList,
-    applyPreset,
-    applyEffectiveTheme,
-    fetchEffectivePresetId,
-    _appliedPresetId: null
-  };
-
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => applyEffectiveTheme());
+    document.addEventListener('DOMContentLoaded', () => applyPortalTheme());
   } else {
-    applyEffectiveTheme();
+    applyPortalTheme();
   }
 })();

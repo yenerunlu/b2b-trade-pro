@@ -775,7 +775,9 @@ class B2BAdminController {
                 WHERE 1=1
                   ${hasIsActive ? 'AND (is_active = 1 OR is_active IS NULL)' : ''}
                   AND setting_key IN (
-                    'customer_theme_preset'
+                    'customer_theme_preset',
+                    'sales_theme_preset',
+                    'admin_theme_preset'
                   )
             `;
             const result = await pool.request().query(query);
