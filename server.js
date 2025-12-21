@@ -657,6 +657,15 @@ const searchLimiter = rateLimit({
     }
 });
 
+const loginLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 30,
+    message: {
+        success: false,
+        error: 'Çok fazla giriş denemesi. Lütfen birkaç dakika sonra tekrar deneyin.'
+    }
+});
+
 // ====================================================
 // 🚀 0.4 - ÖZEL HATA SINIFLARI
 // ====================================================
@@ -700,12 +709,39 @@ const logger = {
 // ====================================================
 // 🚀 0.6 - MIDDLEWARE AYARLARI
 // ====================================================
+const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+const allowedOrigins = String(process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map(v => v.trim())
+    .filter(Boolean);
+
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+    if (!isProd) {
+        if (origin) res.header('Access-Control-Allow-Origin', origin);
+        res.header('Vary', 'Origin');
+    } else if (origin && allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+        res.header('Vary', 'Origin');
+    }
+
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Data-Base64, X-User-Data, X-User-Type, X-User-Code');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+    }
     next();
 });
+
+function getRoleCookieOptions() {
+    const cookieSecure = String(process.env.COOKIE_SECURE || '').toLowerCase() === 'true' || isProd;
+    return {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: cookieSecure,
+        path: '/'
+    };
+}
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -732,6 +768,12 @@ function getRoleFromRequest(req) {
         if (role) return role;
     } catch (e) {}
     return '';
+}
+
+function normalizeRoleForPortal(role) {
+    const r = String(role || '').toLowerCase().trim();
+    if (r === 'plasiyer') return 'sales';
+    return r;
 }
 
 function redirectToLogin(req, res) {
@@ -761,7 +803,7 @@ app.use((req, res, next) => {
 
         // Block sales portal
         if (path.startsWith('/sales/')) {
-            if (role === 'sales' || role === 'admin') return next();
+            if (role === 'sales' || role === 'plasiyer' || role === 'admin') return next();
             return redirectToLogin(req, res);
         }
 
@@ -1522,23 +1564,19 @@ async function handleAuthLogin(req, res) {
             await recordAuthSuccess(userCode, req.ip);
 
             const role = String(authUser.role || '').toLowerCase();
+            const portalRole = normalizeRoleForPortal(role);
             const ilk_giris = (authUser.must_change_password === 1) || needsPasswordSetup;
             const redirect = ilk_giris
                 ? 'change-password'
-                : (role === 'admin' ? 'admin' : 'sales');
+                : (portalRole === 'admin' ? 'admin' : 'sales');
 
-            res.cookie('b2b_role', String(role), {
-                httpOnly: true,
-                sameSite: 'lax',
-                secure: false,
-                path: '/'
-            });
+            res.cookie('b2b_role', String(portalRole), getRoleCookieOptions());
             return res.json({
                 success: true,
                 message: 'Giriş başarılı',
                 user: {
                     kullanici: userCode,
-                    rol: role,
+                    rol: portalRole,
                     email: authUser.email || null,
                     musteri_adi: authUser.customer_name || null,
                     ilk_giris: ilk_giris,
@@ -1595,12 +1633,7 @@ async function handleAuthLogin(req, res) {
                 isLogoUser: false
             };
             
-            res.cookie('b2b_role', 'admin', {
-                httpOnly: true,
-                sameSite: 'lax',
-                secure: false,
-                path: '/'
-            });
+            res.cookie('b2b_role', 'admin', getRoleCookieOptions());
             return res.json({
                 success: true,
                 message: 'Admin girişi başarılı',
@@ -1660,12 +1693,7 @@ async function handleAuthLogin(req, res) {
                 isLogoUser: false
             };
             
-            res.cookie('b2b_role', 'sales', {
-                httpOnly: true,
-                sameSite: 'lax',
-                secure: false,
-                path: '/'
-            });
+            res.cookie('b2b_role', 'sales', getRoleCookieOptions());
             return res.json({
                 success: true,
                 message: 'Plasiyer girişi başarılı',
@@ -1783,12 +1811,7 @@ async function handleAuthLogin(req, res) {
             isS1981
         });
 
-        res.cookie('b2b_role', 'customer', {
-            httpOnly: true,
-            sameSite: 'lax',
-            secure: false,
-            path: '/'
-        });
+        res.cookie('b2b_role', 'customer', getRoleCookieOptions());
 
         res.json({
             success: true,
@@ -1841,8 +1864,8 @@ async function handleAuthLogin(req, res) {
     }
 }
 
-app.post('/api/auth/login', handleAuthLogin);
-app.post('/api/b2b/auth/login', handleAuthLogin);
+app.post('/api/auth/login', loginLimiter, handleAuthLogin);
+app.post('/api/b2b/auth/login', loginLimiter, handleAuthLogin);
 
 // ====================================================
 // 🚀 2.1 - ŞİFRE DEĞİŞTİRME ENDPOINT'İ
