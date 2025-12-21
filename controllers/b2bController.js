@@ -1838,6 +1838,7 @@ class B2BController {
 
             // Admin panelde LogoGO3'te pasif (ACTIVE=1) olan ürünler gösterilmesin
             whereConditions.push('I.ACTIVE = 0');
+            whereConditions.push('I.CARDTYPE = 1');
             
             if (search) {
                 whereConditions.push('(I.CODE LIKE @search OR I.NAME LIKE @search OR I.PRODUCERCODE LIKE @search)');
@@ -1924,7 +1925,7 @@ class B2BController {
                 GROUP BY I.LOGICALREF, I.CODE, I.NAME, I.PRODUCERCODE, I.STGRPCODE,
                          I.CYPHCODE, I.SPECODE, I.SPECODE2, I.SPECODE3, I.SPECODE4, I.ACTIVE,
                          P.PRICE, P.CURRENCY
-                ORDER BY ${orderBy} ${orderDirection}
+                ORDER BY ${orderBy} ${orderDirection}, I.LOGICALREF ASC
                 OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
             `;
             
@@ -1951,12 +1952,18 @@ class B2BController {
             if (minStock !== '') request.input('minStock', sql.Int, inputParams.minStock);
             if (maxStock !== '') request.input('maxStock', sql.Int, inputParams.maxStock);
             
+            const countRequest = pool.request();
+
+            if (search) countRequest.input('search', sql.VarChar, inputParams.search);
+            if (manufacturer) countRequest.input('manufacturer', sql.VarChar, inputParams.manufacturer);
+            if (vehicleModel) countRequest.input('vehicleModel', sql.VarChar, inputParams.vehicleModel);
+            if (category) countRequest.input('category', sql.VarChar, inputParams.category);
+            if (minStock !== '') countRequest.input('minStock', sql.Int, inputParams.minStock);
+            if (maxStock !== '') countRequest.input('maxStock', sql.Int, inputParams.maxStock);
+
             const [productsResult, countResult] = await Promise.all([
                 request.query(query),
-                pool.request().query(countQuery.replace(/@\w+/g, (match) => {
-                    const paramName = match.substring(1);
-                    return inputParams[paramName] !== undefined ? `'${inputParams[paramName]}'` : 'NULL';
-                }))
+                countRequest.query(countQuery)
             ]);
             
             const totalCount = countResult.recordset[0]?.totalCount || 0;
