@@ -1401,10 +1401,18 @@ async function handleAuthLogin(req, res) {
                 throw new LogoAPIError('Hesap geçici olarak kilitli', 'login', { userCode });
             }
 
-            const passwordMatch = await bcrypt.compare(password, adminUser.password_hash);
-            if (!passwordMatch) {
-                await recordAuthFailure('ADMIN');
-                throw new LogoAPIError('Geçersiz şifre', 'login', { userCode });
+            const needsPasswordSetup = !adminUser.password_hash;
+            if (needsPasswordSetup) {
+                if (password !== 'YUNLU') {
+                    await recordAuthFailure('ADMIN');
+                    throw new LogoAPIError('Geçersiz şifre', 'login', { userCode });
+                }
+            } else {
+                const passwordMatch = await bcrypt.compare(password, adminUser.password_hash);
+                if (!passwordMatch) {
+                    await recordAuthFailure('ADMIN');
+                    throw new LogoAPIError('Geçersiz şifre', 'login', { userCode });
+                }
             }
 
             await resetAuthFailures('ADMIN');
@@ -1412,6 +1420,9 @@ async function handleAuthLogin(req, res) {
             await recordAuthSuccess('ADMIN', req.ip);
             
             console.log('✅ ADMIN giriş başarılı');
+
+            const ilk_giris = (adminUser.must_change_password === 1) || needsPasswordSetup;
+            const redirect = ilk_giris ? 'change-password' : 'admin';
             
             const userData = {
                 kullanici: 'ADMIN',
@@ -1419,7 +1430,7 @@ async function handleAuthLogin(req, res) {
                 musteri_adi: 'Yönetici',
                 cari_kodu: 'ADMIN',
                 aktif: true,
-                ilk_giris: false,
+                ilk_giris: ilk_giris,
                 isLogoUser: false
             };
             
@@ -1427,7 +1438,7 @@ async function handleAuthLogin(req, res) {
                 success: true,
                 message: 'Admin girişi başarılı',
                 user: userData,
-                redirect: 'admin',
+                redirect: redirect,
                 timestamp: new Date().toISOString(),
                 responseTime: Date.now() - startTime
             });
@@ -1449,10 +1460,18 @@ async function handleAuthLogin(req, res) {
                 throw new LogoAPIError('Hesap geçici olarak kilitli', 'login', { userCode });
             }
 
-            const passwordMatch = await bcrypt.compare(password, plasiyerUser.password_hash);
-            if (!passwordMatch) {
-                await recordAuthFailure(userCode);
-                throw new LogoAPIError('Geçersiz şifre', 'login', { userCode });
+            const needsPasswordSetup = !plasiyerUser.password_hash;
+            if (needsPasswordSetup) {
+                if (password !== 'YUNLU') {
+                    await recordAuthFailure(userCode);
+                    throw new LogoAPIError('Geçersiz şifre', 'login', { userCode });
+                }
+            } else {
+                const passwordMatch = await bcrypt.compare(password, plasiyerUser.password_hash);
+                if (!passwordMatch) {
+                    await recordAuthFailure(userCode);
+                    throw new LogoAPIError('Geçersiz şifre', 'login', { userCode });
+                }
             }
 
             await resetAuthFailures(userCode);
@@ -1460,6 +1479,9 @@ async function handleAuthLogin(req, res) {
             await recordAuthSuccess(userCode, req.ip);
             
             console.log('✅ PLASİYER giriş başarılı:', userCode);
+
+            const ilk_giris = (plasiyerUser.must_change_password === 1) || needsPasswordSetup;
+            const redirect = ilk_giris ? 'change-password' : 'sales';
             
             const userData = {
                 kullanici: userCode,
@@ -1467,7 +1489,7 @@ async function handleAuthLogin(req, res) {
                 musteri_adi: plasiyerUser.customer_name,
                 cari_kodu: userCode,
                 aktif: true,
-                ilk_giris: plasiyerUser.must_change_password === 1,
+                ilk_giris: ilk_giris,
                 isLogoUser: false
             };
             
@@ -1475,7 +1497,7 @@ async function handleAuthLogin(req, res) {
                 success: true,
                 message: 'Plasiyer girişi başarılı',
                 user: userData,
-                redirect: (plasiyerUser.must_change_password === 1) ? 'change-password' : 'sales',
+                redirect: redirect,
                 timestamp: new Date().toISOString(),
                 responseTime: Date.now() - startTime
             });

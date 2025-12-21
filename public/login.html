@@ -733,6 +733,29 @@
             });
         }
 
+        setupInputEffects() {
+            const inputs = Array.from(document.querySelectorAll('input'));
+            for (const input of inputs) {
+                input.addEventListener('focus', () => {
+                    try {
+                        const wrapper = input.closest('.input-wrapper');
+                        if (wrapper) wrapper.classList.add('focused');
+                    } catch (e) {
+                        // ignore
+                    }
+                });
+
+                input.addEventListener('blur', () => {
+                    try {
+                        const wrapper = input.closest('.input-wrapper');
+                        if (wrapper) wrapper.classList.remove('focused');
+                    } catch (e) {
+                        // ignore
+                    }
+                });
+            }
+        }
+
         checkExistingSession() {
             // Önceki oturum kontrolü
             const sessionUserData = sessionStorage.getItem('b2b_user_data');
