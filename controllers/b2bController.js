@@ -1846,8 +1846,8 @@ class B2BController {
             }
             
             if (manufacturer) {
-                whereConditions.push('I.STGRPCODE LIKE @manufacturer');
-                inputParams.manufacturer = `%${manufacturer}%`;
+                whereConditions.push('LTRIM(RTRIM(I.STGRPCODE)) = @manufacturer');
+                inputParams.manufacturer = String(manufacturer || '').trim();
             }
 
             if (vehicleModel) {
@@ -1946,7 +1946,7 @@ class B2BController {
             request.input('limit', sql.Int, parseInt(limit));
             
             if (search) request.input('search', sql.VarChar, inputParams.search);
-            if (manufacturer) request.input('manufacturer', sql.VarChar, inputParams.manufacturer);
+            if (manufacturer) request.input('manufacturer', sql.NVarChar(50), inputParams.manufacturer);
             if (vehicleModel) request.input('vehicleModel', sql.VarChar, inputParams.vehicleModel);
             if (category) request.input('category', sql.VarChar, inputParams.category);
             if (minStock !== '') request.input('minStock', sql.Int, inputParams.minStock);
@@ -1955,7 +1955,7 @@ class B2BController {
             const countRequest = pool.request();
 
             if (search) countRequest.input('search', sql.VarChar, inputParams.search);
-            if (manufacturer) countRequest.input('manufacturer', sql.VarChar, inputParams.manufacturer);
+            if (manufacturer) countRequest.input('manufacturer', sql.NVarChar(50), inputParams.manufacturer);
             if (vehicleModel) countRequest.input('vehicleModel', sql.VarChar, inputParams.vehicleModel);
             if (category) countRequest.input('category', sql.VarChar, inputParams.category);
             if (minStock !== '') countRequest.input('minStock', sql.Int, inputParams.minStock);
@@ -2062,7 +2062,7 @@ class B2BController {
             const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
             const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
 
-            if (!q && !String(manufacturer || '').trim()) {
+            if (!q && !String(manufacturer || '').trim() && !String(vehicleModel || '').trim()) {
                 return res.json({
                     success: true,
                     message: 'Admin ürünleri başarıyla yüklendi',
