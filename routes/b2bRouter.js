@@ -233,7 +233,7 @@ router.get('/health',
 router.use('/admin', (req, res, next) => {
     console.log(`🛡️ Admin route kontrolü: ${req.originalUrl}`);
     
-    if (req.method === 'GET' && req.originalUrl.includes('/api/b2b/admin/products')) {
+    if (req.method === 'GET' && (req.originalUrl.includes('/api/b2b/admin/products') || req.originalUrl.includes('/api/b2b/admin/filters'))) {
         console.log('✅ /admin/products için auth gerektirmeden geçiliyor');
         return next();
     }
@@ -250,6 +250,11 @@ router.get('/admin/products',
 router.get('/admin/products-meili',
     cacheControl(60),
     b2bController.getProductsForAdminMeili
+);
+
+router.get('/admin/filters',
+    cacheControl(300),
+    b2bController.getAdminFilters
 );
 
 router.put('/admin/products/status',

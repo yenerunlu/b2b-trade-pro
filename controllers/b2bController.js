@@ -57,6 +57,53 @@ class B2BController {
         }
     }
 
+    async getAdminFilters(req, res) {
+        try {
+            const pool = await this.getLogoConnection();
+
+            const manufacturersResult = await pool.request().query(`
+                SELECT DISTINCT
+                    NULLIF(LTRIM(RTRIM(I.STGRPCODE)), '') AS manufacturer
+                FROM dbo.LG_013_ITEMS I
+                WHERE I.ACTIVE = 0
+                  AND I.CARDTYPE = 1
+                  AND I.STGRPCODE IS NOT NULL
+                  AND LEN(LTRIM(RTRIM(I.STGRPCODE))) > 0
+                ORDER BY manufacturer
+            `);
+
+            const vehicleModelsResult = await pool.request().query(`
+                SELECT DISTINCT
+                    NULLIF(LTRIM(RTRIM(I.SPECODE)), '') AS vehicleModel
+                FROM dbo.LG_013_ITEMS I
+                WHERE I.ACTIVE = 0
+                  AND I.CARDTYPE = 1
+                  AND I.SPECODE IS NOT NULL
+                  AND LEN(LTRIM(RTRIM(I.SPECODE))) > 0
+                ORDER BY vehicleModel
+            `);
+
+            const manufacturers = (manufacturersResult.recordset || [])
+                .map(r => r.manufacturer)
+                .filter(Boolean);
+
+            const vehicleModels = (vehicleModelsResult.recordset || [])
+                .map(r => r.vehicleModel)
+                .filter(Boolean);
+
+            return res.json({
+                success: true,
+                manufacturers,
+                vehicleModels
+            });
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    }
+
     async getFiltersForCustomer(req, res) {
         try {
             const { customerCode } = req.query || {};
@@ -73,7 +120,7 @@ class B2BController {
             const manufacturersResult = await pool.request().query(`
                 SELECT DISTINCT
                     NULLIF(LTRIM(RTRIM(I.STGRPCODE)), '') AS manufacturer
-                FROM LG_013_ITEMS I
+                FROM dbo.LG_013_ITEMS I
                 WHERE I.ACTIVE = 0
                   AND I.CARDTYPE = 1
                   AND I.STGRPCODE IS NOT NULL
@@ -84,7 +131,7 @@ class B2BController {
             const vehicleModelsResult = await pool.request().query(`
                 SELECT DISTINCT
                     NULLIF(LTRIM(RTRIM(I.SPECODE)), '') AS vehicleModel
-                FROM LG_013_ITEMS I
+                FROM dbo.LG_013_ITEMS I
                 WHERE I.ACTIVE = 0
                   AND I.CARDTYPE = 1
                   AND I.SPECODE IS NOT NULL
@@ -1773,6 +1820,7 @@ class B2BController {
                 offset = 0, 
                 search = '',
                 manufacturer = '',
+                vehicleModel = '',
                 category = '',
                 minStock = '',
                 maxStock = '',
@@ -1799,6 +1847,11 @@ class B2BController {
             if (manufacturer) {
                 whereConditions.push('I.STGRPCODE LIKE @manufacturer');
                 inputParams.manufacturer = `%${manufacturer}%`;
+            }
+
+            if (vehicleModel) {
+                whereConditions.push('I.SPECODE = @vehicleModel');
+                inputParams.vehicleModel = String(vehicleModel || '').trim();
             }
             
             if (category) {
@@ -1893,6 +1946,7 @@ class B2BController {
             
             if (search) request.input('search', sql.VarChar, inputParams.search);
             if (manufacturer) request.input('manufacturer', sql.VarChar, inputParams.manufacturer);
+            if (vehicleModel) request.input('vehicleModel', sql.VarChar, inputParams.vehicleModel);
             if (category) request.input('category', sql.VarChar, inputParams.category);
             if (minStock !== '') request.input('minStock', sql.Int, inputParams.minStock);
             if (maxStock !== '') request.input('maxStock', sql.Int, inputParams.maxStock);
@@ -1967,6 +2021,7 @@ class B2BController {
                 filters: {
                     search: search || '',
                     manufacturer: manufacturer || '',
+                    vehicleModel: vehicleModel || '',
                     category: category || '',
                     activeOnly: activeOnly === 'true',
                     sortBy: sortBy,
@@ -1992,7 +2047,8 @@ class B2BController {
                 limit = 100,
                 offset = 0,
                 search = '',
-                manufacturer = ''
+                manufacturer = '',
+                vehicleModel = ''
             } = req.query;
 
             const q = String(search || '').trim();
@@ -2022,6 +2078,7 @@ class B2BController {
             let hits = Array.isArray(meiliResult?.hits) ? meiliResult.hits : [];
 
             const manufacturerFilter = String(manufacturer || '').trim();
+            const vehicleModelFilter = String(vehicleModel || '').trim();
             if (manufacturerFilter) {
                 const mf = manufacturerFilter.toLowerCase();
                 hits = hits.filter(h => String(h?.manufacturer || '').toLowerCase() === mf);
@@ -2065,6 +2122,9 @@ class B2BController {
             const pool = await this.getLogoConnection();
             const request = pool.request();
             request.input('refs', sql.NVarChar(sql.MAX), logicalrefs.join(','));
+            if (vehicleModelFilter) {
+                request.input('vehicleModel', sql.NVarChar(50), vehicleModelFilter);
+            }
 
             const query = `
                 SELECT
@@ -2107,6 +2167,7 @@ class B2BController {
                       SELECT TRY_CAST(value AS INT)
                       FROM STRING_SPLIT(@refs, ',')
                   )
+                  ${vehicleModelFilter ? 'AND I.SPECODE = @vehicleModel' : ''}
                 GROUP BY I.LOGICALREF, I.CODE, I.NAME, I.PRODUCERCODE, I.STGRPCODE,
                          I.CYPHCODE, I.SPECODE, I.SPECODE2, I.SPECODE3, I.SPECODE4, I.ACTIVE,
                          P.PRICE, P.CURRENCY
@@ -2328,6 +2389,7 @@ module.exports = {
     B2BController: B2BController,
     healthCheck: (req, res) => b2bController.healthCheck(req, res),
     getExchangeRates: (req, res) => b2bController.getExchangeRates(req, res),
+    getAdminFilters: (req, res) => b2bController.getAdminFilters(req, res),
     getProductsForAdmin: (req, res) => b2bController.getProductsForAdmin(req, res),
     getProductsForAdminMeili: (req, res) => b2bController.getProductsForAdminMeili(req, res),
     updateProductStatusForAdmin: (req, res) => b2bController.updateProductStatusForAdmin(req, res),

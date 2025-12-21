@@ -1247,12 +1247,14 @@
                     <label class="filter-label-horizontal">Üretici</label>
                     <select class="filter-select-horizontal" id="manufacturerFilter">
                         <option value="">Tüm Üreticiler</option>
-                        <option value="bosch">Bosch</option>
-                        <option value="makita">Makita</option>
-                        <option value="dewalt">DeWalt</option>
-                        <option value="stanley">Stanley</option>
-                        <option value="bmw">BMW</option>
-                        <option value="mercedes">Mercedes</option>
+                    </select>
+                </div>
+
+                <!-- Araç Modeli -->
+                <div class="filter-group-horizontal">
+                    <label class="filter-label-horizontal">Araç Modeli</label>
+                    <select class="filter-select-horizontal" id="vehicleModelFilter">
+                        <option value="">Tüm Modeller</option>
                     </select>
                 </div>
 
@@ -1752,6 +1754,7 @@
         let currentFilters = {
             search: '',
             manufacturer: '',
+            vehicleModel: '',
             category: '',
             stock: '',
             sort: 'code_asc'
@@ -1818,6 +1821,29 @@
             `;
         }
 
+        async function loadFilterOptions() {
+            try {
+                const headers = setAuthHeaders();
+                const resp = await fetch('/api/b2b/admin/filters', { method: 'GET', headers });
+                if (!resp.ok) return;
+                const result = await resp.json();
+                if (!result || !result.success) return;
+
+                const manufacturerSelect = document.getElementById('manufacturerFilter');
+                const vehicleModelSelect = document.getElementById('vehicleModelFilter');
+
+                const manufacturers = Array.isArray(result.manufacturers) ? result.manufacturers : [];
+                const vehicleModels = Array.isArray(result.vehicleModels) ? result.vehicleModels : [];
+
+                manufacturerSelect.innerHTML = '<option value="">Tüm Üreticiler</option>' +
+                    manufacturers.map(v => `<option value="${String(v).replace(/"/g, '&quot;')}">${v}</option>`).join('');
+
+                vehicleModelSelect.innerHTML = '<option value="">Tüm Modeller</option>' +
+                    vehicleModels.map(v => `<option value="${String(v).replace(/"/g, '&quot;')}">${v}</option>`).join('');
+            } catch (e) {
+            }
+        }
+
         // ====================================================
         // 🚀 INITIALIZATION
         // ====================================================
@@ -1828,6 +1854,7 @@
 
         function initializeApp() {
             try {
+                loadFilterOptions();
                 setupEventListeners();
                 document.getElementById('productsTableBody').innerHTML = `
                     <tr>
@@ -1868,6 +1895,11 @@
                 currentFilters.manufacturer = e.target.value;
                 loadProductsPage(1, true);
             });
+
+            document.getElementById('vehicleModelFilter').addEventListener('change', (e) => {
+                currentFilters.vehicleModel = e.target.value;
+                loadProductsPage(1, true);
+            });
             
             document.getElementById('stockFilter').addEventListener('change', (e) => {
                 currentFilters.stock = e.target.value;
@@ -1894,6 +1926,7 @@
                 currentFilters = {
                     search: '',
                     manufacturer: '',
+                    vehicleModel: '',
                     category: '',
                     stock: '',
                     sort: 'code_asc'
@@ -1902,6 +1935,7 @@
                 // Form değerlerini sıfırla
                 document.getElementById('searchInput').value = '';
                 document.getElementById('manufacturerFilter').value = '';
+                document.getElementById('vehicleModelFilter').value = '';
                 document.getElementById('categoryFilter').value = '';
                 document.getElementById('stockFilter').value = '';
                 document.getElementById('sortFilter').value = 'code_asc';
@@ -1936,8 +1970,9 @@
 
                 const q = String(currentFilters.search || '').trim();
                 const manufacturer = String(currentFilters.manufacturer || '').trim();
+                const vehicleModel = String(currentFilters.vehicleModel || '').trim();
                 const manufacturerCodes = manufacturer ? [manufacturer] : [];
-                const hasAnyFilter = manufacturerCodes.length > 0;
+                const hasAnyFilter = manufacturerCodes.length > 0 || !!vehicleModel;
                 if (!q && !hasAnyFilter) {
                     currentProducts = [];
                     totalProducts = 0;
@@ -1952,7 +1987,8 @@
                     limit: String(pageSize),
                     offset: String(offset),
                     search: q,
-                    manufacturer: manufacturer
+                    manufacturer: manufacturer,
+                    vehicleModel: vehicleModel
                 });
 
                 let response;
