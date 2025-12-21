@@ -35,7 +35,6 @@
             opacity: 0;
             transition: opacity 1800ms ease;
             z-index: 10;
-            top: 50%;
         }
 
         .signature-quote.visible {
@@ -43,12 +42,14 @@
         }
 
         .signature-quote.left {
-            left: 24px;
+            left: auto;
+            right: auto;
             text-align: left;
         }
 
         .signature-quote.right {
-            right: 24px;
+            left: auto;
+            right: auto;
             text-align: right;
         }
 
@@ -529,13 +530,44 @@
             host.classList.remove('left', 'right', 'top', 'middle', 'bottom');
             host.classList.add(nextSide);
 
-            const posClass = nextPos === 0 ? 'top' : nextPos === 1 ? 'middle' : 'bottom';
-            host.classList.add(posClass);
+            const cardRect = loginCard.getBoundingClientRect();
 
-            const rect = loginCard.getBoundingClientRect();
-            const anchorY = nextPos === 0 ? rect.top : nextPos === 1 ? (rect.top + rect.height / 2) : rect.bottom;
-            const safeTop = Math.max(18, Math.min(window.innerHeight - 18, anchorY));
-            host.style.top = `${Math.round(safeTop)}px`;
+            const gap = 28;
+            const sideMargin = 18;
+
+            const desiredWidth = host.getBoundingClientRect().width || 320;
+
+            let leftPx;
+            if (nextSide === 'left') {
+                leftPx = Math.round(cardRect.left - gap - desiredWidth);
+            } else {
+                leftPx = Math.round(cardRect.right + gap);
+            }
+
+            const minLeft = sideMargin;
+            const maxLeft = Math.max(sideMargin, Math.round(window.innerWidth - sideMargin - desiredWidth));
+            if (!Number.isFinite(leftPx)) leftPx = minLeft;
+            leftPx = Math.min(Math.max(leftPx, minLeft), maxLeft);
+
+            host.style.left = `${leftPx}px`;
+            host.style.right = 'auto';
+
+            const verticalPaddingTop = Math.max(26, Math.round(cardRect.height * 0.14));
+            const verticalPaddingBottom = Math.max(42, Math.round(cardRect.height * 0.18));
+            const topMin = Math.round(cardRect.top + verticalPaddingTop);
+            const topMax = Math.round(cardRect.bottom - verticalPaddingBottom);
+
+            const hostHeight = Math.max(1, Math.round(host.getBoundingClientRect().height || 1));
+            const maxTopForBox = Math.max(topMin, topMax - hostHeight);
+
+            const step = Math.max(24, Math.round(cardRect.height * 0.18));
+            let boxTop = topMin + (nextPos * step);
+            boxTop = Math.min(Math.max(boxTop, topMin), maxTopForBox);
+            host.style.transform = 'translateY(0)';
+
+            const viewportPad = 12;
+            boxTop = Math.min(Math.max(boxTop, viewportPad), Math.round(window.innerHeight - viewportPad - hostHeight));
+            host.style.top = `${boxTop}px`;
         } catch (e) {
         }
     }
