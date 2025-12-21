@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const os = require('os');
 const sql = require('mssql');
 const rateLimit = require('express-rate-limit');
 const { v4: uuidv4 } = require('uuid');
@@ -20,7 +21,8 @@ app.set('trust proxy', 1);
 const USERS_FILE = path.join(__dirname, 'users.json');
 const PASSWORD_CHANGES_FILE = path.join(__dirname, 'password_changes.json');
 
-const LOCAL_DB_PATH = process.env.B2B_LOCAL_DB_PATH || '/var/lib/b2b-app/b2b_local.db';
+const LOCAL_DB_PATH = process.env.B2B_LOCAL_DB_PATH
+    || path.join(os.homedir(), '.b2b-app', 'b2b_local.db');
 
 let localAuthDb = null;
 
