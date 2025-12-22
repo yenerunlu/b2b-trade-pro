@@ -1824,6 +1824,15 @@
 
                 <div class="products-section">
                     <div class="section-header">
+                        <div id="table-tools" style="display:flex; align-items:center; gap:10px;">
+                            <label style="display:flex; align-items:center; gap:6px; font-size: 0.82rem; color: var(--gray); user-select:none;">
+                                <input type="checkbox" id="select-all-products" />
+                                <span>Tümünü Seç</span>
+                            </label>
+                            <button id="export-selected-excel" type="button" class="btn btn-sm" style="padding: 6px 10px; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; font-size: 0.82rem; cursor:pointer;" disabled>
+                                Seçtiklerimi Excele Aktar
+                            </button>
+                        </div>
                         <div class="table-meta" id="table-meta"></div>
                         <div class="table-meta" id="pagination-meta" style="margin-left:auto; display:flex; gap:10px; align-items:center; justify-content:flex-end;"></div>
                     </div>
@@ -1878,6 +1887,8 @@
         let tcmbRates = { EUR: 49.45, USD: 42.43 };
         let exchangeRatesInterval = null;
 
+        const selectedProductCodes = new Set();
+
         const searchForm = document.getElementById('search-form');
         const searchInput = document.getElementById('search-input');
         const productsTableBody = document.getElementById('products-table-body');
@@ -1907,6 +1918,8 @@
         const manufacturerSelectedCountEl = document.getElementById('manufacturer-selected-count');
         const vehicleSelectedCountEl = document.getElementById('vehicle-selected-count');
         const quickClearFiltersBtn = document.getElementById('quick-clear-filters-btn');
+        const selectAllProductsEl = document.getElementById('select-all-products');
+        const exportSelectedExcelEl = document.getElementById('export-selected-excel');
         let lastSearchTerm = '';
 
         let manufacturersAll = [];
@@ -2166,6 +2179,7 @@
                         </td>
                     </tr>
                 `;
+                updateSelectionUI();
                 return;
             }
 
@@ -2244,11 +2258,16 @@
                     </div>
                 `;
                 
+                const isChecked = selectedProductCodes.has(productCode);
+
                 return `
-                <tr class="${product.hasCampaign ? 'campaign-row' : ''} ${totalActiveStock > 0 ? 'in-stock-found' : ''}">
+                <tr class="${product.hasCampaign ? 'campaign-row' : ''} ${totalActiveStock > 0 ? 'in-stock-found' : ''}" data-product-code="${productCode}">
                     <td>
-                        <div class="product-image">
-                            <i class="fas fa-box"></i>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <input type="checkbox" class="row-product-select" data-code="${productCode}" ${isChecked ? 'checked' : ''} />
+                            <div class="product-image">
+                                <i class="fas fa-box"></i>
+                            </div>
                         </div>
                     </td>
                     <td class="product-code">${productCode}</td>
@@ -2300,6 +2319,188 @@
                 </tr>
                 `;
             }).join('');
+
+            updateSelectionUI();
+        }
+
+        function updateSelectionUI() {
+            if (exportSelectedExcelEl) {
+                exportSelectedExcelEl.disabled = selectedProductCodes.size === 0;
+                exportSelectedExcelEl.textContent = selectedProductCodes.size > 0
+                    ? `Seçtiklerimi Excele Aktar (${selectedProductCodes.size})`
+                    : 'Seçtiklerimi Excele Aktar';
+            }
+
+            if (selectAllProductsEl) {
+                const visibleCodes = Array.isArray(displayedProducts)
+                    ? displayedProducts.map(p => p?.productCode || p?.code || '-').filter(Boolean)
+                    : [];
+                const allSelected = visibleCodes.length > 0 && visibleCodes.every(c => selectedProductCodes.has(c));
+                selectAllProductsEl.checked = allSelected;
+                selectAllProductsEl.indeterminate = !allSelected && visibleCodes.some(c => selectedProductCodes.has(c));
+            }
+        }
+
+        function buildExcelHtmlFromTable(tableEl, selectedCodes) {
+            const clone = tableEl.cloneNode(true);
+            const rows = Array.from(clone.querySelectorAll('tbody tr'));
+            rows.forEach(r => {
+                const code = r.getAttribute('data-product-code');
+                if (!code || !selectedCodes.has(code)) {
+                    r.remove();
+                    return;
+                }
+
+                const checkboxes = r.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(cb => cb.remove());
+            });
+
+            const headerCheckbox = clone.querySelector('thead input[type="checkbox"]');
+            if (headerCheckbox) headerCheckbox.remove();
+
+            const removeInteractive = (root) => {
+                const inputs = root.querySelectorAll('input, button, select, textarea');
+                inputs.forEach(el => el.remove());
+            };
+            removeInteractive(clone);
+
+            const ths = Array.from(tableEl.querySelectorAll('thead th'));
+            const widths = ths.map(th => th.getBoundingClientRect().width);
+            const cloneThs = Array.from(clone.querySelectorAll('thead th'));
+            cloneThs.forEach((th, i) => {
+                const w = widths[i];
+                if (w && Number.isFinite(w)) {
+                    th.style.width = `${Math.ceil(w)}px`;
+                }
+            });
+
+            const props = [
+                'color',
+                'backgroundColor',
+                'fontFamily',
+                'fontSize',
+                'fontWeight',
+                'fontStyle',
+                'textAlign',
+                'verticalAlign',
+                'borderTop',
+                'borderRight',
+                'borderBottom',
+                'borderLeft',
+                'paddingTop',
+                'paddingRight',
+                'paddingBottom',
+                'paddingLeft',
+                'whiteSpace'
+            ];
+
+            const applyInlineStyles = (srcEl, dstEl) => {
+                const cs = window.getComputedStyle(srcEl);
+                props.forEach(p => {
+                    const v = cs[p];
+                    if (v) {
+                        const cssName = p.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
+                        dstEl.style[cssName] = v;
+                    }
+                });
+                dstEl.style.boxSizing = 'border-box';
+            };
+
+            const srcCells = Array.from(tableEl.querySelectorAll('th, td'));
+            const dstCells = Array.from(clone.querySelectorAll('th, td'));
+            const len = Math.min(srcCells.length, dstCells.length);
+            for (let i = 0; i < len; i++) {
+                applyInlineStyles(srcCells[i], dstCells[i]);
+            }
+
+            const html = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:x="urn:schemas-microsoft-com:office:excel"
+      xmlns="http://www.w3.org/TR/REC-html40">
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      table { border-collapse: collapse; }
+      td, th { mso-number-format:"\\@"; }
+    </style>
+  </head>
+  <body>
+    ${clone.outerHTML}
+  </body>
+</html>`;
+
+            return html;
+        }
+
+        function downloadExcel(html, filename) {
+            const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+        }
+
+        if (productsTableBody) {
+            productsTableBody.addEventListener('change', (e) => {
+                const t = e.target;
+                if (!(t instanceof HTMLElement)) return;
+
+                if (t.classList.contains('row-product-select')) {
+                    const code = t.getAttribute('data-code');
+                    if (!code) return;
+
+                    if (t.checked) {
+                        selectedProductCodes.add(code);
+                    } else {
+                        selectedProductCodes.delete(code);
+                    }
+                    updateSelectionUI();
+                }
+            });
+        }
+
+        if (selectAllProductsEl) {
+            selectAllProductsEl.addEventListener('change', (e) => {
+                const checked = !!selectAllProductsEl.checked;
+                const visibleCodes = Array.isArray(displayedProducts)
+                    ? displayedProducts.map(p => p?.productCode || p?.code || '-').filter(Boolean)
+                    : [];
+
+                if (checked) {
+                    visibleCodes.forEach(c => selectedProductCodes.add(c));
+                } else {
+                    visibleCodes.forEach(c => selectedProductCodes.delete(c));
+                }
+
+                const rowChecks = document.querySelectorAll('.row-product-select');
+                rowChecks.forEach(cb => {
+                    cb.checked = checked;
+                });
+                updateSelectionUI();
+            });
+        }
+
+        if (exportSelectedExcelEl) {
+            exportSelectedExcelEl.addEventListener('click', () => {
+                const table = document.querySelector('.products-table');
+                if (!table) return;
+                if (selectedProductCodes.size === 0) return;
+
+                const ts = new Date();
+                const yyyy = ts.getFullYear();
+                const mm = String(ts.getMonth() + 1).padStart(2, '0');
+                const dd = String(ts.getDate()).padStart(2, '0');
+                const hh = String(ts.getHours()).padStart(2, '0');
+                const mi = String(ts.getMinutes()).padStart(2, '0');
+                const filename = `arama-secili-urunler-${yyyy}${mm}${dd}-${hh}${mi}.xls`;
+
+                const html = buildExcelHtmlFromTable(table, selectedProductCodes);
+                downloadExcel(html, filename);
+            });
         }
 
         function getStockClass(stock) {
