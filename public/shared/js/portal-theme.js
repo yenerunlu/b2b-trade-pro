@@ -60,23 +60,25 @@
     });
   }
 
-  function applyForCustomerLike(presetId) {
+  function applyForCustomerLike(presetId, targetDocument) {
     const id = presetId ? String(presetId) : '';
     const preset = PRESETS[id];
     if (!preset) return false;
-    const root = document.documentElement;
+    const doc = targetDocument || document;
+    const root = doc.documentElement;
     root.style.setProperty('--primary', preset.primary);
     root.style.setProperty('--primary-dark', preset.primaryDark);
     root.style.setProperty('--secondary', preset.secondary);
     return true;
   }
 
-  function applyForAdmin(presetId) {
+  function applyForAdmin(presetId, targetDocument) {
     const id = presetId ? String(presetId) : '';
     const preset = PRESETS[id];
     if (!preset) return false;
 
-    const root = document.documentElement;
+    const doc = targetDocument || document;
+    const root = doc.documentElement;
     root.style.setProperty('--color-primary', preset.primary);
     root.style.setProperty('--color-primary-dark', preset.primaryDark);
 
@@ -89,7 +91,8 @@
   }
 
   async function fetchPublicSettings() {
-    const res = await fetch('/api/b2b/public/settings', { method: 'GET' });
+    const url = `/api/b2b/public/settings?ts=${Date.now()}`;
+    const res = await fetch(url, { method: 'GET', cache: 'no-store' });
     const json = await res.json();
     if (!res.ok || !json || !json.success) throw new Error('Settings alınamadı');
     return json.data || {};
@@ -123,5 +126,15 @@
     document.addEventListener('DOMContentLoaded', () => applyPortalTheme());
   } else {
     applyPortalTheme();
+  }
+
+  try {
+    window.PortalTheme = {
+      presets: PRESETS,
+      applyAdmin: (presetId, targetDocument) => applyForAdmin(presetId, targetDocument),
+      applyCustomerLike: (presetId, targetDocument) => applyForCustomerLike(presetId, targetDocument)
+    };
+  } catch (e) {
+    // ignore
   }
 })();

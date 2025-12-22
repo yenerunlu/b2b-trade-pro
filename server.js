@@ -2482,13 +2482,15 @@ app.post('/api/logo/create-order', generalLimiter, async (req, res) => {
             brutTotal += itemBrutTotal;
 
             // 4 KATMANLI İSKONTOLARI HESAPLA
-            // Eğer frontend'den discountRates geldiyse (sepetten), bunları satır altı ayrı iskontolar olarak kullan.
+            // Eğer request payload'ında discountRates alanı VARSA (boş bile olsa), sepeti otorite kabul et.
+            // Böylece sepette indirim yoksa fişe iskonto oluşturulmaz.
+            const hasDiscountRatesField = Object.prototype.hasOwnProperty.call(item, 'discountRates');
             const incomingRates = Array.isArray(item.discountRates) ? item.discountRates : [];
             const normalizedIncomingRates = incomingRates
                 .map(r => Number(r) || 0)
                 .filter(r => r > 0);
 
-            const discountInfo = normalizedIncomingRates.length
+            const discountInfo = hasDiscountRatesField
                 ? {
                     hasCampaign: false,
                     discounts: normalizedIncomingRates.map((rate, idx) => ({

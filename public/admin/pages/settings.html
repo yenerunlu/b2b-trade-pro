@@ -132,7 +132,7 @@
       const fallback=DEFAULT_THEME_ID;
       const active=state.selectedTheme||getSavedThemeFor('customer')||getSavedThemeFor('sales')||getSavedThemeFor('admin')||fallback;
       const pr=PRESETS.find(x=>x.id===active)||PRESETS[0];
-      const chips=PRESETS.map(x=>`<button class="chip ${x.id===active?'active':''}" onclick="selectTheme('${x.id}')">${x.name}</button>`).join('');
+      const chips=PRESETS.map(x=>`<button class="chip ${x.id===active?'active':''}" onclick="selectTheme('${x.id}')" onmouseenter="previewTheme('${x.id}')">${x.name}</button>`).join('');
       const pv=pr.pv;
 
       const targetRow=`
@@ -183,10 +183,42 @@
       setResetEnabled();
     }
 
-    window.selectTheme=function(id){state.selectedTheme=id;setApplyEnabled();render()};
+    function applyAdminLivePreview(presetId){
+      try{
+        const doc=(window.top&&window.top.document)?window.top.document:document;
+        const id=String(presetId||'');
+        if(window.PortalTheme&&typeof window.PortalTheme.applyAdmin==='function'){
+          window.PortalTheme.applyAdmin(id, doc);
+        }
+      }catch(e){}
+    }
+
+    window.selectTheme=function(id){
+      state.selectedTheme=id;
+      if(state.tab==='theme' && state.targets.admin){
+        applyAdminLivePreview(id);
+      }
+      setApplyEnabled();
+      render();
+    };
+
+    window.previewTheme=function(id){
+      if(state.tab==='theme' && state.targets.admin){
+        applyAdminLivePreview(id);
+      }
+    };
 
     window.toggleTarget=function(target,checked){
       state.targets[target]=!!checked;
+      if(state.tab==='theme' && target==='admin'){
+        try{
+          const doc=(window.top&&window.top.document)?window.top.document:document;
+          const id=state.targets.admin ? (state.selectedTheme||getSavedThemeFor('admin')||DEFAULT_THEME_ID) : (getSavedThemeFor('admin')||DEFAULT_THEME_ID);
+          if(window.PortalTheme&&typeof window.PortalTheme.applyAdmin==='function'){
+            window.PortalTheme.applyAdmin(id, doc);
+          }
+        }catch(e){}
+      }
       setApplyEnabled();
       setResetEnabled();
     };
@@ -194,7 +226,7 @@
     async function loadSavedTheme(){
       setStatus('Yükleniyor...');
       try{
-        const res=await fetch('/api/b2b/public/settings');
+        const res=await fetch(`/api/b2b/public/settings?ts=${Date.now()}`,{cache:'no-store'});
         const json=await res.json();
         if(res.ok&&json&&json.success){
           const d=json.data||{};
