@@ -1819,7 +1819,21 @@ async function handleAuthLogin(req, res) {
 
         let statusCode = 500;
         if (error instanceof ValidationError) statusCode = 400;
-        if (error.message.includes('bulunamadı')) statusCode = 404;
+        if (error && error.name === 'LogoAPIError') {
+            const msg = String(error.message || '').toLowerCase();
+            if (msg.includes('geçersiz şifre') || msg.includes('gecersiz sifre')) {
+                statusCode = 401;
+            } else if (msg.includes('kilitli')) {
+                statusCode = 423;
+            } else if (msg.includes('aktif değil') || msg.includes('aktif degil')) {
+                statusCode = 403;
+            } else if (msg.includes('bulunamadı') || msg.includes('bulunamadi')) {
+                statusCode = 404;
+            } else {
+                statusCode = 400;
+            }
+        }
+        if (String(error.message || '').includes('bulunamadı')) statusCode = 404;
 
         res.status(statusCode).json(errorResponse);
     }
