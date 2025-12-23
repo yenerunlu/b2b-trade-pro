@@ -716,7 +716,7 @@ class B2BSearchController {
      async resolveLogoStockTotalsTableName(pool) {
          const req = pool.request();
 
-         // Prefer the view name used elsewhere in the codebase, but fall back to whatever exists.
+         // Prefer well-known names first.
          const candidates = [
              'LV_013_01_STINVTOT',
              'LG_013_01_STINVTOT',
@@ -724,26 +724,55 @@ class B2BSearchController {
              'LG_013_STINVTOT'
          ];
 
+         // Check both default schema and dbo schema.
          for (const name of candidates) {
-             try {
-                 const existsRes = await req.query(`SELECT OBJECT_ID('${name}', 'U') as objU, OBJECT_ID('${name}', 'V') as objV`);
-                 const row = (existsRes.recordset || [])[0] || {};
-                 if (row.objU || row.objV) return name;
-             } catch (e) {
-                 // ignore and continue
+             for (const prefix of ['', 'dbo.']) {
+                 try {
+                     const full = `${prefix}${name}`;
+                     const existsRes = await req.query(`SELECT OBJECT_ID('${full}', 'U') as objU, OBJECT_ID('${full}', 'V') as objV`);
+                     const row = (existsRes.recordset || [])[0] || {};
+                     if (row.objU || row.objV) {
+                         const parts = full.split('.');
+                         const schema = parts.length === 2 ? parts[0] : 'dbo';
+                         const obj = parts.length === 2 ? parts[1] : parts[0];
+                         return `[${schema}].[${obj}]`;
+                     }
+                 } catch (e) {
+                     // ignore and continue
+                 }
              }
          }
 
-         // Last resort: find any table/view that ends with STINVTOT
+         // Wider search: any table/view whose name ends with STINVTOT (across schemas)
+         const sysRes = await req.query(`
+             SELECT TOP 1
+                 s.name AS schema_name,
+                 o.name AS object_name,
+                 o.type AS object_type
+             FROM sys.objects o
+             INNER JOIN sys.schemas s ON s.schema_id = o.schema_id
+             WHERE (o.type = 'U' OR o.type = 'V')
+               AND o.name LIKE '%STINVTOT'
+             ORDER BY
+                 CASE WHEN o.name LIKE 'LV_%' THEN 1 ELSE 2 END,
+                 o.name
+         `);
+
+         const schema = String(sysRes.recordset?.[0]?.schema_name || '').trim();
+         const obj = String(sysRes.recordset?.[0]?.object_name || '').trim();
+         if (schema && obj) return `[${schema}].[${obj}]`;
+
+         // Fallback: INFORMATION_SCHEMA (some DBs hide objects from it)
          const likeRes = await req.query(`
-             SELECT TOP 1 TABLE_NAME
+             SELECT TOP 1 TABLE_SCHEMA, TABLE_NAME
              FROM INFORMATION_SCHEMA.TABLES
              WHERE TABLE_NAME LIKE '%STINVTOT'
              ORDER BY CASE WHEN TABLE_NAME LIKE 'LV_%' THEN 1 ELSE 2 END, TABLE_NAME
          `);
 
-         const found = String(likeRes.recordset?.[0]?.TABLE_NAME || '').trim();
-         if (found) return found;
+         const foundSchema = String(likeRes.recordset?.[0]?.TABLE_SCHEMA || '').trim();
+         const foundName = String(likeRes.recordset?.[0]?.TABLE_NAME || '').trim();
+         if (foundSchema && foundName) return `[${foundSchema}].[${foundName}]`;
 
          throw new Error('STINVTOT table/view not found in Logo DB');
      }
