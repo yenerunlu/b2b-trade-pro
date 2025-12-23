@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>B2B Trade Pro | Müşteri Paneli</title>
+    <title>B2B PRO | Müşteri Paneli</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -441,6 +441,74 @@
             line-height: 1;
         }
 
+        .search-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .search-header-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .mini-toggle {
+            border: 1px solid rgba(148, 163, 184, 0.6);
+            background: transparent;
+            color: #475569;
+            padding: 2px 6px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            cursor: pointer;
+            line-height: 1.1;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .mini-toggle .toggle-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            flex: 0 0 14px;
+        }
+
+        .mini-toggle .toggle-icon::before {
+            content: '◻';
+            font-size: 14px;
+            color: #CCCCCC;
+            text-shadow: 0px 1px 1px rgba(0,0,0,0.1);
+            line-height: 1;
+        }
+
+        .mini-toggle .toggle-label {
+            font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+            font-weight: 500;
+            letter-spacing: 0.1px;
+            white-space: nowrap;
+        }
+
+        .mini-toggle.active {
+            border-color: #16a34a;
+            color: #16a34a;
+            background: rgba(22, 163, 74, 0.10);
+            box-shadow: 0 4px 10px rgba(22, 163, 74, 0.22);
+        }
+
+        .mini-toggle.active .toggle-icon::before {
+            content: '✅';
+            font-size: 14px;
+            color: #16a34a;
+            text-shadow: 0px 1px 3px rgba(22, 163, 74, 0.30);
+            line-height: 1;
+        }
+
         .filter-modal-backdrop {
             position: fixed;
             inset: 0;
@@ -515,6 +583,29 @@
             gap: 10px;
         }
 
+        .filter-panel-head .head-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: flex-end;
+            min-width: 260px;
+        }
+
+        .filter-panel-head .head-search {
+            width: 210px;
+            padding: 7px 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            background: #ffffff;
+        }
+
+        .filter-panel-head .head-search:focus {
+            outline: none;
+            border-color: rgba(37, 99, 235, 0.6);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+
         .filter-panel-head strong {
             display: inline-flex;
             align-items: center;
@@ -575,8 +666,32 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
+            gap: 16px;
+        }
+
+        .quick-filter-row {
+            display: flex;
             flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .quick-filter-btn {
+            border: 1px solid #e5e7eb;
+            background: #ffffff;
+            color: #0f172a;
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .quick-filter-btn.active {
+            background: #16a34a;
+            border-color: #16a34a;
+            color: #ffffff;
         }
 
         .filter-footer-actions {
@@ -714,21 +829,31 @@
             white-space: nowrap;
         }
 
-        .products-table-container {
-            overflow-x: auto;
-        }
-
         .products-table {
             width: 100%;
             border-collapse: collapse;
             min-width: 1200px;
         }
 
-        .products-table thead {
-            background: linear-gradient(135deg, var(--primary-light), #e0f2fe);
-            position: sticky;
-            top: 0;
-            z-index: 10;
+        .products-table th:nth-child(3),
+        .products-table td:nth-child(3) {
+            min-width: 360px;
+            width: 360px;
+        }
+
+        .products-table td:nth-child(3) .product-name {
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .oem-code {
+            display: block;
+            max-width: 11ch;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .products-table th {
@@ -823,10 +948,6 @@
             color: var(--dark);
             line-height: 1.3;
             font-size: 0.9rem;
-            white-space: normal;
-            overflow: visible;
-            text-overflow: clip;
-            max-width: none;
         }
 
         .product-oem {
@@ -1613,7 +1734,7 @@
     <div class="app-container">
         <aside class="sidebar">
             <div class="logo">
-                <h1><i class="fas fa-store"></i> B2B<span>TRADE</span></h1>
+                <h1><i class="fas fa-store"></i> B2B<span>PRO</span></h1>
             </div>
             <div class="customer-info">
                 <div class="customer-name" id="customer-name">Yükleniyor...</div>
@@ -1701,6 +1822,16 @@
                             <h2 class="search-title">
                                 <i class="fas fa-search"></i> Malzeme Ara
                             </h2>
+                            <div class="search-header-right">
+                                <button type="button" class="mini-toggle" id="filter-only-campaign">
+                                    <span class="toggle-icon" aria-hidden="true"></span>
+                                    <span class="toggle-label">Kampanyalı Ürünler</span>
+                                </button>
+                                <button type="button" class="mini-toggle" id="filter-only-instock">
+                                    <span class="toggle-icon" aria-hidden="true"></span>
+                                    <span class="toggle-label">Stoktaki Ürünler</span>
+                                </button>
+                            </div>
                         </div>
                         <form class="search-form" id="search-form">
                             <input type="text" class="search-input" id="search-input" 
@@ -1773,20 +1904,20 @@
                                 <div class="filter-panel">
                                     <div class="filter-panel-head">
                                         <strong><i class="fas fa-industry"></i> Üretici</strong>
-                                        <span id="manufacturer-selected-count">0</span>
-                                    </div>
-                                    <div class="filter-search">
-                                        <input type="text" id="manufacturer-search" placeholder="Üretici ara...">
+                                        <div class="head-right">
+                                            <input type="text" class="head-search" id="manufacturer-search" placeholder="Ara...">
+                                            <span id="manufacturer-selected-count">0</span>
+                                        </div>
                                     </div>
                                     <div class="filter-list" id="manufacturer-list"></div>
                                 </div>
                                 <div class="filter-panel">
                                     <div class="filter-panel-head">
                                         <strong><i class="fas fa-car"></i> Araç Modeli</strong>
-                                        <span id="vehicle-selected-count">0</span>
-                                    </div>
-                                    <div class="filter-search">
-                                        <input type="text" id="vehicle-search" placeholder="Araç modeli ara...">
+                                        <div class="head-right">
+                                            <input type="text" class="head-search" id="vehicle-search" placeholder="Ara...">
+                                            <span id="vehicle-selected-count">0</span>
+                                        </div>
                                     </div>
                                     <div class="filter-list" id="vehicle-list"></div>
                                 </div>
@@ -1918,6 +2049,8 @@
         const manufacturerSelectedCountEl = document.getElementById('manufacturer-selected-count');
         const vehicleSelectedCountEl = document.getElementById('vehicle-selected-count');
         const quickClearFiltersBtn = document.getElementById('quick-clear-filters-btn');
+        const filterOnlyCampaignBtn = document.getElementById('filter-only-campaign');
+        const filterOnlyInStockBtn = document.getElementById('filter-only-instock');
         const selectAllProductsEl = document.getElementById('select-all-products');
         const exportSelectedExcelEl = document.getElementById('export-selected-excel');
         let lastSearchTerm = '';
@@ -1928,6 +2061,9 @@
         let selectedVehicleModels = [];
 
         let hasSearched = false;
+
+        let onlyCampaignProducts = false;
+        let onlyInStockProducts = false;
 
         let currentPage = 0;
         const pageSize = 50;
@@ -2277,7 +2413,7 @@
                         </div>
                         ${product.hasCampaign ? '<span class="campaign-badge">Kampanya</span>' : ''}
                     </td>
-                    <td>${oemCode}</td>
+                    <td><span class="oem-code" title="${String(oemCode).replace(/"/g,'&quot;')}">${oemCode}</span></td>
                     <td><span class="manufacturer-badge">${manufacturer}</span></td>
                     <td>
                         <div class="stock-info">
@@ -3061,9 +3197,34 @@
 
                 const products = Array.isArray(result.results) ? result.results : [];
 
+                const isCampaignProduct = (p) => {
+                    const rate = Number(p?.totalDiscountRate ?? p?.discountRate ?? 0) || 0;
+                    const discounts = Array.isArray(p?.discounts) ? p.discounts : [];
+                    const hasDiscounts = discounts.some(d => Number(d?.rate || 0) > 0);
+                    return rate > 0 || hasDiscounts;
+                };
+
+                const hasAnyStock = (p) => {
+                    const keys = ['centralStock', 'ikitelliStock', 'bostanciStock', 'depotStock', 'stock', 'stok'];
+                    let sum = 0;
+                    keys.forEach(k => {
+                        const v = Number(p?.[k] || 0) || 0;
+                        sum += v;
+                    });
+                    return sum > 0;
+                };
+
+                let filteredProducts = products;
+                if (onlyCampaignProducts) {
+                    filteredProducts = filteredProducts.filter(isCampaignProduct);
+                }
+                if (onlyInStockProducts) {
+                    filteredProducts = filteredProducts.filter(hasAnyStock);
+                }
+
                 hasSearched = true;
-                allProducts = products;
-                lastTotalResults = (typeof result.total_results === 'number') ? result.total_results : products.length;
+                allProducts = filteredProducts;
+                lastTotalResults = filteredProducts.length;
                 renderB2BProducts(allProducts);
                 updateAllItemCounts();
 
@@ -3236,8 +3397,14 @@
             const chips = [];
             selectedManufacturers.forEach(v => chips.push({ type: 'm', value: v }));
             selectedVehicleModels.forEach(v => chips.push({ type: 'v', value: v }));
+            if (onlyCampaignProducts) chips.push({ type: 'qc', value: '1' });
+            if (onlyInStockProducts) chips.push({ type: 'qs', value: '1' });
             filterChipsEl.innerHTML = chips.slice(0, 10).map(c => {
-                const label = c.type === 'm' ? `Üretici: ${c.value}` : `Model: ${c.value}`;
+                const label = c.type === 'm'
+                    ? `${c.value}`
+                    : (c.type === 'v'
+                        ? `${c.value}`
+                        : (c.type === 'qc' ? 'Kampanyalı Ürünler' : 'Stoktaki Ürünler'));
                 return `
                     <span class="filter-chip" data-type="${c.type}" data-value="${String(c.value).replace(/"/g, '&quot;')}">
                         ${label}
@@ -3325,6 +3492,10 @@
                 const hadAnyBefore = (selectedManufacturers && selectedManufacturers.length > 0) || (selectedVehicleModels && selectedVehicleModels.length > 0);
                 selectedManufacturers = [];
                 selectedVehicleModels = [];
+                onlyCampaignProducts = false;
+                onlyInStockProducts = false;
+                if (filterOnlyCampaignBtn) filterOnlyCampaignBtn.classList.remove('active');
+                if (filterOnlyInStockBtn) filterOnlyInStockBtn.classList.remove('active');
                 if (searchInput) searchInput.value = '';
                 lastSearchTerm = '';
                 renderFilterLists();
@@ -3414,12 +3585,44 @@
                     const value = chip.getAttribute('data-value');
                     if (type === 'm') {
                         selectedManufacturers = selectedManufacturers.filter(x => x !== value);
-                    } else {
+                    } else if (type === 'v') {
                         selectedVehicleModels = selectedVehicleModels.filter(x => x !== value);
+                    } else if (type === 'qc') {
+                        onlyCampaignProducts = false;
+                        if (filterOnlyCampaignBtn) filterOnlyCampaignBtn.classList.remove('active');
+                    } else if (type === 'qs') {
+                        onlyInStockProducts = false;
+                        if (filterOnlyInStockBtn) filterOnlyInStockBtn.classList.remove('active');
                     }
                     renderFilterLists();
                     renderFilterChips();
                     const hasAnyFilter = (selectedManufacturers && selectedManufacturers.length > 0) || (selectedVehicleModels && selectedVehicleModels.length > 0);
+                    if ((lastSearchTerm || '').trim() || hasAnyFilter) {
+                        currentPage = 0;
+                        performSearch();
+                    }
+                });
+            }
+
+            if (filterOnlyCampaignBtn) {
+                filterOnlyCampaignBtn.addEventListener('click', () => {
+                    onlyCampaignProducts = !onlyCampaignProducts;
+                    filterOnlyCampaignBtn.classList.toggle('active', onlyCampaignProducts);
+                    renderFilterChips();
+                    const hasAnyFilter = (selectedManufacturers && selectedManufacturers.length > 0) || (selectedVehicleModels && selectedVehicleModels.length > 0) || onlyCampaignProducts || onlyInStockProducts;
+                    if ((lastSearchTerm || '').trim() || hasAnyFilter) {
+                        currentPage = 0;
+                        performSearch();
+                    }
+                });
+            }
+
+            if (filterOnlyInStockBtn) {
+                filterOnlyInStockBtn.addEventListener('click', () => {
+                    onlyInStockProducts = !onlyInStockProducts;
+                    filterOnlyInStockBtn.classList.toggle('active', onlyInStockProducts);
+                    renderFilterChips();
+                    const hasAnyFilter = (selectedManufacturers && selectedManufacturers.length > 0) || (selectedVehicleModels && selectedVehicleModels.length > 0) || onlyCampaignProducts || onlyInStockProducts;
                     if ((lastSearchTerm || '').trim() || hasAnyFilter) {
                         currentPage = 0;
                         performSearch();

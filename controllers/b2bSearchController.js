@@ -6,22 +6,7 @@
 
 const sql = require('mssql');
 const { b2bConfig, logoConfig } = require('../config/database');
-const cacheService = require('../services/cacheService');
 const smartSearchHelper = require('./smart-search');
-const meiliSearchService = require('../services/meiliSearchService');
-
- let __logoPool = null;
- async function getLogoPool() {
-     if (__logoPool && __logoPool.connected) return __logoPool;
- 
-     __logoPool = await new sql.ConnectionPool(logoConfig).connect();
-     __logoPool.on('error', (err) => {
-         console.error('❌ Logo pool error (b2bSearchController):', err && err.message ? err.message : err);
-         __logoPool = null;
-     });
- 
-     return __logoPool;
- }
 
 class B2BSearchController {
     // Basit fiyat formatlama: null/undefined durumunda 0 döndürür, sayıyı 2 haneye yuvarlar
@@ -37,896 +22,6 @@ class B2BSearchController {
         if (q.length <= 4) return 'short_code';
         if (/^\d+$/.test(q)) return 'numeric';
         return 'text';
-    }
-
-    normalizeKey(value) {
-        return String(value || '')
-            .trim()
-            .toUpperCase();
-    }
-
-    applySequentialDiscounts(baseAmount, rates) {
-        let current = Number(baseAmount) || 0;
-        const steps = [];
-        (Array.isArray(rates) ? rates : [])
-            .map(r => Number(r) || 0)
-            .filter(r => r > 0)
-            .forEach((rate) => {
-                const amount = current * (rate / 100);
-                current -= amount;
-                steps.push({ rate, amount });
-            });
-
-        const totalDiscountRate = baseAmount > 0 ? (1 - (current / baseAmount)) * 100 : 0;
-        return {
-            netAmount: current,
-            steps,
-            totalDiscountRate
-        };
-    }
-
-    parsePaymentPlanCodeToRates(code) {
-        const raw = String(code || '').trim();
-        if (!raw) return [];
-        return raw
-            .split('+')
-            .map(x => Number(String(x || '').trim()))
-            .filter(n => Number.isFinite(n) && n > 0);
-    }
-
-    async getLogoGeneralDiscountRates(customerCode) {
-        try {
-            if (!customerCode) return [];
-            const pool = await getLogoPool();
-            const request = pool.request();
-            request.input('code', sql.VarChar(50), customerCode);
-            const q = `
-                SELECT TOP 1
-                    C.PAYMENTREF,
-                    P.CODE AS plan_code
-                FROM dbo.LG_013_CLCARD C
-                LEFT JOIN dbo.LG_013_PAYPLANS P ON P.LOGICALREF = C.PAYMENTREF
-                WHERE C.CODE = @code
-            `;
-            const result = await request.query(q);
-            const row = result.recordset && result.recordset[0] ? result.recordset[0] : null;
-            if (!row || row.PAYMENTREF == null) return [];
-            return this.parsePaymentPlanCodeToRates(row.plan_code);
-        } catch (e) {
-            console.error(`❌ Logo PAYMENTREF discount read error (b2bSearchController) ${customerCode}:`, e && e.message ? e.message : e);
-            return [];
-        }
-    }
-
-    async loadCustomerDiscountConfig(customerCode) {
-        const GLOBAL_CUSTOMER_CODE = '__GLOBAL__';
-        const pool = await sql.connect(b2bConfig);
-        const result = await pool.request()
-            .input('customerCode', sql.VarChar(50), customerCode)
-            .input('globalCode', sql.VarChar(50), GLOBAL_CUSTOMER_CODE)
-            .query(`
-                SELECT customer_code, setting_type, item_code, value
-                FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
-                WHERE customer_code IN (@customerCode, @globalCode)
-                  AND is_active = 1
-                  AND (
-                        setting_type = 'discount_item'
-                     OR setting_type = 'discount_manufacturer'
-                     OR setting_type = 'discount_priority'
-                     OR setting_type LIKE 'discount_general_%'
-                  )
-            `);
-
-        const customerCfg = {
-            priority: null,
-            generalRates: [],
-            itemRates: new Map(),
-            manufacturerRates: new Map()
-        };
-        const globalCfg = {
-            priority: null,
-            generalRates: [],
-            itemRates: new Map(),
-            manufacturerRates: new Map()
-        };
-
-        const customerTiers = [];
-        const globalTiers = [];
-
-        (result.recordset || []).forEach(r => {
-            const owner = String(r.customer_code || '').trim();
-            const st = String(r.setting_type || '').trim();
-            const itemCode = r.item_code == null ? null : this.normalizeKey(r.item_code);
-            const val = Number(r.value);
-
-            const target = owner === customerCode ? customerCfg : globalCfg;
-            const tierTarget = owner === customerCode ? customerTiers : globalTiers;
-
-            if (st === 'discount_priority') {
-                const code = Number.isFinite(val) ? val : 0;
-                if (code === 2) target.priority = 'manufacturer>item>general';
-                else if (code === 3) target.priority = 'general>manufacturer>item';
-                else target.priority = 'item>manufacturer>general';
-            } else if (st === 'discount_item' && itemCode) {
-                if (Number.isFinite(val) && val > 0) target.itemRates.set(itemCode, val);
-            } else if (st === 'discount_manufacturer' && itemCode) {
-                if (Number.isFinite(val) && val > 0) target.manufacturerRates.set(itemCode, val);
-            } else if (/^discount_general_(\d+)$/.test(st)) {
-                const m = st.match(/^discount_general_(\d+)$/);
-                const idx = m ? Number(m[1]) : 0;
-                if (idx > 0 && Number.isFinite(val) && val > 0) tierTarget.push({ idx, rate: val });
-            }
-        });
-
-        customerCfg.generalRates = customerTiers.sort((a, b) => a.idx - b.idx).map(x => x.rate);
-        globalCfg.generalRates = globalTiers.sort((a, b) => a.idx - b.idx).map(x => x.rate);
-
-        // Merge: customer overrides win; general tiers/priority fall back to global if customer has none.
-        const cfg = {
-            priority: customerCfg.priority || globalCfg.priority || 'item>manufacturer>general',
-            generalRates: (customerCfg.generalRates && customerCfg.generalRates.length) ? customerCfg.generalRates : (globalCfg.generalRates || []),
-            itemRates: new Map([...globalCfg.itemRates, ...customerCfg.itemRates]),
-            manufacturerRates: new Map([...globalCfg.manufacturerRates, ...customerCfg.manufacturerRates])
-        };
-
-        const priorityPolicy = await this.getGlobalPriorityDiscountPolicy(pool);
-
-        // If Logo defines PAYMENTREF, it becomes the source of truth for general discounts.
-        const logoRates = await this.getLogoGeneralDiscountRates(customerCode);
-        if (logoRates && logoRates.length) {
-            cfg.generalRates = logoRates;
-        }
-
-        return {
-            ...cfg,
-            priorityPolicy
-        };
-    }
-
-    buildDiscountListByPriority({ priority, itemRate, manufacturerRate, generalRates }) {
-        const pr = String(priority || '').trim() || 'item>manufacturer>general';
-
-        const blocks = {
-            item: (Number(itemRate) || 0) > 0
-                ? [{ type: 'ITEM', rate: Number(itemRate), description: `Ürün İskontosu (%${Number(itemRate)})`, source: 'CUSTOMER_OVERRIDE' }]
-                : [],
-            manufacturer: (Number(manufacturerRate) || 0) > 0
-                ? [{ type: 'MANUFACTURER', rate: Number(manufacturerRate), description: `Üretici İskontosu (%${Number(manufacturerRate)})`, source: 'CUSTOMER_OVERRIDE' }]
-                : [],
-            general: (Array.isArray(generalRates) ? generalRates : [])
-                .map(r => Number(r) || 0)
-                .filter(r => r > 0)
-                .map((r, idx) => ({
-                    type: 'GENERAL',
-                    rate: r,
-                    description: `Genel İskonto ${idx + 1} (%${r})`,
-                    source: 'CUSTOMER_OVERRIDE'
-                }))
-        };
-
-        const order = pr.split('>').map(s => s.trim()).filter(Boolean);
-        const validOrder = order.length ? order : ['item', 'manufacturer', 'general'];
-
-        // OVERRIDE MODE: only the highest-priority non-empty block is applied.
-        // This prevents stacking item/manufacturer/general/global together.
-        for (const k of validOrder) {
-            if (k === 'item' && blocks.item.length) return blocks.item;
-            if (k === 'manufacturer' && blocks.manufacturer.length) return blocks.manufacturer;
-            if (k === 'general' && blocks.general.length) return blocks.general;
-        }
-
-        return [];
-    }
-
-    async getGlobalPriorityDiscountPolicy(pool) {
-        try {
-            const GLOBAL_CUSTOMER_CODE = '__GLOBAL__';
-            const query = `
-                SELECT setting_type, value
-                      , item_code
-                FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
-                WHERE customer_code = @globalCode
-                  AND is_active = 1
-                  AND (
-                        setting_type LIKE 'priority_discount_%'
-                     OR setting_type LIKE 'priority_disable_%'
-                     OR setting_type = 'priority_scope_item'
-                     OR setting_type = 'priority_scope_manufacturer'
-                     OR setting_type LIKE 'priority_rule_%'
-                  )
-            `;
-
-            const result = await pool.request()
-                .input('globalCode', sql.VarChar(50), GLOBAL_CUSTOMER_CODE)
-                .query(query);
-
-            const tiers = [];
-            const scopeItems = new Set();
-            const scopeManufacturers = new Set();
-            const ruleMap = new Map();
-            const flags = {
-                disableCustomerDiscounts: false,
-                disableGeneralDiscounts: false,
-                disableManufacturerDiscounts: false,
-                disableItemDiscounts: false,
-                disableCampaigns: false,
-                disableSpecialDiscounts: false
-            };
-
-            (result.recordset || []).forEach(r => {
-                const st = String(r.setting_type || '').trim();
-                const val = String(r.value == null ? '' : r.value).trim();
-                const itemCode = String(r.item_code || '').trim();
-
-                if (st.startsWith('priority_rule_')) {
-                    const key = itemCode || 'GENERAL';
-                    if (!ruleMap.has(key)) {
-                        ruleMap.set(key, {
-                            scopeKey: key,
-                            ratesByIdx: new Map()
-                        });
-                    }
-                    const rule = ruleMap.get(key);
-
-                    const rm = st.match(/^priority_rule_discount_(\d+)$/);
-                    if (rm) {
-                        const idx = Number(rm[1]);
-                        const rate = Number(val);
-                        if (idx > 0 && Number.isFinite(rate) && rate > 0) rule.ratesByIdx.set(idx, rate);
-                    }
-                    return;
-                }
-
-                const m = st.match(/^priority_discount_(\d+)$/);
-                if (m) {
-                    const idx = Number(m[1]);
-                    const rate = Number(val);
-                    if (idx > 0 && Number.isFinite(rate) && rate > 0) tiers.push({ idx, rate });
-                    return;
-                }
-
-                if (st === 'priority_scope_item') {
-                    const code = String(r.item_code || '').trim();
-                    if (code) scopeItems.add(code);
-                    return;
-                }
-                if (st === 'priority_scope_manufacturer') {
-                    const code = String(r.item_code || '').trim();
-                    if (code) scopeManufacturers.add(code);
-                    return;
-                }
-
-                const enabled = val === '1' || val.toLowerCase() === 'true';
-                if (st === 'priority_disable_customer_discounts') flags.disableCustomerDiscounts = enabled;
-                else if (st === 'priority_disable_general_discounts') flags.disableGeneralDiscounts = enabled;
-                else if (st === 'priority_disable_manufacturer_discounts') flags.disableManufacturerDiscounts = enabled;
-                else if (st === 'priority_disable_item_discounts') flags.disableItemDiscounts = enabled;
-                else if (st === 'priority_disable_campaigns') flags.disableCampaigns = enabled;
-                else if (st === 'priority_disable_special_discounts') flags.disableSpecialDiscounts = enabled;
-            });
-
-            return {
-                rates: tiers.sort((a, b) => a.idx - b.idx).map(x => x.rate),
-                scopeItems: Array.from(scopeItems),
-                scopeManufacturers: Array.from(scopeManufacturers),
-                rules: Array.from(ruleMap.values()).map(r => ({
-                    scopeKey: r.scopeKey,
-                    rates: Array.from(r.ratesByIdx.entries()).sort((a, b) => a[0] - b[0]).map(x => x[1])
-                })),
-                ...flags
-            };
-        } catch (error) {
-            console.error('❌ Öncelikli iskonto politikası okunamadı:', error.message);
-            return {
-                rates: [],
-                scopeItems: [],
-                scopeManufacturers: [],
-                rules: [],
-                disableCustomerDiscounts: false,
-                disableGeneralDiscounts: false,
-                disableManufacturerDiscounts: false,
-                disableItemDiscounts: false,
-                disableCampaigns: false,
-                disableSpecialDiscounts: false
-            };
-        }
-    }
-
-    selectEffectivePriorityRule({ policy, productCode, manufacturerCode }) {
-        const rules = (policy && Array.isArray(policy.rules)) ? policy.rules : [];
-        if (!rules.length) return null;
-
-        const pCode = String(productCode || '').trim();
-        const mCode = String(manufacturerCode || '').trim();
-        const byKey = new Map(rules.map(r => [String(r.scopeKey || '').trim(), r]));
-
-        const itemKey = `ITEM:${pCode}`;
-        const manKey = `MAN:${mCode}`;
-        const generalKey = 'GENERAL';
-
-        if (pCode && byKey.has(itemKey)) return byKey.get(itemKey);
-        if (mCode && byKey.has(manKey)) return byKey.get(manKey);
-        if (byKey.has(generalKey)) return byKey.get(generalKey);
-        return null;
-    }
-
-    isPriorityPolicyInScope({ policy, productCode, manufacturerCode }) {
-        const p = policy || {};
-        const itemList = Array.isArray(p.scopeItems) ? p.scopeItems : [];
-        const manList = Array.isArray(p.scopeManufacturers) ? p.scopeManufacturers : [];
-
-        const itemSet = itemList.length ? new Set(itemList.map(x => String(x || '').trim()).filter(Boolean)) : null;
-        const manSet = manList.length ? new Set(manList.map(x => String(x || '').trim()).filter(Boolean)) : null;
-
-        const pCode = String(productCode || '').trim();
-        const mCode = String(manufacturerCode || '').trim();
-
-        if (itemSet) return itemSet.has(pCode);
-        if (manSet) return manSet.has(mCode);
-        return true;
-    }
-
-    buildPriorityDiscountList(rates) {
-        return (Array.isArray(rates) ? rates : [])
-            .map(r => Number(r) || 0)
-            .filter(r => r > 0)
-            .map((r, idx) => ({
-                type: 'PRIORITY',
-                rate: r,
-                description: `Öncelikli İskonto ${idx + 1} (%${r})`,
-                source: 'GLOBAL_PRIORITY_DISCOUNT'
-            }));
-    }
-
-    async loadCustomerDiscountConfig(customerCode) {
-        const GLOBAL_CUSTOMER_CODE = '__GLOBAL__';
-        const pool = await sql.connect(b2bConfig);
-        const result = await pool.request()
-            .input('customerCode', sql.VarChar(50), customerCode)
-            .input('globalCode', sql.VarChar(50), GLOBAL_CUSTOMER_CODE)
-            .query(`
-                SELECT customer_code, setting_type, item_code, value
-                FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
-                WHERE customer_code IN (@customerCode, @globalCode)
-                  AND is_active = 1
-                  AND (
-                        setting_type = 'discount_item'
-                     OR setting_type = 'discount_manufacturer'
-                     OR setting_type = 'discount_priority'
-                     OR setting_type LIKE 'discount_general_%'
-                  )
-            `);
-
-        const customerCfg = {
-            priority: null,
-            generalRates: [],
-            itemRates: new Map(),
-            manufacturerRates: new Map()
-        };
-        const globalCfg = {
-            priority: null,
-            generalRates: [],
-            itemRates: new Map(),
-            manufacturerRates: new Map()
-        };
-
-        const customerTiers = [];
-        const globalTiers = [];
-
-        (result.recordset || []).forEach(r => {
-            const owner = String(r.customer_code || '').trim();
-            const st = String(r.setting_type || '').trim();
-            const itemCode = r.item_code == null ? null : this.normalizeKey(r.item_code);
-            const val = Number(r.value);
-
-            const target = owner === customerCode ? customerCfg : globalCfg;
-            const tierTarget = owner === customerCode ? customerTiers : globalTiers;
-
-            if (st === 'discount_priority') {
-                const code = Number.isFinite(val) ? val : 0;
-                if (code === 2) target.priority = 'manufacturer>item>general';
-                else if (code === 3) target.priority = 'general>manufacturer>item';
-                else target.priority = 'item>manufacturer>general';
-            } else if (st === 'discount_item' && itemCode) {
-                if (Number.isFinite(val) && val > 0) target.itemRates.set(itemCode, val);
-            } else if (st === 'discount_manufacturer' && itemCode) {
-                if (Number.isFinite(val) && val > 0) target.manufacturerRates.set(itemCode, val);
-            } else if (/^discount_general_(\d+)$/.test(st)) {
-                const m = st.match(/^discount_general_(\d+)$/);
-                const idx = m ? Number(m[1]) : 0;
-                if (idx > 0 && Number.isFinite(val) && val > 0) tierTarget.push({ idx, rate: val });
-            }
-        });
-
-        customerCfg.generalRates = customerTiers.sort((a, b) => a.idx - b.idx).map(x => x.rate);
-        globalCfg.generalRates = globalTiers.sort((a, b) => a.idx - b.idx).map(x => x.rate);
-
-        // Merge: customer overrides win; general tiers/priority fall back to global if customer has none.
-        const cfg = {
-            priority: customerCfg.priority || globalCfg.priority || 'item>manufacturer>general',
-            generalRates: (customerCfg.generalRates && customerCfg.generalRates.length) ? customerCfg.generalRates : (globalCfg.generalRates || []),
-            itemRates: new Map([...globalCfg.itemRates, ...customerCfg.itemRates]),
-            manufacturerRates: new Map([...globalCfg.manufacturerRates, ...customerCfg.manufacturerRates])
-        };
-
-        const priorityPolicy = await this.getGlobalPriorityDiscountPolicy(pool);
-
-        // If Logo defines PAYMENTREF, it becomes the source of truth for general discounts.
-        const logoRates = await this.getLogoGeneralDiscountRates(customerCode);
-        if (logoRates && logoRates.length) {
-            cfg.generalRates = logoRates;
-        }
-
-        return {
-            ...cfg,
-            priorityPolicy
-        };
-    }
-
-    enrichProductsWithDiscounts(products, discountCfg) {
-        const cfg = discountCfg || { priority: 'item>manufacturer>general', generalRates: [], itemRates: new Map(), manufacturerRates: new Map(), priorityPolicy: null };
-
-        return (Array.isArray(products) ? products : []).map(p => {
-            const code = this.normalizeKey(p.code);
-            const manufacturer = this.normalizeKey(p.manufacturer);
-
-            const itemRate = cfg.itemRates.has(code) ? cfg.itemRates.get(code) : 0;
-            const manufacturerRate = cfg.manufacturerRates.has(manufacturer) ? cfg.manufacturerRates.get(manufacturer) : 0;
-
-            const discounts = this.buildDiscountListByPriority({
-                priority: cfg.priority,
-                itemRate,
-                manufacturerRate,
-                generalRates: cfg.generalRates
-            });
-
-            let effectiveDiscounts = discounts;
-            const policy = cfg.priorityPolicy;
-            const inScope = this.isPriorityPolicyInScope({
-                policy,
-                productCode: code,
-                manufacturerCode: manufacturer
-            });
-
-            const effRule = inScope
-                ? this.selectEffectivePriorityRule({ policy, productCode: code, manufacturerCode: manufacturer })
-                : null;
-
-            if (effRule && effRule.rates && effRule.rates.length) {
-                effectiveDiscounts = this.buildPriorityDiscountList(effRule.rates);
-            } else if (policy && policy.rates && policy.rates.length) {
-                const primaryType = (effectiveDiscounts && effectiveDiscounts.length) ? String(effectiveDiscounts[0].type || '') : '';
-                const shouldOverrideByPriority =
-                    (policy.disableCustomerDiscounts)
-                    || (policy.disableItemDiscounts && primaryType === 'ITEM')
-                    || (policy.disableManufacturerDiscounts && primaryType === 'MANUFACTURER')
-                    || (policy.disableGeneralDiscounts && primaryType === 'GENERAL');
-
-                if (inScope && shouldOverrideByPriority) {
-                    effectiveDiscounts = this.buildPriorityDiscountList(policy.rates);
-                }
-            }
-
-            const applied = this.applySequentialDiscounts(100, effectiveDiscounts.map(d => d.rate));
-            const totalDiscountRate = applied.totalDiscountRate;
-
-            const unitPrice = this.formatPrice(p.unitPrice || 0);
-            const netUnitPrice = this.applySequentialDiscounts(unitPrice, effectiveDiscounts.map(d => d.rate)).netAmount;
-
-            return {
-                ...p,
-                discounts: effectiveDiscounts,
-                totalDiscountRate: Number(totalDiscountRate.toFixed(2)),
-                finalPrice: this.formatPrice(netUnitPrice)
-            };
-        });
-    }
-
-    async meiliSearchEnriched(req, res) {
-        const startTime = Date.now();
-        const {
-            query,
-            customerCode = (req.user && (req.user.cari_kodu || req.user.customerCode)) || 'S1981',
-            limit = 100,
-            offset = 0,
-            manufacturerCodes = [],
-            vehicleModels = []
-        } = req.body || {};
-
-        try {
-            const discountCfg = await this.loadCustomerDiscountConfig(customerCode);
-            const manufacturerFilter = Array.from(Array.isArray(manufacturerCodes) ? manufacturerCodes : [])
-                .map(v => String(v || '').trim())
-                .filter(Boolean);
-            const vehicleModelFilter = Array.from(Array.isArray(vehicleModels) ? vehicleModels : [])
-                .map(v => String(v || '').trim())
-                .filter(Boolean);
-            const hasAnyFilter = manufacturerFilter.length > 0 || vehicleModelFilter.length > 0;
-
-            const q = String(query || '').trim();
-            if (!q && !hasAnyFilter) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Arama yapın'
-                });
-            }
-
-            const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
-            const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
-
-            if (!q && hasAnyFilter) {
-                const activeWarehouses = await this.getActiveWarehouses(customerCode);
-                const { rows, total } = await this.getLogoProductsByFiltersPaginated({
-                    limit: safeLimit,
-                    offset: safeOffset,
-                    manufacturerCodes: manufacturerFilter,
-                    vehicleModels: vehicleModelFilter
-                });
-
-                const products = (rows || []).map(item => {
-                    const centralStock = Number(item.central_stock || 0);
-                    const ikitelliStock = Number(item.ikitelli_stock || 0);
-                    const bostanciStock = Number(item.bostanci_stock || 0);
-                    const depotStock = Number(item.depot_stock || 0);
-
-                    const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
-                        if (inv === 0) return sum + centralStock;
-                        if (inv === 1) return sum + ikitelliStock;
-                        if (inv === 2) return sum + bostanciStock;
-                        if (inv === 3) return sum + depotStock;
-                        return sum;
-                    }, 0);
-
-                    const unitPrice = this.formatPrice(item.price || 0);
-                    const currencyCode = Number(item.currency_code || 160);
-
-                    return {
-                        code: item.item_code,
-                        name: item.item_name,
-                        oemCode: item.oem_code,
-                        manufacturer: item.manufacturer,
-                        centralStock,
-                        ikitelliStock,
-                        bostanciStock,
-                        depotStock,
-                        unitPrice,
-                        currencyCode,
-                        finalPrice: unitPrice,
-                        totalDiscountRate: 0,
-                        discounts: [],
-                        totalStock
-                    };
-                });
-
-                const enrichedProducts = this.enrichProductsWithDiscounts(products, discountCfg);
-                enrichedProducts.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
-
-                return res.json({
-                    success: true,
-                    query: '',
-                    total_results: Number(total || 0),
-                    results: enrichedProducts,
-                    response_time_ms: Date.now() - startTime
-                });
-            }
-
-            const meiliQuery = q;
-            let meiliResult = null;
-            let meiliHits = [];
-            try {
-                meiliResult = await meiliSearchService.search(meiliQuery, {
-                    limit: safeLimit,
-                    offset: safeOffset
-                });
-                meiliHits = (meiliResult && Array.isArray(meiliResult.hits)) ? meiliResult.hits : [];
-            } catch (meiliErr) {
-                const msg = meiliErr && meiliErr.message ? meiliErr.message : String(meiliErr);
-                console.error('❌ Meili search failed:', msg);
-
-                return res.status(503).json({
-                    success: false,
-                    error: 'MeiliSearch kullanılamıyor',
-                    details: msg,
-                    query: meiliQuery,
-                    response_time_ms: Date.now() - startTime
-                });
-            }
-            const logicalrefs = Array.from(
-                new Set(
-                    meiliHits
-                        .map(h => h && h.id)
-                        .filter(v => Number.isFinite(Number(v)))
-                        .map(v => Number(v))
-                )
-            );
-
-            if (logicalrefs.length === 0) {
-                return res.json({
-                    success: true,
-                    query: meiliQuery,
-                    total_results: 0,
-                    results: [],
-                    response_time_ms: Date.now() - startTime
-                });
-            }
-
-            const activeWarehouses = await this.getActiveWarehouses(customerCode);
-            const logoRows = await this.getLogoProductsByLogicalrefs(logicalrefs, safeLimit, {
-                manufacturerCodes: hasAnyFilter ? manufacturerFilter : [],
-                vehicleModels: hasAnyFilter ? vehicleModelFilter : []
-            });
-
-            const products = (logoRows || []).map(item => {
-                const centralStock = Number(item.central_stock || 0);
-                const ikitelliStock = Number(item.ikitelli_stock || 0);
-                const bostanciStock = Number(item.bostanci_stock || 0);
-                const depotStock = Number(item.depot_stock || 0);
-
-                const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
-                    if (inv === 0) return sum + centralStock;
-                    if (inv === 1) return sum + ikitelliStock;
-                    if (inv === 2) return sum + bostanciStock;
-                    if (inv === 3) return sum + depotStock;
-                    return sum;
-                }, 0);
-
-                const unitPrice = this.formatPrice(item.price || 0);
-                const currencyCode = Number(item.currency_code || 160);
-
-                return {
-                    code: item.item_code,
-                    name: item.item_name,
-                    oemCode: item.oem_code,
-                    manufacturer: item.manufacturer,
-                    centralStock,
-                    ikitelliStock,
-                    bostanciStock,
-                    depotStock,
-                    unitPrice,
-                    currencyCode,
-                    finalPrice: unitPrice,
-                    totalDiscountRate: 0,
-                    discounts: [],
-                    totalStock
-                };
-            });
-
-            const enrichedProducts = this.enrichProductsWithDiscounts(products, discountCfg);
-
-            enrichedProducts.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
-
-            const totalResults =
-                (typeof meiliResult?.estimatedTotalHits === 'number')
-                    ? meiliResult.estimatedTotalHits
-                    : (typeof meiliResult?.nbHits === 'number')
-                        ? meiliResult.nbHits
-                        : products.length;
-
-            res.json({
-                success: true,
-                query: meiliQuery,
-                total_results: totalResults,
-                results: enrichedProducts,
-                response_time_ms: Date.now() - startTime
-            });
-        } catch (error) {
-            const msg = (error && error.message) ? error.message : String(error);
-            console.error('❌ Meili enriched search error:', msg);
-            return res.status(500).json({
-                success: false,
-                error: msg,
-                query: String(query || '').trim(),
-                response_time_ms: Date.now() - startTime
-            });
-        }
-    }
-
-    async meiliSearchEnrichedSmart(req, res) {
-        const startTime = Date.now();
-        const {
-            query,
-            customerCode = (req.user && (req.user.cari_kodu || req.user.customerCode)) || 'S1981',
-            limit = 100,
-            offset = 0,
-            manufacturerCodes = [],
-            vehicleModels = []
-        } = req.body || {};
-
-        try {
-            const discountCfg = await this.loadCustomerDiscountConfig(customerCode);
-            const manufacturerFilter = Array.from(Array.isArray(manufacturerCodes) ? manufacturerCodes : [])
-                .map(v => String(v || '').trim())
-                .filter(Boolean);
-            const vehicleModelFilter = Array.from(Array.isArray(vehicleModels) ? vehicleModels : [])
-                .map(v => String(v || '').trim())
-                .filter(Boolean);
-            const hasAnyFilter = manufacturerFilter.length > 0 || vehicleModelFilter.length > 0;
-
-            const q = String(query || '').trim();
-            if (!q && !hasAnyFilter) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Arama yapın'
-                });
-            }
-
-            const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
-            const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
-
-            if (!q && hasAnyFilter) {
-                const activeWarehouses = await this.getActiveWarehouses(customerCode);
-                const { rows, total } = await this.getLogoProductsByFiltersPaginated({
-                    limit: safeLimit,
-                    offset: safeOffset,
-                    manufacturerCodes: manufacturerFilter,
-                    vehicleModels: vehicleModelFilter
-                });
-
-                const products = (rows || []).map(item => {
-                    const centralStock = Number(item.central_stock || 0);
-                    const ikitelliStock = Number(item.ikitelli_stock || 0);
-                    const bostanciStock = Number(item.bostanci_stock || 0);
-                    const depotStock = Number(item.depot_stock || 0);
-
-                    const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
-                        if (inv === 0) return sum + centralStock;
-                        if (inv === 1) return sum + ikitelliStock;
-                        if (inv === 2) return sum + bostanciStock;
-                        if (inv === 3) return sum + depotStock;
-                        return sum;
-                    }, 0);
-
-                    const unitPrice = this.formatPrice(item.price || 0);
-                    const currencyCode = Number(item.currency_code || 160);
-
-                    return {
-                        code: item.item_code,
-                        name: item.item_name,
-                        oemCode: item.oem_code,
-                        manufacturer: item.manufacturer,
-                        centralStock,
-                        ikitelliStock,
-                        bostanciStock,
-                        depotStock,
-                        unitPrice,
-                        currencyCode,
-                        finalPrice: unitPrice,
-                        totalDiscountRate: 0,
-                        discounts: [],
-                        totalStock
-                    };
-                });
-
-                const enrichedProducts = this.enrichProductsWithDiscounts(products, discountCfg);
-                enrichedProducts.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
-
-                return res.json({
-                    success: true,
-                    query: '',
-                    total_results: Number(total || 0),
-                    results: enrichedProducts,
-                    response_time_ms: Date.now() - startTime
-                });
-            }
-
-            const meiliQuery = q;
-            let meiliResult;
-            let meiliHits = [];
-            try {
-                meiliResult = await meiliSearchService.search(meiliQuery, {
-                    limit: safeLimit,
-                    offset: safeOffset,
-                    matchingStrategy: 'all'
-                });
-                meiliHits = (meiliResult && Array.isArray(meiliResult.hits)) ? meiliResult.hits : [];
-
-                if (meiliHits.length === 0) {
-                    meiliResult = await meiliSearchService.search(meiliQuery, {
-                        limit: safeLimit,
-                        offset: safeOffset
-                    });
-                    meiliHits = (meiliResult && Array.isArray(meiliResult.hits)) ? meiliResult.hits : [];
-                }
-            } catch (meiliErr) {
-                const msg = meiliErr && meiliErr.message ? meiliErr.message : String(meiliErr);
-                console.error('❌ Meili smart search failed:', msg);
-
-                return res.status(503).json({
-                    success: false,
-                    error: 'MeiliSearch kullanılamıyor',
-                    details: msg,
-                    query: meiliQuery,
-                    response_time_ms: Date.now() - startTime
-                });
-            }
-
-            const logicalrefs = Array.from(
-                new Set(
-                    meiliHits
-                        .map(h => h && h.id)
-                        .filter(v => Number.isFinite(Number(v)))
-                        .map(v => Number(v))
-                )
-            );
-
-            if (logicalrefs.length === 0) {
-                return res.json({
-                    success: true,
-                    query: meiliQuery,
-                    total_results: 0,
-                    results: [],
-                    response_time_ms: Date.now() - startTime
-                });
-            }
-
-            const activeWarehouses = await this.getActiveWarehouses(customerCode);
-            const logoRows = await this.getLogoProductsByLogicalrefs(logicalrefs, safeLimit, {
-                manufacturerCodes: hasAnyFilter ? manufacturerFilter : [],
-                vehicleModels: hasAnyFilter ? vehicleModelFilter : []
-            });
-
-            const products = (logoRows || []).map(item => {
-                const centralStock = Number(item.central_stock || 0);
-                const ikitelliStock = Number(item.ikitelli_stock || 0);
-                const bostanciStock = Number(item.bostanci_stock || 0);
-                const depotStock = Number(item.depot_stock || 0);
-
-                const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
-                    if (inv === 0) return sum + centralStock;
-                    if (inv === 1) return sum + ikitelliStock;
-                    if (inv === 2) return sum + bostanciStock;
-                    if (inv === 3) return sum + depotStock;
-                    return sum;
-                }, 0);
-
-                const unitPrice = this.formatPrice(item.price || 0);
-                const currencyCode = Number(item.currency_code || 160);
-
-                return {
-                    code: item.item_code,
-                    name: item.item_name,
-                    oemCode: item.oem_code,
-                    manufacturer: item.manufacturer,
-                    centralStock,
-                    ikitelliStock,
-                    bostanciStock,
-                    depotStock,
-                    unitPrice,
-                    currencyCode,
-                    finalPrice: unitPrice,
-                    totalDiscountRate: 0,
-                    discounts: [],
-                    totalStock
-                };
-            });
-
-            const enrichedProducts = this.enrichProductsWithDiscounts(products, discountCfg);
-            enrichedProducts.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
-
-            const totalResults =
-                (typeof meiliResult?.estimatedTotalHits === 'number')
-                    ? meiliResult.estimatedTotalHits
-                    : (typeof meiliResult?.nbHits === 'number')
-                        ? meiliResult.nbHits
-                        : products.length;
-
-            res.json({
-                success: true,
-                query: meiliQuery,
-                total_results: totalResults,
-                results: enrichedProducts,
-                response_time_ms: Date.now() - startTime
-            });
-        } catch (error) {
-            const msg = (error && error.message) ? error.message : String(error);
-            console.error('❌ Meili enriched smart search error:', msg);
-            return res.status(500).json({
-                success: false,
-                error: msg,
-                query: String(query || '').trim(),
-                response_time_ms: Date.now() - startTime
-            });
-        }
     }
 
     async getCustomerStockVisibility(customerCode) {
@@ -945,25 +40,15 @@ class B2BSearchController {
                         ORDER BY setting_id DESC
                     `);
             } catch (e) {
-                try {
-                    defaultResult = await pool.request()
-                        .input('key', sql.VarChar(100), 'show_stock_to_customer')
-                        .query(`
-                            SELECT TOP 1 setting_value
-                            FROM B2B_TRADE_PRO.dbo.b2b_default_settings
-                            WHERE setting_key = @key
-                            ORDER BY setting_id DESC
-                        `);
-                } catch (e2) {
-                    defaultResult = await pool.request()
-                        .input('key', sql.VarChar(100), 'show_stock_to_customer')
-                        .query(`
-                            SELECT TOP 1 setting_value
-                            FROM B2B_TRADE_PRO.dbo.b2b_default_settings
-                            WHERE setting_key = @key
-                            ORDER BY id DESC
-                        `);
-                }
+                defaultResult = await pool.request()
+                    .input('key', sql.VarChar(100), 'show_stock_to_customer')
+                    .query(`
+                        SELECT TOP 1 setting_value
+                        FROM B2B_TRADE_PRO.dbo.b2b_default_settings
+                        WHERE setting_key = @key
+                          AND (is_active = 1 OR is_active IS NULL)
+                        ORDER BY id DESC
+                    `);
             }
 
             let defaultShow = true;
@@ -972,31 +57,17 @@ class B2BSearchController {
                 defaultShow = v === '1' || v === 'true' || v === 'yes' || v === 'evet';
             }
 
-            let overrideResult;
-            try {
-                overrideResult = await pool.request()
-                    .input('customerCode', sql.VarChar(50), customerCode)
-                    .query(`
-                        SELECT TOP 1 value
-                        FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
-                        WHERE customer_code = @customerCode
-                          AND setting_type = 'show_stock'
-                          AND item_code IS NULL
-                          AND is_active = 1
-                        ORDER BY id DESC
-                    `);
-            } catch (e) {
-                overrideResult = await pool.request()
-                    .input('customerCode', sql.VarChar(50), customerCode)
-                    .query(`
-                        SELECT TOP 1 value
-                        FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
-                        WHERE customer_code = @customerCode
-                          AND setting_type = 'show_stock'
-                          AND item_code IS NULL
-                        ORDER BY id DESC
-                    `);
-            }
+            const overrideResult = await pool.request()
+                .input('customerCode', sql.VarChar(50), customerCode)
+                .query(`
+                    SELECT TOP 1 value
+                    FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                    WHERE customer_code = @customerCode
+                      AND setting_type = 'show_stock'
+                      AND item_code IS NULL
+                      AND is_active = 1
+                    ORDER BY id DESC
+                `);
 
             if (overrideResult.recordset && overrideResult.recordset.length > 0) {
                 const v = String(overrideResult.recordset[0].value ?? '').trim().toLowerCase();
@@ -1026,25 +97,15 @@ class B2BSearchController {
                         ORDER BY setting_id DESC
                     `);
             } catch (e) {
-                try {
-                    defaultResult = await pool.request()
-                        .input('key', sql.VarChar(100), 'active_warehouses_invenno')
-                        .query(`
-                            SELECT TOP 1 setting_value
-                            FROM B2B_TRADE_PRO.dbo.b2b_default_settings
-                            WHERE setting_key = @key
-                            ORDER BY setting_id DESC
-                        `);
-                } catch (e2) {
-                    defaultResult = await pool.request()
-                        .input('key', sql.VarChar(100), 'active_warehouses_invenno')
-                        .query(`
-                            SELECT TOP 1 setting_value
-                            FROM B2B_TRADE_PRO.dbo.b2b_default_settings
-                            WHERE setting_key = @key
-                            ORDER BY id DESC
-                        `);
-                }
+                defaultResult = await pool.request()
+                    .input('key', sql.VarChar(100), 'active_warehouses_invenno')
+                    .query(`
+                        SELECT TOP 1 setting_value
+                        FROM B2B_TRADE_PRO.dbo.b2b_default_settings
+                        WHERE setting_key = @key
+                          AND (is_active = 1 OR is_active IS NULL)
+                        ORDER BY id DESC
+                    `);
             }
 
             let active = [1, 2];
@@ -1057,31 +118,17 @@ class B2BSearchController {
                 if (parsed.length > 0) active = parsed;
             }
 
-            let overrideResult;
-            try {
-                overrideResult = await pool.request()
-                    .input('customerCode', sql.VarChar(50), customerCode)
-                    .query(`
-                        SELECT TOP 1 value
-                        FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
-                        WHERE customer_code = @customerCode
-                          AND setting_type = 'active_warehouses'
-                          AND item_code IS NULL
-                          AND is_active = 1
-                        ORDER BY id DESC
-                    `);
-            } catch (e) {
-                overrideResult = await pool.request()
-                    .input('customerCode', sql.VarChar(50), customerCode)
-                    .query(`
-                        SELECT TOP 1 value
-                        FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
-                        WHERE customer_code = @customerCode
-                          AND setting_type = 'active_warehouses'
-                          AND item_code IS NULL
-                        ORDER BY id DESC
-                    `);
-            }
+            const overrideResult = await pool.request()
+                .input('customerCode', sql.VarChar(50), customerCode)
+                .query(`
+                    SELECT TOP 1 value
+                    FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides
+                    WHERE customer_code = @customerCode
+                      AND setting_type = 'active_warehouses'
+                      AND item_code IS NULL
+                      AND is_active = 1
+                    ORDER BY id DESC
+                `);
 
             if (overrideResult.recordset && overrideResult.recordset.length > 0) {
                 const raw = String(overrideResult.recordset[0].value ?? '').trim();
@@ -1103,19 +150,7 @@ class B2BSearchController {
     // 7.1 AKILLI ARAMA API'Sİ (LOGO LOGOGO3 tabanlı basit ürün araması)
     async smartSearch(req, res) {
         const startTime = Date.now();
-	    const {
-	        query,
-	        customerCode = 'S1981',
-	        manufacturerCodes = [],
-	        vehicleModels = []
-	    } = req.body || {};
-
-	    const manufacturerFilter = Array.from(Array.isArray(manufacturerCodes) ? manufacturerCodes : [])
-	        .map(v => String(v || '').trim())
-	        .filter(Boolean);
-	    const vehicleModelFilter = Array.from(Array.isArray(vehicleModels) ? vehicleModels : [])
-	        .map(v => String(v || '').trim())
-	        .filter(Boolean);
+        const { query, customerCode = 'S1981' } = req.body || {};
 
         try {
             if (!query || query.trim().length < 2) {
@@ -1127,30 +162,7 @@ class B2BSearchController {
 
             console.log(`🎯 Smart search: ${query} for ${customerCode}`);
 
-            // Kod/OEM benzeri sorgularda Meilisearch'i birincil kaynak olarak kullan
-            let meiliUsed = false;
-            let meiliHits = [];
-            try {
-                const nq = (meiliSearchService && typeof meiliSearchService.normalizeQuery === 'function')
-                    ? meiliSearchService.normalizeQuery(query)
-                    : { isCodeLike: false };
-
-                if (nq && nq.isCodeLike) {
-                    const qForMeili = (nq && nq.compact) ? nq.compact : query;
-                    const meiliResult = await meiliSearchService.search(qForMeili, { limit: 50, offset: 0 });
-                    meiliHits = (meiliResult && Array.isArray(meiliResult.hits)) ? meiliResult.hits : [];
-                    if (meiliHits.length > 0) {
-                        meiliUsed = true;
-                        console.log(`✅ Meili code/OEM match: ${meiliHits.length} hit`);
-                    }
-                }
-            } catch (e) {
-                console.error('❌ Meili integration error (smart-search):', e.message);
-            }
-
-            const helperResult = meiliUsed
-                ? { success: true, type: 'MEILI_MATCH' }
-                : await smartSearchHelper.smartSearch(query, customerCode, 50);
+            const helperResult = await smartSearchHelper.smartSearch(query, customerCode, 50);
 
             const activeWarehouses = await this.getActiveWarehouses(customerCode);
 
@@ -1158,62 +170,7 @@ class B2BSearchController {
             let matchType = (helperResult && helperResult.type) ? helperResult.type : 'UNKNOWN';
             let groupId = null;
 
-	            if (meiliUsed) {
-                const logicalrefs = Array.from(
-                    new Set(
-                        (meiliHits || [])
-                            .map(h => h.id)
-                            .filter(v => Number.isFinite(Number(v)))
-                            .map(v => Number(v))
-                    )
-                );
-
-	                const logoRows = await this.getLogoProductsByLogicalrefs(logicalrefs, 50, {
-	                    manufacturerCodes: manufacturerFilter,
-	                    vehicleModels: vehicleModelFilter
-	                });
-	                products = logoRows.map(item => {
-                    const centralStock = Number(item.central_stock || 0);
-                    const ikitelliStock = Number(item.ikitelli_stock || 0);
-                    const bostanciStock = Number(item.bostanci_stock || 0);
-                    const depotStock = Number(item.depot_stock || 0);
-                    const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
-                        if (inv === 0) return sum + centralStock;
-                        if (inv === 1) return sum + ikitelliStock;
-                        if (inv === 2) return sum + bostanciStock;
-                        if (inv === 3) return sum + depotStock;
-                        return sum;
-                    }, 0);
-
-                    const currencyCode = Number(item.currency_code || 160);
-                    const currency = currencyCode === 1 ? 'USD'
-                        : currencyCode === 20 ? 'EUR'
-                        : currencyCode === 17 ? 'GBP'
-                        : currencyCode === 160 ? 'TL'
-                        : 'TL';
-
-                    return {
-                    kod: item.item_code,
-                    ad: item.item_name,
-                    oem_kodu: item.oem_code,
-                    uretici: item.manufacturer,
-                    fiyat: this.formatPrice(item.price || 0),
-                    stok: totalStock > 0 ? 'Var' : 'Stokta Yok',
-                    centralStock,
-                    ikitelliStock,
-                    bostanciStock,
-                    depotStock,
-                    totalStock,
-                    birim: 'Adet',
-                    currencyCode,
-                    para_birimi: currency
-                    };
-                });
-
-                products.sort((a, b) => Number(b.totalStock || 0) - Number(a.totalStock || 0));
-            }
-
-	            if (helperResult && (helperResult.type === 'GROUP_MATCH' || helperResult.type === 'OEM_MATCH') && Array.isArray(helperResult.groups) && helperResult.groups.length > 0) {
+            if (helperResult && (helperResult.type === 'GROUP_MATCH' || helperResult.type === 'OEM_MATCH') && Array.isArray(helperResult.groups) && helperResult.groups.length > 0) {
                 const bestGroup = helperResult.groups[0];
                 groupId = bestGroup.group_id || null;
 
@@ -1226,10 +183,7 @@ class B2BSearchController {
                     )
                 );
 
-                const logoRows = await this.getLogoProductsByLogicalrefs(logicalrefs, 50, {
-                    manufacturerCodes: manufacturerFilter,
-                    vehicleModels: vehicleModelFilter
-                });
+                const logoRows = await this.getLogoProductsByLogicalrefs(logicalrefs);
                 products = logoRows.map(item => {
                     const centralStock = Number(item.central_stock || 0);
                     const ikitelliStock = Number(item.ikitelli_stock || 0);
@@ -1268,12 +222,8 @@ class B2BSearchController {
                     };
                 });
             } else {
-                if (!meiliUsed) {
-                    const fallback = await this.getLogoProductsBySearchQuery(query, 50, {
-                        manufacturerCodes: manufacturerFilter,
-                        vehicleModels: vehicleModelFilter
-                    });
-                    products = fallback.map(item => {
+                const fallback = await this.getLogoProductsBySearchQuery(query);
+                products = fallback.map(item => {
                     const centralStock = Number(item.central_stock || 0);
                     const ikitelliStock = Number(item.ikitelli_stock || 0);
                     const bostanciStock = Number(item.bostanci_stock || 0);
@@ -1309,9 +259,8 @@ class B2BSearchController {
                     currencyCode,
                     para_birimi: currency
                     };
-                    });
-                    matchType = 'FALLBACK_SEARCH';
-                }
+                });
+                matchType = 'FALLBACK_SEARCH';
             }
 
             const durationMs = Date.now() - startTime;
@@ -1361,39 +310,13 @@ class B2BSearchController {
         }
     }
 
-    async getLogoProductsByLogicalrefs(logicalrefs, limit = 50, filters = {}) {
+    async getLogoProductsByLogicalrefs(logicalrefs, limit = 50) {
         if (!Array.isArray(logicalrefs) || logicalrefs.length === 0) return [];
 
-	    const manufacturerCodes = Array.from(Array.isArray(filters.manufacturerCodes) ? filters.manufacturerCodes : [])
-	        .map(v => String(v || '').trim())
-	        .filter(Boolean);
-	    const vehicleModels = Array.from(Array.isArray(filters.vehicleModels) ? filters.vehicleModels : [])
-	        .map(v => String(v || '').trim())
-	        .filter(Boolean);
-
-        const pool = await getLogoPool();
+        const pool = await sql.connect(logoConfig);
         const request = pool.request();
         request.input('refs', sql.NVarChar(sql.MAX), logicalrefs.join(','));
         request.input('limit', sql.Int, limit);
-
-	    const manufacturerPlaceholders = manufacturerCodes.map((v, i) => {
-	        const key = `m${i}`;
-	        request.input(key, sql.NVarChar(50), v);
-	        return `@${key}`;
-	    });
-
-	    const vehiclePlaceholders = vehicleModels.map((v, i) => {
-	        const key = `vm${i}`;
-	        request.input(key, sql.NVarChar(100), v);
-	        return `@${key}`;
-	    });
-
-	    const manufacturerWhere = manufacturerPlaceholders.length > 0
-	        ? ` AND I.STGRPCODE IN (${manufacturerPlaceholders.join(', ')})`
-	        : '';
-	    const vehicleWhere = vehiclePlaceholders.length > 0
-	        ? ` AND I.SPECODE IN (${vehiclePlaceholders.join(', ')})`
-	        : '';
 
         const query = `
             SELECT TOP (@limit)
@@ -1408,7 +331,7 @@ class B2BSearchController {
                 ISNULL(SUM(CASE WHEN S.INVENNO = 3 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS depot_stock,
                 (
                     SELECT TOP 1 P.PRICE
-                    FROM dbo.LG_013_PRCLIST P
+                    FROM LG_013_PRCLIST P
                     WHERE P.CARDREF = I.LOGICALREF
                       AND P.ACTIVE = 0
                       AND P.PRIORITY = 0
@@ -1416,22 +339,20 @@ class B2BSearchController {
                 ) AS price
                 ,(
                     SELECT TOP 1 P.CURRENCY
-                    FROM dbo.LG_013_PRCLIST P
+                    FROM LG_013_PRCLIST P
                     WHERE P.CARDREF = I.LOGICALREF
                       AND P.ACTIVE = 0
                       AND P.PRIORITY = 0
                     ORDER BY P.BEGDATE DESC
                 ) AS currency_code
-            FROM dbo.LG_013_ITEMS I
-            LEFT JOIN dbo.LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
+            FROM LG_013_ITEMS I
+            LEFT JOIN LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
             WHERE I.ACTIVE = 0
               AND I.CARDTYPE = 1
               AND I.LOGICALREF IN (
                   SELECT TRY_CAST(value AS INT)
                   FROM STRING_SPLIT(@refs, ',')
               )
-              ${manufacturerWhere}
-              ${vehicleWhere}
             GROUP BY 
                 I.LOGICALREF,
                 I.CODE,
@@ -1445,37 +366,11 @@ class B2BSearchController {
         return result.recordset || [];
     }
 
-    async getLogoProductsBySearchQuery(query, limit = 50, filters = {}) {
-        const pool = await getLogoPool();
+    async getLogoProductsBySearchQuery(query, limit = 50) {
+        const pool = await sql.connect(logoConfig);
         const request = pool.request();
         request.input('searchQuery', sql.NVarChar(100), `%${query}%`);
         request.input('limit', sql.Int, limit);
-
-	    const manufacturerCodes = Array.from(Array.isArray(filters.manufacturerCodes) ? filters.manufacturerCodes : [])
-	        .map(v => String(v || '').trim())
-	        .filter(Boolean);
-	    const vehicleModels = Array.from(Array.isArray(filters.vehicleModels) ? filters.vehicleModels : [])
-	        .map(v => String(v || '').trim())
-	        .filter(Boolean);
-
-	    const manufacturerPlaceholders = manufacturerCodes.map((v, i) => {
-	        const key = `m${i}`;
-	        request.input(key, sql.NVarChar(50), v);
-	        return `@${key}`;
-	    });
-
-	    const vehiclePlaceholders = vehicleModels.map((v, i) => {
-	        const key = `vm${i}`;
-	        request.input(key, sql.NVarChar(100), v);
-	        return `@${key}`;
-	    });
-
-	    const manufacturerWhere = manufacturerPlaceholders.length > 0
-	        ? ` AND I.STGRPCODE IN (${manufacturerPlaceholders.join(', ')})`
-	        : '';
-	    const vehicleWhere = vehiclePlaceholders.length > 0
-	        ? ` AND I.SPECODE IN (${vehiclePlaceholders.join(', ')})`
-	        : '';
 
         const sqlQuery = `
             SELECT TOP (@limit)
@@ -1490,7 +385,7 @@ class B2BSearchController {
                 ISNULL(SUM(CASE WHEN S.INVENNO = 3 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS depot_stock,
                 (
                     SELECT TOP 1 P.PRICE
-                    FROM dbo.LG_013_PRCLIST P
+                    FROM LG_013_PRCLIST P
                     WHERE P.CARDREF = I.LOGICALREF
                       AND P.ACTIVE = 0
                       AND P.PRIORITY = 0
@@ -1498,14 +393,14 @@ class B2BSearchController {
                 ) AS price
                 ,(
                     SELECT TOP 1 P.CURRENCY
-                    FROM dbo.LG_013_PRCLIST P
+                    FROM LG_013_PRCLIST P
                     WHERE P.CARDREF = I.LOGICALREF
                       AND P.ACTIVE = 0
                       AND P.PRIORITY = 0
                     ORDER BY P.BEGDATE DESC
                 ) AS currency_code
-            FROM dbo.LG_013_ITEMS I
-            LEFT JOIN dbo.LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
+            FROM LG_013_ITEMS I
+            LEFT JOIN LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
             WHERE I.ACTIVE = 0
               AND I.CARDTYPE = 1
               AND (
@@ -1516,8 +411,6 @@ class B2BSearchController {
                  OR I.PRODUCERCODE LIKE @searchQuery
                  OR I.STGRPCODE LIKE @searchQuery
               )
-              ${manufacturerWhere}
-              ${vehicleWhere}
             GROUP BY 
                 I.LOGICALREF,
                 I.CODE,
@@ -1529,104 +422,6 @@ class B2BSearchController {
 
         const result = await request.query(sqlQuery);
         return result.recordset || [];
-    }
-
-    async getLogoProductsByFiltersPaginated({ limit = 50, offset = 0, manufacturerCodes = [], vehicleModels = [] } = {}) {
-        const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
-        const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
-
-        const manufacturerFilter = Array.from(Array.isArray(manufacturerCodes) ? manufacturerCodes : [])
-            .map(v => String(v || '').trim())
-            .filter(Boolean);
-        const vehicleModelFilter = Array.from(Array.isArray(vehicleModels) ? vehicleModels : [])
-            .map(v => String(v || '').trim())
-            .filter(Boolean);
-
-        const pool = await getLogoPool();
-        const request = pool.request();
-        request.input('limit', sql.Int, safeLimit);
-        request.input('offset', sql.Int, safeOffset);
-
-        const manufacturerPlaceholders = manufacturerFilter.map((v, i) => {
-            const key = `mfp${i}`;
-            request.input(key, sql.NVarChar(50), v);
-            return `@${key}`;
-        });
-
-        const vehiclePlaceholders = vehicleModelFilter.map((v, i) => {
-            const key = `vmfp${i}`;
-            request.input(key, sql.NVarChar(100), v);
-            return `@${key}`;
-        });
-
-        const manufacturerWhere = manufacturerPlaceholders.length > 0
-            ? ` AND LTRIM(RTRIM(I.STGRPCODE)) IN (${manufacturerPlaceholders.join(', ')})`
-            : '';
-        const vehicleWhere = vehiclePlaceholders.length > 0
-            ? ` AND LTRIM(RTRIM(I.SPECODE)) IN (${vehiclePlaceholders.join(', ')})`
-            : '';
-
-        const countQuery = `
-            SELECT COUNT(DISTINCT I.LOGICALREF) AS total
-            FROM dbo.LG_013_ITEMS I
-            WHERE I.ACTIVE = 0
-              AND I.CARDTYPE = 1
-              ${manufacturerWhere}
-              ${vehicleWhere}
-        `;
-
-        const listQuery = `
-            SELECT
-                I.LOGICALREF,
-                I.CODE AS item_code,
-                I.NAME AS item_name,
-                I.PRODUCERCODE AS oem_code,
-                I.STGRPCODE AS manufacturer,
-                ISNULL(SUM(CASE WHEN S.INVENNO IN (0,1,2,3) THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS stock_qty,
-                ISNULL(SUM(CASE WHEN S.INVENNO = 0 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS central_stock,
-                ISNULL(SUM(CASE WHEN S.INVENNO = 1 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS ikitelli_stock,
-                ISNULL(SUM(CASE WHEN S.INVENNO = 2 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS bostanci_stock,
-                ISNULL(SUM(CASE WHEN S.INVENNO = 3 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS depot_stock,
-                (
-                    SELECT TOP 1 P.PRICE
-                    FROM dbo.LG_013_PRCLIST P
-                    WHERE P.CARDREF = I.LOGICALREF
-                      AND P.ACTIVE = 0
-                      AND P.PRIORITY = 0
-                    ORDER BY P.BEGDATE DESC
-                ) AS price,
-                (
-                    SELECT TOP 1 P.CURRENCY
-                    FROM dbo.LG_013_PRCLIST P
-                    WHERE P.CARDREF = I.LOGICALREF
-                      AND P.ACTIVE = 0
-                      AND P.PRIORITY = 0
-                    ORDER BY P.BEGDATE DESC
-                ) AS currency_code
-            FROM dbo.LG_013_ITEMS I
-            LEFT JOIN dbo.LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
-            WHERE I.ACTIVE = 0
-              AND I.CARDTYPE = 1
-              ${manufacturerWhere}
-              ${vehicleWhere}
-            GROUP BY
-                I.LOGICALREF,
-                I.CODE,
-                I.NAME,
-                I.PRODUCERCODE,
-                I.STGRPCODE
-            ORDER BY I.CODE, I.LOGICALREF
-            OFFSET @offset ROWS
-            FETCH NEXT @limit ROWS ONLY
-        `;
-
-        const countResult = await request.query(countQuery);
-        const total = (countResult.recordset && countResult.recordset[0]) ? Number(countResult.recordset[0].total || 0) : 0;
-
-        const listResult = await request.query(listQuery);
-        const rows = listResult.recordset || [];
-
-        return { rows, total };
     }
     
     // 7.2 QUERY NORMALİZASYONU
@@ -1736,7 +531,7 @@ class B2BSearchController {
                 PRODUCERCODE,
                 STGRPCODE,
                 dbo.NormalizeForSearch(PRODUCERCODE) as normalized_oem
-            FROM dbo.LG_013_ITEMS
+            FROM LG_013_ITEMS
             WHERE PRODUCERCODE IS NOT NULL
             AND LEN(PRODUCERCODE) > 0
             AND dbo.NormalizeForSearch(PRODUCERCODE) = @query
@@ -1822,7 +617,7 @@ class B2BSearchController {
                         ISNULL(ONHAND, 0) as total_stock,
                         ISNULL(REQUESTS, 0) as requests,
                         ISNULL(ONORDER, 0) as on_order
-                    FROM dbo.LG_013_ITEMS
+                    FROM LG_013_ITEMS
                     WHERE LOGICALREF = @logicalref
                 `;
                 
@@ -1898,7 +693,7 @@ class B2BSearchController {
                 PRODUCERCODE,
                 STGRPCODE,
                 ONHAND as stock
-            FROM dbo.LG_013_ITEMS
+            FROM LG_013_ITEMS
             WHERE CODE LIKE @query
                 OR NAME LIKE @query
                 OR NAME2 LIKE @query

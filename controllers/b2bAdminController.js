@@ -1,5 +1,8 @@
 // /home/yunlu/b2b-app/controllers/b2bAdminController.js - BASE64 DESTEKLİ GÜNCELLENMİŞ VERSİYON
 const sql = require('mssql');
+const fs = require('fs');
+const path = require('path');
+const sharp = require('sharp');
 const { b2bConfig, logoConfig } = require('../config/database');
 
 let __logoPool = null;
@@ -706,6 +709,243 @@ class B2BAdminController {
         }
     }
 
+    async upsertSettingInternal({ setting_key, setting_value, setting_type, description, is_active, userCode }) {
+        const pool = await this.getB2BConnection();
+        const idCol = await this.getDefaultSettingsIdColumn(pool);
+        const cols = await this.getDefaultSettingsColumns(pool);
+
+        const hasSettingType = cols.has('setting_type');
+        const hasDescription = cols.has('description');
+        const hasIsActive = cols.has('is_active');
+        const hasUpdatedBy = cols.has('updated_by');
+        const hasCreatedBy = cols.has('created_by');
+        const hasUpdatedAt = cols.has('updated_at');
+        const hasCreatedAt = cols.has('created_at');
+
+        const updateParts = ['setting_value = @value'];
+        const insertCols = ['setting_key', 'setting_value'];
+        const insertVals = ['@key', '@value'];
+
+        if (hasSettingType) {
+            updateParts.push('setting_type = @type');
+            insertCols.push('setting_type');
+            insertVals.push('@type');
+        }
+        if (hasDescription) {
+            updateParts.push('description = @description');
+            insertCols.push('description');
+            insertVals.push('@description');
+        }
+        if (hasIsActive) {
+            updateParts.push('is_active = @isActive');
+            insertCols.push('is_active');
+            insertVals.push('@isActive');
+        }
+        if (hasUpdatedAt) updateParts.push('updated_at = GETDATE()');
+        if (hasUpdatedBy) {
+            updateParts.push('updated_by = @updatedBy');
+            insertCols.push('updated_by');
+            insertVals.push('@updatedBy');
+        }
+        if (hasCreatedAt) {
+            insertCols.push('created_at');
+            insertVals.push('GETDATE()');
+        }
+        if (hasUpdatedAt) {
+            insertCols.push('updated_at');
+            insertVals.push('GETDATE()');
+        }
+        if (hasCreatedBy) {
+            insertCols.push('created_by');
+            insertVals.push('@updatedBy');
+        }
+
+        const q = `
+            IF EXISTS (
+                SELECT TOP 1 ${idCol} FROM B2B_TRADE_PRO.dbo.b2b_default_settings
+                WHERE setting_key = @key
+            )
+            BEGIN
+                UPDATE B2B_TRADE_PRO.dbo.b2b_default_settings
+                SET ${updateParts.join(',\n                    ')}
+                WHERE setting_key = @key
+            END
+            ELSE
+            BEGIN
+                INSERT INTO B2B_TRADE_PRO.dbo.b2b_default_settings
+                    (${insertCols.join(', ')})
+                VALUES
+                    (${insertVals.join(', ')})
+            END
+        `;
+
+        const reqq = pool.request()
+            .input('key', sql.VarChar(100), String(setting_key))
+            .input('value', sql.VarChar(500), String(setting_value))
+            .input('updatedBy', sql.VarChar(50), String(userCode || 'system'));
+
+        if (hasSettingType) reqq.input('type', sql.VarChar(50), String(setting_type || 'text'));
+        if (hasDescription) reqq.input('description', sql.NVarChar(500), String(description || ''));
+        if (hasIsActive) reqq.input('isActive', sql.Int, is_active === undefined ? 1 : (!!is_active ? 1 : 0));
+
+        await reqq.query(q);
+        this.clearB2BCache();
+        return { success: true };
+    }
+
+    async uploadCustomerFavicon(req, res) {
+        try {
+            if (!this.checkAdminAuth(req)) {
+                return res.status(403).json({ success: false, error: 'Bu işlem için admin yetkisi gereklidir' });
+            }
+
+            if (!req.file || !req.file.buffer) {
+                return res.status(400).json({ success: false, error: 'favicon dosyası gereklidir' });
+            }
+
+            const userData = this.decodeUserData(req) || (req.session ? req.session.user : null);
+            const userCode = userData?.user_code || userData?.kullanici || userData?.username || 'admin';
+
+            const rawTarget = String((req.body && req.body.target) ? req.body.target : (req.query && req.query.target) ? req.query.target : 'customer').toLowerCase().trim();
+            const target = (rawTarget === 'admin' || rawTarget === 'sales' || rawTarget === 'customer') ? rawTarget : 'customer';
+            const settingKey = target === 'admin'
+                ? 'admin_favicon_url'
+                : (target === 'sales' ? 'sales_favicon_url' : 'customer_favicon_url');
+
+            const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'favicon');
+            await fs.promises.mkdir(uploadDir, { recursive: true });
+
+            const fileName = `favicon-${target}-${Date.now()}.png`;
+            const absPath = path.join(uploadDir, fileName);
+
+            const mime = String(req.file.mimetype || '').toLowerCase();
+            const isPng = mime === 'image/png' || mime.endsWith('+png');
+
+            if (isPng) {
+                await fs.promises.writeFile(absPath, req.file.buffer);
+            } else {
+                await sharp(req.file.buffer)
+                    .resize(32, 32, { fit: 'cover' })
+                    .png({ compressionLevel: 9, adaptiveFiltering: true })
+                    .toFile(absPath);
+            }
+
+            try {
+                const files = await fs.promises.readdir(uploadDir);
+                const favs = files
+                    .filter(f => new RegExp(`^favicon-${target}-\\d+\\.png$`, 'i').test(f))
+                    .map(f => ({
+                        name: f,
+                        ts: Number(String(f).replace(new RegExp(`^favicon-${target}-(\\d+)\\.png$`, 'i'), '$1'))
+                    }))
+                    .filter(x => Number.isFinite(x.ts))
+                    .sort((a, b) => b.ts - a.ts);
+
+                const keep = 5;
+                const toDelete = favs.slice(keep);
+                await Promise.allSettled(toDelete.map(x => fs.promises.unlink(path.join(uploadDir, x.name))));
+            } catch (e) {
+                // ignore cleanup errors
+            }
+
+            const publicUrl = `/uploads/favicon/${fileName}`;
+
+            await this.upsertSettingInternal({
+                setting_key: settingKey,
+                setting_value: publicUrl,
+                setting_type: 'text',
+                description: target === 'admin'
+                    ? 'Admin panel favicon url'
+                    : (target === 'sales' ? 'Plasiyer panel favicon url' : 'Müşteri panel favicon url'),
+                is_active: 1,
+                userCode
+            });
+
+            res.json({
+                success: true,
+                message: 'Favicon yüklendi',
+                data: {
+                    url: publicUrl,
+                    target,
+                    setting_key: settingKey
+                },
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('❌ Favicon upload hatası:', error);
+            res.status(500).json({
+                success: false,
+                error: error?.message || 'Sunucu hatası',
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
+    async deleteFavicon(req, res) {
+        try {
+            if (!this.checkAdminAuth(req)) {
+                return res.status(403).json({ success: false, error: 'Bu işlem için admin yetkisi gereklidir' });
+            }
+
+            const rawTarget = String((req.body && req.body.target) ? req.body.target : (req.query && req.query.target) ? req.query.target : '').toLowerCase().trim();
+            const target = (rawTarget === 'admin' || rawTarget === 'sales' || rawTarget === 'customer') ? rawTarget : '';
+            if (!target) {
+                return res.status(400).json({ success: false, error: 'target gereklidir (customer/admin/sales)' });
+            }
+
+            const settingKey = target === 'admin'
+                ? 'admin_favicon_url'
+                : (target === 'sales' ? 'sales_favicon_url' : 'customer_favicon_url');
+
+            const pool = await this.getB2BConnection();
+            const existingRes = await pool.request()
+                .input('key', sql.VarChar(100), settingKey)
+                .query('SELECT TOP 1 setting_value FROM B2B_TRADE_PRO.dbo.b2b_default_settings WHERE setting_key = @key');
+            const currentUrl = existingRes.recordset && existingRes.recordset[0] ? String(existingRes.recordset[0].setting_value || '') : '';
+
+            if (currentUrl && currentUrl.startsWith('/uploads/favicon/')) {
+                const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'favicon');
+                const safeName = currentUrl.replace('/uploads/favicon/', '').replace(/[^a-zA-Z0-9_.-]/g, '');
+                if (safeName) {
+                    const absPath = path.join(uploadDir, safeName);
+                    try {
+                        await fs.promises.unlink(absPath);
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+            }
+
+            const userData = this.decodeUserData(req) || (req.session ? req.session.user : null);
+            const userCode = userData?.user_code || userData?.kullanici || userData?.username || 'admin';
+
+            await this.upsertSettingInternal({
+                setting_key: settingKey,
+                setting_value: '',
+                setting_type: 'text',
+                description: target === 'admin'
+                    ? 'Admin panel favicon url'
+                    : (target === 'sales' ? 'Plasiyer panel favicon url' : 'Müşteri panel favicon url'),
+                is_active: 0,
+                userCode
+            });
+
+            res.json({
+                success: true,
+                message: 'Favicon silindi',
+                data: { target, setting_key: settingKey },
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            console.error('❌ Favicon delete hatası:', error);
+            res.status(500).json({
+                success: false,
+                error: error?.message || 'Sunucu hatası',
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
     // ====================================================
     // 🚀 4. PUBLIC SETTINGS (MÜŞTERİ/PLASİYER)
     // ====================================================
@@ -777,7 +1017,13 @@ class B2BAdminController {
                   AND setting_key IN (
                     'customer_theme_preset',
                     'sales_theme_preset',
-                    'admin_theme_preset'
+                    'admin_theme_preset',
+                    'customer_favicon_url',
+                    'admin_favicon_url',
+                    'sales_favicon_url',
+                    'customer_page_title',
+                    'admin_page_title',
+                    'sales_page_title'
                   )
             `;
             const result = await pool.request().query(query);
@@ -2267,6 +2513,8 @@ module.exports = {
     updateSettings: (req, res) => b2bAdminController.updateSettings(req, res),
     upsertSettingByKey: (req, res) => b2bAdminController.upsertSettingByKey(req, res),
     getPublicSettings: (req, res) => b2bAdminController.getPublicSettings(req, res),
+    uploadCustomerFavicon: (req, res) => b2bAdminController.uploadCustomerFavicon(req, res),
+    deleteFavicon: (req, res) => b2bAdminController.deleteFavicon(req, res),
     setCustomerThemePreset: (req, res) => b2bAdminController.setCustomerThemePreset(req, res),
     getOrderDistributionSettings: (req, res) => b2bAdminController.getOrderDistributionSettings(req, res),
     updateOrderDistributionSettings: (req, res) => b2bAdminController.updateOrderDistributionSettings(req, res),

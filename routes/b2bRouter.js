@@ -4,6 +4,7 @@ const router = express.Router();
 const b2bController = require('../controllers/b2bController');
 const b2bAdminController = require('../controllers/b2bAdminController');
 const b2bSearchRouter = require('./b2bSearchRouter');
+const multer = require('multer');
 
 const rateLimit = require('express-rate-limit');
 const limiter = rateLimit({
@@ -15,6 +16,22 @@ const limiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+});
+
+const faviconUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 2 * 1024 * 1024 // 2MB
+    },
+    fileFilter: (req, file, cb) => {
+        try {
+            const mime = String(file?.mimetype || '').toLowerCase();
+            if (mime.startsWith('image/')) return cb(null, true);
+            return cb(new Error('Sadece görsel dosyaları kabul edilir'));
+        } catch (e) {
+            return cb(new Error('Dosya doğrulama hatası'));
+        }
+    }
 });
 
 const adminAuthMiddleware = (req, res, next) => {
@@ -274,6 +291,17 @@ router.put('/admin/settings',
 router.post('/admin/settings/upsert',
     cacheControl(0),
     b2bAdminController.upsertSettingByKey
+);
+
+router.post('/admin/favicon/upload',
+    cacheControl(0),
+    faviconUpload.single('favicon'),
+    b2bAdminController.uploadCustomerFavicon
+);
+
+router.post('/admin/favicon/delete',
+    cacheControl(0),
+    b2bAdminController.deleteFavicon
 );
 
 router.get('/public/settings',

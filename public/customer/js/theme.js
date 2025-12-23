@@ -17,6 +17,7 @@
     edirne_ali: { name: "Edirne'nın Alı", primary: '#c1121f', primaryDark: '#7f0f14', secondary: '#f4c430' },
     iznik_gokcesi: { name: "İznik'ın Gökçesi", primary: '#1b6ca8', primaryDark: '#124a73', secondary: '#f59e0b' },
     konya_yesili: { name: "Konya'nın Yeşili", primary: '#2e7d32', primaryDark: '#1b5e20', secondary: '#f4c430' },
+    rize_ayder_yesili: { name: "Rize'nin Ayder Yeşili", primary: '#1f8f3a', primaryDark: '#0f5f28', secondary: '#a3e635' },
     kayseri_bakiri: { name: "Kayseri'nın Bakırı", primary: '#b87333', primaryDark: '#7a3e12', secondary: '#0891b2' },
     kapadokya_sarisi: { name: "Kapadokya'nın Sarısı", primary: '#f4c430', primaryDark: '#b45309', secondary: '#2563eb' },
     antalya_deniz_mavisi: { name: "Antalya'nın Deniz Mavisi", primary: '#006994', primaryDark: '#004d70', secondary: '#f97316' },
@@ -80,6 +81,62 @@
     return id;
   }
 
+  function setFaviconUrl(url) {
+    try {
+      const href = String(url || '').trim();
+      if (!href) {
+        const links = Array.from(document.querySelectorAll('link[rel~="icon"]'));
+        for (const l of links) {
+          try { l.parentNode && l.parentNode.removeChild(l); } catch (e) {}
+        }
+        return true;
+      }
+
+      let link = document.querySelector('link[rel~="icon"]');
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = href;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function applyEffectiveFavicon() {
+    try {
+      const res = await fetch('/api/b2b/public/settings', {
+        method: 'GET',
+        headers: getCustomerAuthHeaders()
+      });
+      const json = await res.json();
+      if (!res.ok || !json || !json.success) return null;
+      const url = (json.data && json.data.customer_favicon_url) ? String(json.data.customer_favicon_url) : '';
+      const ok = setFaviconUrl(url);
+      return ok ? url : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function applyEffectiveTitle() {
+    try {
+      const res = await fetch('/api/b2b/public/settings', {
+        method: 'GET',
+        headers: getCustomerAuthHeaders()
+      });
+      const json = await res.json();
+      if (!res.ok || !json || !json.success) return null;
+      const title = (json.data && json.data.customer_page_title) ? String(json.data.customer_page_title).trim() : '';
+      if (title) document.title = title;
+      return title || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function applyEffectiveTheme() {
     try {
       const presetId = await fetchEffectivePresetId();
@@ -101,13 +158,21 @@
     getPresetList,
     applyPreset,
     applyEffectiveTheme,
+    applyEffectiveFavicon,
+    applyEffectiveTitle,
     fetchEffectivePresetId,
     _appliedPresetId: null
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => applyEffectiveTheme());
+    document.addEventListener('DOMContentLoaded', () => {
+      applyEffectiveTheme();
+      applyEffectiveFavicon();
+      applyEffectiveTitle();
+    });
   } else {
     applyEffectiveTheme();
+    applyEffectiveFavicon();
+    applyEffectiveTitle();
   }
 })();

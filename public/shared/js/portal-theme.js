@@ -15,6 +15,7 @@
     edirne_ali: { name: "Edirne'nın Alı", primary: '#c1121f', primaryDark: '#7f0f14', secondary: '#f4c430' },
     iznik_gokcesi: { name: "İznik'ın Gökçesi", primary: '#1b6ca8', primaryDark: '#124a73', secondary: '#f59e0b' },
     konya_yesili: { name: "Konya'nın Yeşili", primary: '#2e7d32', primaryDark: '#1b5e20', secondary: '#f4c430' },
+    rize_ayder_yesili: { name: "Rize'nin Ayder Yeşili", primary: '#1f8f3a', primaryDark: '#0f5f28', secondary: '#a3e635' },
     kayseri_bakiri: { name: "Kayseri'nın Bakırı", primary: '#b87333', primaryDark: '#7a3e12', secondary: '#0891b2' },
     kapadokya_sarisi: { name: "Kapadokya'nın Sarısı", primary: '#f4c430', primaryDark: '#b45309', secondary: '#2563eb' },
     antalya_deniz_mavisi: { name: "Antalya'nın Deniz Mavisi", primary: '#006994', primaryDark: '#004d70', secondary: '#f97316' },

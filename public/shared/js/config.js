@@ -2,7 +2,7 @@
 const B2BConfig = {
     // SYSTEM GENEL AYARLARI
     system: {
-        companyName: "B2B TRADE PRO",
+        companyName: "B2B PRO",
         version: "1.0.0",
         maintenance: false,
         environment: "production",

@@ -3,7 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plasiyer Paneli | B2B Trade Pro</title>
+    <title>Plasiyer Paneli | B2B PRO</title>
+    <script>
+        (function(){
+            function setFavicon(url){
+                try{
+                    const href=String(url||'').trim();
+                    if(!href){
+                        const links=Array.from(document.querySelectorAll('link[rel~="icon"]'));
+                        for(const l of links){
+                            try{l.parentNode&&l.parentNode.removeChild(l)}catch(e){}
+                        }
+                        return;
+                    }
+                    let link=document.querySelector('link[rel~="icon"]');
+                    if(!link){
+                        link=document.createElement('link');
+                        link.rel='icon';
+                        document.head.appendChild(link);
+                    }
+                    link.href=href;
+                }catch(e){}
+            }
+
+            async function apply(){
+                try{
+                    const res=await fetch('/api/b2b/public/settings', { method:'GET' });
+                    const json=await res.json();
+                    if(!res.ok||!json||!json.success) return;
+                    setFavicon(json.data && json.data.sales_favicon_url);
+                    const title = json.data && json.data.sales_page_title ? String(json.data.sales_page_title).trim() : '';
+                    if(title) document.title = title;
+                }catch(e){}
+            }
+
+            if(document.readyState==='loading'){
+                document.addEventListener('DOMContentLoaded', apply);
+            }else{
+                apply();
+            }
+        })();
+    </script>
     <style>
         :root {
             --primary: #2563eb;

@@ -3,13 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>B2B Trade Pro • Admin Panel</title>
+    <title>B2B PRO • Admin Panel</title>
     
     <!-- Font & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        (function(){
+            function setFavicon(url){
+                try{
+                    const href=String(url||'').trim();
+                    if(!href){
+                        const links=Array.from(document.querySelectorAll('link[rel~="icon"]'));
+                        for(const l of links){
+                            try{l.parentNode&&l.parentNode.removeChild(l)}catch(e){}
+                        }
+                        return;
+                    }
+                    let link=document.querySelector('link[rel~="icon"]');
+                    if(!link){
+                        link=document.createElement('link');
+                        link.rel='icon';
+                        document.head.appendChild(link);
+                    }
+                    link.href=href;
+                }catch(e){}
+            }
+
+            async function apply(){
+                try{
+                    const res=await fetch('/api/b2b/public/settings', { method:'GET' });
+                    const json=await res.json();
+                    if(!res.ok||!json||!json.success) return;
+                    setFavicon(json.data && json.data.admin_favicon_url);
+                    const title = json.data && json.data.admin_page_title ? String(json.data.admin_page_title).trim() : '';
+                    if(title) document.title = title;
+                }catch(e){}
+            }
+
+            if(document.readyState==='loading'){
+                document.addEventListener('DOMContentLoaded', apply);
+            }else{
+                apply();
+            }
+        })();
+    </script>
     
     <style>
         /* ===== VARIABLES ===== */
@@ -557,8 +598,8 @@
                         <i class="fas fa-cube"></i>
                     </div>
                     <div>
-                        <div class="logo-text">B2B Trade Pro</div>
-                        <div class="logo-subtitle">Admin Panel v3.0</div>
+                        <div class="logo-text">B2B PRO</div>
+                        <div class="logo-subtitle">Admin</div>
                     </div>
                 </div>
             </div>

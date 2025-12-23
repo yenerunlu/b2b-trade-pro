@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Genel Ayarlar • B2B Admin</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">@@
   <style>
     :root{--bg:#f8fafc;--card:#fff;--line:#e2e8f0;--text:#0f172a;--muted:#64748b;--p:#2563eb;--p2:#1e40af;--r:14px;--sh:0 6px 18px rgba(15,23,42,.08)}
     *{box-sizing:border-box}body{margin:0;padding:24px;font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;background:var(--bg);color:var(--text)}
@@ -24,6 +24,23 @@
     .card h3{margin:0 0 10px;font-size:13.5px}
     .chips{display:flex;gap:8px;flex-wrap:wrap}.chip{border:1px solid var(--line);padding:8px 10px;border-radius:999px;background:#fff;cursor:pointer;font-weight:750;font-size:12.5px}
     .chip.active{border-color:#93c5fd;background:#eff6ff}
+    .theme-list{display:flex;flex-direction:column;gap:8px}
+    .theme-option{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:750;font-size:13px;transition:transform .12s ease, border-color .12s ease, background .12s ease, box-shadow .12s ease}
+    .theme-option:hover{transform:translateY(-1px);border-color:#93c5fd}
+    .theme-option .meta{display:flex;align-items:center;gap:10px}
+    .theme-option .sw{width:14px;height:14px;border-radius:6px;background:var(--sw);box-shadow:0 0 0 3px rgba(15,23,42,.05)}
+    .theme-option .icn{width:22px;flex:0 0 22px;text-align:center;color:#cbd5e1;font-size:14px}
+    .theme-option.active{border-color:#16a34a;background:rgba(22,163,74,.08);box-shadow:0 8px 18px rgba(22,163,74,.16)}
+    .theme-option.active .icn{color:#16a34a}
+    .form-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .input{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;min-width:320px;outline:none}
+    .input:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(147,197,253,.35)}
+    .pvFav{display:flex;align-items:center;gap:10px;margin-top:10px;color:var(--muted);font-size:12.5px}
+    .pvFav img{width:22px;height:22px;border-radius:6px;border:1px solid var(--line);background:#fff}
+    .drop{border:2px dashed #cbd5e1;border-radius:14px;padding:16px;background:#f8fafc;cursor:pointer;transition:border-color .12s ease, background .12s ease}
+    .drop.drag{border-color:#2563eb;background:#eff6ff}
+    .drop strong{display:block;font-size:13px}
+    .drop small{display:block;color:var(--muted);margin-top:4px}
     .note{margin-top:10px;color:var(--muted);font-size:12.5px;line-height:1.45}
     .preview{border:1px solid var(--line);border-radius:14px;overflow:hidden}
     .pvTop{padding:10px 12px;background:linear-gradient(135deg,var(--pvP),var(--pvP2));color:#fff;display:flex;justify-content:space-between;align-items:center}
@@ -51,6 +68,7 @@
     <div class="layout">
       <div class="side" id="nav">
         <div class="item active" data-tab="theme"><div class="ic"><i class="fa-solid fa-palette"></i></div><div><strong>Tema</strong><small>Müşteri teması</small></div></div>
+        <div class="item" data-tab="favicon"><div class="ic"><i class="fa-solid fa-icons"></i></div><div><strong>Favicon</strong><small>Müşteri favicon</small></div></div>
         <div class="item" data-tab="catalog"><div class="ic"><i class="fa-solid fa-box"></i></div><div><strong>Katalog</strong><small>Stok / görsel</small></div></div>
         <div class="item" data-tab="orders"><div class="ic"><i class="fa-solid fa-receipt"></i></div><div><strong>Sipariş</strong><small>Onay akışı</small></div></div>
         <div class="item" data-tab="pricing"><div class="ic"><i class="fa-solid fa-tags"></i></div><div><strong>Fiyat</strong><small>KDV / para birimi</small></div></div>
@@ -79,11 +97,76 @@
     function encodeUserDataToBase64(userData){try{return btoa(unescape(encodeURIComponent(JSON.stringify(userData))))}catch(e){return ''}}
     function setAuthHeaders(h={}){try{const b=localStorage.getItem('b2b_user_data_base64');if(b)return {...h,'Content-Type':'application/json','x-user-data-base64':b,'x-user-type':'admin'};const s=localStorage.getItem('b2b_user_data');if(s){const u=JSON.parse(s);return {...h,'Content-Type':'application/json','x-user-data-base64':encodeUserDataToBase64(u),'x-user-type':'admin'}}return {...h,'Content-Type':'application/json'}}catch(e){return {...h,'Content-Type':'application/json'}}}
 
+    function confirmFaviconDelete(){
+      return new Promise((resolve)=>{
+        try{
+          const existing=document.getElementById('favDeleteConfirm');
+          if(existing) existing.remove();
+
+          const overlay=document.createElement('div');
+          overlay.id='favDeleteConfirm';
+          overlay.style.position='fixed';
+          overlay.style.inset='0';
+          overlay.style.background='rgba(15,23,42,.45)';
+          overlay.style.display='flex';
+          overlay.style.alignItems='center';
+          overlay.style.justifyContent='center';
+          overlay.style.zIndex='9999';
+
+          const box=document.createElement('div');
+          box.style.background='var(--card)';
+          box.style.border='1px solid var(--line)';
+          box.style.borderRadius='14px';
+          box.style.boxShadow='0 18px 60px rgba(15,23,42,.28)';
+          box.style.padding='14px';
+          box.style.width='min(420px, calc(100vw - 32px))';
+
+          const title=document.createElement('div');
+          title.style.fontWeight='850';
+          title.style.fontSize='13.5px';
+          title.style.marginBottom='10px';
+          title.textContent='Favicon silinsin mi?';
+
+          const row=document.createElement('div');
+          row.style.display='flex';
+          row.style.justifyContent='flex-end';
+          row.style.gap='10px';
+
+          const cancelBtn=document.createElement('button');
+          cancelBtn.className='btn';
+          cancelBtn.type='button';
+          cancelBtn.textContent='İptal';
+
+          const okBtn=document.createElement('button');
+          okBtn.className='btn danger';
+          okBtn.type='button';
+          okBtn.textContent='Sil';
+
+          const cleanup=(val)=>{
+            try{overlay.remove()}catch(e){}
+            resolve(val);
+          };
+
+          cancelBtn.addEventListener('click', ()=>cleanup(false));
+          okBtn.addEventListener('click', ()=>cleanup(true));
+          overlay.addEventListener('click', (e)=>{ if(e.target===overlay) cleanup(false); });
+
+          row.appendChild(cancelBtn);
+          row.appendChild(okBtn);
+          box.appendChild(title);
+          box.appendChild(row);
+          overlay.appendChild(box);
+          document.body.appendChild(overlay);
+        }catch(e){resolve(false)}
+      });
+    }
+
     const PRESETS=[
       {id:'bursa_gok_mavisi',name:"Bursa'nın Gök Mavisi",pv:{p:'#007fff',p2:'#005bb5',b1:'#eff6ff',b2:'#dbeafe'}},
       {id:'edirne_ali',name:"Edirne'nın Alı",pv:{p:'#c1121f',p2:'#7f0f14',b1:'#fff1f2',b2:'#ffe4e6'}},
       {id:'iznik_gokcesi',name:"İznik'ın Gökçesi",pv:{p:'#1b6ca8',p2:'#124a73',b1:'#ecfeff',b2:'#cffafe'}},
       {id:'konya_yesili',name:"Konya'nın Yeşili",pv:{p:'#2e7d32',p2:'#1b5e20',b1:'#f0fdf4',b2:'#dcfce7'}},
+      {id:'rize_ayder_yesili',name:"Rize'nin Ayder Yeşili",pv:{p:'#1f8f3a',p2:'#0f5f28',b1:'#f0fdf4',b2:'#dcfce7'}},
       {id:'kayseri_bakiri',name:"Kayseri'nın Bakırı",pv:{p:'#b87333',p2:'#7a3e12',b1:'#fff7ed',b2:'#ffedd5'}},
       {id:'kapadokya_sarisi',name:"Kapadokya'nın Sarısı",pv:{p:'#f4c430',p2:'#b45309',b1:'#fffbeb',b2:'#fef3c7'}},
       {id:'antalya_deniz_mavisi',name:"Antalya'nın Deniz Mavisi",pv:{p:'#006994',p2:'#004d70',b1:'#ecfeff',b2:'#cffafe'}},
@@ -98,7 +181,7 @@
     ];
 
     const DEFAULT_THEME_ID='bursa_gok_mavisi';
-    const state={tab:'theme',savedThemes:{customer:null,sales:null,admin:null},selectedTheme:null,targets:{customer:true,sales:false,admin:false}};
+    const state={tab:'theme',savedThemes:{customer:null,sales:null,admin:null},selectedTheme:null,targets:{customer:true,sales:false,admin:false},faviconUrls:{customer:'',admin:'',sales:''}};
 
     function getSavedThemeFor(target){return state.savedThemes&&state.savedThemes[target]!=null?String(state.savedThemes[target]):null}
     function hasAnyTargetSelected(){return !!(state.targets.customer||state.targets.sales||state.targets.admin)}
@@ -118,6 +201,84 @@
     function setStatus(msg){document.getElementById('st').textContent=msg}
 
     function render(){
+      if(state.tab==='favicon'){
+        document.getElementById('h').textContent='Müşteri Favicon';
+        document.getElementById('p').textContent='Müşteri / Admin / Plasiyer faviconlarını ayrı ayrı yükle (otomatik 32x32 yapılır).';
+        const vCustomer=(state.faviconUrls&&state.faviconUrls.customer!=null)?String(state.faviconUrls.customer):'';
+        const vAdmin=(state.faviconUrls&&state.faviconUrls.admin!=null)?String(state.faviconUrls.admin):'';
+        const vSales=(state.faviconUrls&&state.faviconUrls.sales!=null)?String(state.faviconUrls.sales):'';
+        const tCustomer=(state.pageTitles&&state.pageTitles.customer!=null)?String(state.pageTitles.customer):'';
+        const tAdmin=(state.pageTitles&&state.pageTitles.admin!=null)?String(state.pageTitles.admin):'';
+        const tSales=(state.pageTitles&&state.pageTitles.sales!=null)?String(state.pageTitles.sales):'';
+        document.getElementById('panel').innerHTML=`
+          <div class="grid">
+            <div class="card">
+              <h3>Müşteri Favicon</h3>
+              <div class="drop" id="favDrop_customer" data-target="customer">
+                <strong>Dosyayı buraya bırak</strong>
+                <small>veya tıklayıp seç (PNG/JPG/ICO). Max 2MB.</small>
+                <input type="file" id="favFile_customer" accept="image/*,.ico" style="display:none">
+              </div>
+              <div class="form-row" style="margin-top:10px">
+                <button class="btn" id="pickFavBtn_customer"><i class="fa-solid fa-folder-open"></i> Dosya Seç</button>
+                <button class="btn primary" id="uploadFavBtn_customer" disabled><i class="fa-solid fa-cloud-arrow-up"></i> Yükle</button>
+                <button class="btn danger" id="deleteFavBtn_customer"><i class="fa-solid fa-trash"></i> Sil</button>
+                <span style="color:var(--muted);font-size:12.5px" id="favFileName_customer"></span>
+              </div>
+              <div class="pvFav"><img id="faviconPreview_customer" src="${vCustomer.replace(/"/g,'&quot;')}" onerror="this.src='';"><span id="faviconPreviewText_customer">Önizleme</span></div>
+              <div class="form-row" style="margin-top:10px">
+                <input class="input" id="titleInput_customer" placeholder="Sekme başlığı" value="${tCustomer.replace(/"/g,'&quot;')}">
+                <button class="btn primary" id="saveTitleBtn_customer"><i class="fa-solid fa-floppy-disk"></i> Başlığı Kaydet</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>Admin Favicon</h3>
+              <div class="drop" id="favDrop_admin" data-target="admin">
+                <strong>Dosyayı buraya bırak</strong>
+                <small>veya tıklayıp seç (PNG/JPG/ICO). Max 2MB.</small>
+                <input type="file" id="favFile_admin" accept="image/*,.ico" style="display:none">
+              </div>
+              <div class="form-row" style="margin-top:10px">
+                <button class="btn" id="pickFavBtn_admin"><i class="fa-solid fa-folder-open"></i> Dosya Seç</button>
+                <button class="btn primary" id="uploadFavBtn_admin" disabled><i class="fa-solid fa-cloud-arrow-up"></i> Yükle</button>
+                <button class="btn danger" id="deleteFavBtn_admin"><i class="fa-solid fa-trash"></i> Sil</button>
+                <span style="color:var(--muted);font-size:12.5px" id="favFileName_admin"></span>
+              </div>
+              <div class="pvFav"><img id="faviconPreview_admin" src="${vAdmin.replace(/"/g,'&quot;')}" onerror="this.src='';"><span id="faviconPreviewText_admin">Önizleme</span></div>
+              <div class="form-row" style="margin-top:10px">
+                <input class="input" id="titleInput_admin" placeholder="Sekme başlığı" value="${tAdmin.replace(/"/g,'&quot;')}">
+                <button class="btn primary" id="saveTitleBtn_admin"><i class="fa-solid fa-floppy-disk"></i> Başlığı Kaydet</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>Plasiyer Favicon</h3>
+              <div class="drop" id="favDrop_sales" data-target="sales">
+                <strong>Dosyayı buraya bırak</strong>
+                <small>veya tıklayıp seç (PNG/JPG/ICO). Max 2MB.</small>
+                <input type="file" id="favFile_sales" accept="image/*,.ico" style="display:none">
+              </div>
+              <div class="form-row" style="margin-top:10px">
+                <button class="btn" id="pickFavBtn_sales"><i class="fa-solid fa-folder-open"></i> Dosya Seç</button>
+                <button class="btn primary" id="uploadFavBtn_sales" disabled><i class="fa-solid fa-cloud-arrow-up"></i> Yükle</button>
+                <button class="btn danger" id="deleteFavBtn_sales"><i class="fa-solid fa-trash"></i> Sil</button>
+                <span style="color:var(--muted);font-size:12.5px" id="favFileName_sales"></span>
+              </div>
+              <div class="pvFav"><img id="faviconPreview_sales" src="${vSales.replace(/"/g,'&quot;')}" onerror="this.src='';"><span id="faviconPreviewText_sales">Önizleme</span></div>
+              <div class="form-row" style="margin-top:10px">
+                <input class="input" id="titleInput_sales" placeholder="Sekme başlığı" value="${tSales.replace(/"/g,'&quot;')}">
+                <button class="btn primary" id="saveTitleBtn_sales"><i class="fa-solid fa-floppy-disk"></i> Başlığı Kaydet</button>
+              </div>
+            </div>
+          </div>
+          <div class="note">Yüklenen dosya sunucuda 32x32 PNG favicon'a dönüştürülür ve ilgili panelde otomatik aktif olur.</div>
+        `;
+        document.getElementById('applyBtn').disabled=true;
+        setTimeout(()=>wireFaviconPanel(),0);
+        return;
+      }
+
       if(state.tab!=='theme'){
         document.getElementById('h').textContent='Genel Ayarlar';
         document.getElementById('p').textContent='Bu sekme şablon olarak hazır. İstersen birlikte içeriğini zenginleştirelim.';
@@ -132,7 +293,7 @@
       const fallback=DEFAULT_THEME_ID;
       const active=state.selectedTheme||getSavedThemeFor('customer')||getSavedThemeFor('sales')||getSavedThemeFor('admin')||fallback;
       const pr=PRESETS.find(x=>x.id===active)||PRESETS[0];
-      const chips=PRESETS.map(x=>`<button class="chip ${x.id===active?'active':''}" onclick="selectTheme('${x.id}')" onmouseenter="previewTheme('${x.id}')">${x.name}</button>`).join('');
+      const list=PRESETS.map(x=>`<button class="theme-option ${x.id===active?'active':''}" onclick="selectTheme('${x.id}')" onmouseenter="previewTheme('${x.id}')" style="--sw:${x.pv.p}"><span class="meta"><span class="icn">${x.id===active?'✅':'◻'}</span><span class="sw"></span><span>${x.name}</span></span><span style="color:var(--muted);font-weight:650;font-size:12px">${x.id===active?'Seçili':''}</span></button>`).join('');
       const pv=pr.pv;
 
       const targetRow=`
@@ -157,7 +318,7 @@
         <div class="grid">
           <div class="card">
             <h3>Tema Seçimi</h3>
-            <div class="chips">${chips}</div>
+            <div class="theme-list">${list}</div>
             ${targetRow}
             <div class="note">Seçim yaptığında önizleme güncellenir. Beğenirsen "Temayı Uygula" ile canlıya alabilirsin.</div>
           </div>
@@ -235,11 +396,132 @@
             sales:d.sales_theme_preset?String(d.sales_theme_preset):null,
             admin:d.admin_theme_preset?String(d.admin_theme_preset):null
           };
+          state.faviconUrls={
+            customer: (d.customer_favicon_url!=null) ? String(d.customer_favicon_url) : '',
+            admin: (d.admin_favicon_url!=null) ? String(d.admin_favicon_url) : '',
+            sales: (d.sales_favicon_url!=null) ? String(d.sales_favicon_url) : ''
+          };
+          state.pageTitles={
+            customer: (d.customer_page_title!=null) ? String(d.customer_page_title) : '',
+            admin: (d.admin_page_title!=null) ? String(d.admin_page_title) : '',
+            sales: (d.sales_page_title!=null) ? String(d.sales_page_title) : ''
+          };
           state.selectedTheme=null;
         }
         setStatus('Hazır');
         render();
       }catch(e){setStatus('Hata');render()}
+    }
+
+    function wireFaviconPanel(){
+      function initTarget(target){
+        const img=document.getElementById(`faviconPreview_${target}`);
+        const t=document.getElementById(`faviconPreviewText_${target}`);
+        const drop=document.getElementById(`favDrop_${target}`);
+        const fileInput=document.getElementById(`favFile_${target}`);
+        const pickBtn=document.getElementById(`pickFavBtn_${target}`);
+        const uploadBtn=document.getElementById(`uploadFavBtn_${target}`);
+        const deleteBtn=document.getElementById(`deleteFavBtn_${target}`);
+        const fileName=document.getElementById(`favFileName_${target}`);
+        if(!drop||!fileInput||!pickBtn||!uploadBtn||!deleteBtn||!img||!t||!fileName) return;
+
+        let selectedFile=null;
+        const setSelected=(f)=>{
+          selectedFile=f||null;
+          fileName.textContent=selectedFile?`${selectedFile.name} (${Math.round(selectedFile.size/1024)} KB)`:'Dosya seçilmedi';
+          uploadBtn.disabled=!selectedFile;
+        };
+        const showCurrent=()=>{
+          const v=(state.faviconUrls&&state.faviconUrls[target]!=null)?String(state.faviconUrls[target]).trim():'';
+          if(!v){img.src='';t.textContent='Önizleme';return;}
+          img.src=v;
+          t.textContent=v;
+        };
+
+        drop.addEventListener('click',()=>fileInput.click());
+        pickBtn.addEventListener('click',()=>fileInput.click());
+        fileInput.addEventListener('change',()=>{
+          const f=fileInput.files&&fileInput.files[0]?fileInput.files[0]:null;
+          setSelected(f);
+        });
+
+        drop.addEventListener('dragenter',(e)=>{e.preventDefault();drop.classList.add('drag');});
+        drop.addEventListener('dragover',(e)=>{e.preventDefault();drop.classList.add('drag');});
+        drop.addEventListener('dragleave',()=>{drop.classList.remove('drag');});
+        drop.addEventListener('drop',(e)=>{
+          e.preventDefault();
+          drop.classList.remove('drag');
+          const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]?e.dataTransfer.files[0]:null;
+          setSelected(f);
+        });
+
+        uploadBtn.addEventListener('click',async()=>{
+          if(!selectedFile) return;
+          setStatus('Yükleniyor...');
+          try{
+            const fd=new FormData();
+            fd.append('favicon', selectedFile);
+            fd.append('target', target);
+            const res=await fetch('/api/b2b/admin/favicon/upload',{method:'POST',headers:(()=>{const h=setAuthHeaders({});delete h['Content-Type'];return h;})(),body:fd});
+            const json=await res.json();
+            if(!res.ok||!json||!json.success) throw new Error((json&&json.error)?json.error:'Upload başarısız');
+            const url=(json.data&&json.data.url)?String(json.data.url):'';
+            if(!state.faviconUrls) state.faviconUrls={customer:'',admin:'',sales:''};
+            state.faviconUrls[target]=url;
+            toast('Favicon yüklendi');
+            setSelected(null);
+            showCurrent();
+          }catch(e){toast('Yüklenemedi: '+e.message)}
+          setStatus('Hazır');
+        });
+
+        deleteBtn.addEventListener('click', async()=>{
+          const ok = await confirmFaviconDelete();
+          if(!ok) return;
+          setStatus('Siliniyor...');
+          try{
+            const res=await fetch('/api/b2b/admin/favicon/delete',{method:'POST',headers:setAuthHeaders(),body:JSON.stringify({target})});
+            const json=await res.json();
+            if(!res.ok||!json||!json.success) throw new Error((json&&json.error)?json.error:'Silinemedi');
+            if(!state.faviconUrls) state.faviconUrls={customer:'',admin:'',sales:''};
+            state.faviconUrls[target]='';
+            toast('Favicon silindi');
+            setSelected(null);
+            showCurrent();
+          }catch(e){toast('Silinemedi: '+e.message)}
+          setStatus('Hazır');
+        });
+
+        setSelected(null);
+        showCurrent();
+      }
+
+      initTarget('customer');
+      initTarget('admin');
+      initTarget('sales');
+
+      function initTitle(target){
+        const input=document.getElementById(`titleInput_${target}`);
+        const btn=document.getElementById(`saveTitleBtn_${target}`);
+        if(!input||!btn) return;
+        btn.addEventListener('click', async()=>{
+          const v=String(input.value||'').trim();
+          const key = target==='admin' ? 'admin_page_title' : (target==='sales' ? 'sales_page_title' : 'customer_page_title');
+          setStatus('Kaydediliyor...');
+          try{
+            const res=await fetch('/api/b2b/admin/settings/upsert',{method:'POST',headers:setAuthHeaders(),body:JSON.stringify({setting_key:key,setting_value:v,setting_type:'text',description:'Panel sekme başlığı',is_active:1})});
+            const json=await res.json();
+            if(!res.ok||!json||!json.success) throw new Error((json&&json.error)?json.error:'Kaydedilemedi');
+            if(!state.pageTitles) state.pageTitles={customer:'',admin:'',sales:''};
+            state.pageTitles[target]=v;
+            toast('Başlık kaydedildi');
+          }catch(e){toast('Kaydedilemedi: '+e.message)}
+          setStatus('Hazır');
+        });
+      }
+      initTitle('customer');
+      initTitle('admin');
+      initTitle('sales');
     }
 
     async function applyTheme(){

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>B2B Trade Pro | Hesap Ayarları</title>
+  <title>B2B PRO | Hesap Ayarları</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -141,6 +141,54 @@
     .panel-title i { color: var(--primary-dark); }
 
     .tabs { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .theme-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+
+    .theme-btn {
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      background: transparent;
+      color: #475569;
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      line-height: 1.2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      transition: var(--transition);
+    }
+
+    .theme-btn .left { display: inline-flex; align-items: center; gap: 10px; }
+
+    .theme-btn .ic { width: 18px; display: inline-flex; align-items: center; justify-content: center; }
+
+    .theme-btn .ic::before {
+      content: '◻';
+      font-size: 18px;
+      color: #CCCCCC;
+      text-shadow: 0px 1px 1px rgba(0,0,0,0.1);
+      line-height: 1;
+    }
+
+    .theme-btn.active {
+      border-color: rgba(22, 163, 74, 0.55);
+      background: rgba(22, 163, 74, 0.08);
+      color: #166534;
+      box-shadow: 0 8px 24px rgba(22, 163, 74, 0.18);
+    }
+
+    .theme-btn.active .ic::before {
+      content: '✅';
+      font-size: 18px;
+      color: #16a34a;
+      text-shadow: 0px 2px 6px rgba(22, 163, 74, 0.28);
+      line-height: 1;
+    }
+
+    .theme-btn .label { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif; font-weight: 500; }
 
     .tab {
       flex: 1;
@@ -395,7 +443,7 @@
 
                 <div class="field" style="margin-top:12px;">
                   <div class="label">Tema Seçimi</div>
-                  <div class="tabs" id="themeChips" style="gap:8px;"></div>
+                  <div class="theme-list" id="themeChips"></div>
                 </div>
 
                 <div class="actions">
@@ -506,9 +554,10 @@
 
     const THEME_PRESETS = [
       { id: 'bursa_gok_mavisi', name: "Bursa'nın Gök Mavisi" },
+      { id: 'konya_yesili', name: "Konya'nın Yeşili" },
+      { id: 'rize_ayder_yesili', name: "Rize'nin Ayder Yeşili" },
       { id: 'edirne_ali', name: "Edirne'nın Alı" },
       { id: 'iznik_gokcesi', name: "İznik'ın Gökçesi" },
-      { id: 'konya_yesili', name: "Konya'nın Yeşili" },
       { id: 'kayseri_bakiri', name: "Kayseri'nın Bakırı" },
       { id: 'kapadokya_sarisi', name: "Kapadokya'nın Sarısı" },
       { id: 'antalya_deniz_mavisi', name: "Antalya'nın Deniz Mavisi" },
@@ -530,10 +579,12 @@
       wrap.innerHTML = THEME_PRESETS.map(p => {
         const isActive = String(p.id) === String(activeId);
         return `
-          <div class="tab ${isActive ? 'active' : ''}" data-theme-id="${p.id}" style="min-width:170px;">
-            <div><div class="t">${p.name}</div><div class="d">Tema</div></div>
-            <i class="fas fa-check" style="opacity:${isActive ? '1' : '0.2'}"></i>
-          </div>
+          <button type="button" class="theme-btn ${isActive ? 'active' : ''}" data-theme-id="${p.id}">
+            <span class="left">
+              <span class="ic" aria-hidden="true"></span>
+              <span class="label">${p.name}</span>
+            </span>
+          </button>
         `;
       }).join('');
 
