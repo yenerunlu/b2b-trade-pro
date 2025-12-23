@@ -713,6 +713,78 @@ class B2BSearchController {
     }
 
 
+     async resolveLogoStockTotalsTableName(pool) {
+         const req = pool.request();
+
+         // Prefer the view name used elsewhere in the codebase, but fall back to whatever exists.
+         const candidates = [
+             'LV_013_01_STINVTOT',
+             'LG_013_01_STINVTOT',
+             'LV_013_STINVTOT',
+             'LG_013_STINVTOT'
+         ];
+
+         for (const name of candidates) {
+             try {
+                 const existsRes = await req.query(`SELECT OBJECT_ID('${name}', 'U') as objU, OBJECT_ID('${name}', 'V') as objV`);
+                 const row = (existsRes.recordset || [])[0] || {};
+                 if (row.objU || row.objV) return name;
+             } catch (e) {
+                 // ignore and continue
+             }
+         }
+
+         // Last resort: find any table/view that ends with STINVTOT
+         const likeRes = await req.query(`
+             SELECT TOP 1 TABLE_NAME
+             FROM INFORMATION_SCHEMA.TABLES
+             WHERE TABLE_NAME LIKE '%STINVTOT'
+             ORDER BY CASE WHEN TABLE_NAME LIKE 'LV_%' THEN 1 ELSE 2 END, TABLE_NAME
+         `);
+
+         const found = String(likeRes.recordset?.[0]?.TABLE_NAME || '').trim();
+         if (found) return found;
+
+         throw new Error('STINVTOT table/view not found in Logo DB');
+     }
+
+     async getLogoStockMapByLogicalrefs(logicalrefs) {
+         const refs = Array.from(new Set((logicalrefs || []).map(r => Number(r)).filter(n => Number.isFinite(n))));
+         if (refs.length === 0) return new Map();
+
+         const pool = await sql.connect(logoConfig);
+         const request = pool.request();
+         request.input('refs', sql.NVarChar(sql.MAX), refs.join(','));
+
+         const stinvTotName = await this.resolveLogoStockTotalsTableName(pool);
+
+         const q = `
+             SELECT
+                 S.STOCKREF as stockref,
+                 S.INVENNO as invenno,
+                 ISNULL(SUM(S.ONHAND - S.RESERVED), 0) as avail
+             FROM ${stinvTotName} S
+             WHERE S.STOCKREF IN (
+                 SELECT TRY_CAST(value AS INT)
+                 FROM STRING_SPLIT(@refs, ',')
+             )
+               AND S.INVENNO IN (0,1,2,3)
+             GROUP BY S.STOCKREF, S.INVENNO
+         `;
+
+         const result = await request.query(q);
+         const map = new Map();
+         for (const row of (result.recordset || [])) {
+             const ref = Number(row.stockref);
+             const inv = Number(row.invenno);
+             const avail = Number(row.avail) || 0;
+             if (!map.has(ref)) map.set(ref, new Map());
+             map.get(ref).set(inv, avail);
+         }
+         return map;
+     }
+
+
      async meiliSearchEnriched(req, res) {
          const startTime = Date.now();
          try {
@@ -738,22 +810,52 @@ class B2BSearchController {
 
              const hits = Array.isArray(result?.hits) ? result.hits : [];
 
+             let activeWarehouses = [0, 1, 2, 3];
+             let stockMap = new Map();
+             let stockError = null;
+
+             try {
+                 activeWarehouses = await this.getActiveWarehouses(customerCode);
+                 const logicalrefs = hits
+                     .map(h => Number(h?.id))
+                     .filter(n => Number.isFinite(n));
+                 stockMap = await this.getLogoStockMapByLogicalrefs(logicalrefs);
+             } catch (e) {
+                 stockError = e?.message || String(e);
+                 console.error('❌ Stock enrichment failed (continuing without stock):', stockError);
+             }
+
              const mapped = hits.map((h) => {
                  const itemCode = String(h?.itemCode || h?.code || '').trim();
                  const name = String(h?.name || h?.name2 || h?.name3 || '').trim();
                  const oem = String(h?.oemCode || '').trim();
                  const manufacturer = String(h?.manufacturer || '').trim();
-                 const totalStock = Number(h?.totalStock || 0) || 0;
+                 const ref = Number(h?.id);
+                 const invMap = Number.isFinite(ref) ? (stockMap.get(ref) || new Map()) : new Map();
+                 const centralStock = Number(invMap.get(0)) || 0;
+                 const ikitelliStock = Number(invMap.get(1)) || 0;
+                 const bostanciStock = Number(invMap.get(2)) || 0;
+                 const depotStock = Number(invMap.get(3)) || 0;
+
+                 const totalStock = (activeWarehouses || []).reduce((sum, inv) => {
+                     if (inv === 0) return sum + centralStock;
+                     if (inv === 1) return sum + ikitelliStock;
+                     if (inv === 2) return sum + bostanciStock;
+                     if (inv === 3) return sum + depotStock;
+                     return sum;
+                 }, 0);
+
                  return {
+                     logoLogicalref: Number.isFinite(ref) ? ref : null,
                      productCode: itemCode,
                      productName: name,
                      oemCode: oem,
                      manufacturer,
                      totalStock,
-                     centralStock: 0,
-                     ikitelliStock: 0,
-                     bostanciStock: 0,
-                     depotStock: 0,
+                     centralStock,
+                     ikitelliStock,
+                     bostanciStock,
+                     depotStock,
                      discounts: [],
                      totalDiscountRate: 0,
                      unitPrice: 0,
@@ -769,6 +871,8 @@ class B2BSearchController {
                  success: true,
                  query,
                  customer_code: customerCode,
+                 active_warehouses: activeWarehouses,
+                 stock_error: stockError,
                  total_results: mapped.length,
                  results: mapped,
                  response_time_ms: durationMs,
