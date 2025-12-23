@@ -7,6 +7,7 @@
 const sql = require('mssql');
 const { b2bConfig, logoConfig } = require('../config/database');
 const smartSearchHelper = require('./smart-search');
+const meiliSearchService = require('../services/meiliSearchService');
 
 class B2BSearchController {
     // Basit fiyat formatlama: null/undefined durumunda 0 döndürür, sayıyı 2 haneye yuvarlar
@@ -710,6 +711,87 @@ class B2BSearchController {
             total: result.recordset.length
         };
     }
+
+
+     async meiliSearchEnriched(req, res) {
+         const startTime = Date.now();
+         try {
+             const body = req.body || {};
+             const query = String(body.query || body.q || '').trim();
+             const limit = Number(body.limit);
+             const offset = Number(body.offset);
+
+             const customerCode = String(
+                 body.customerCode ||
+                 (req.user && (req.user.cari_kodu || req.user.customerCode)) ||
+                 ''
+             ).trim();
+
+             if (!query || query.length < 2) {
+                 return res.status(400).json({ success: false, error: 'En az 2 karakter girin' });
+             }
+
+             const result = await meiliSearchService.search(query, {
+                 limit: Number.isFinite(limit) ? limit : 50,
+                 offset: Number.isFinite(offset) ? offset : 0
+             });
+
+             const hits = Array.isArray(result?.hits) ? result.hits : [];
+
+             const mapped = hits.map((h) => {
+                 const itemCode = String(h?.itemCode || h?.code || '').trim();
+                 const name = String(h?.name || h?.name2 || h?.name3 || '').trim();
+                 const oem = String(h?.oemCode || '').trim();
+                 const manufacturer = String(h?.manufacturer || '').trim();
+                 const totalStock = Number(h?.totalStock || 0) || 0;
+                 return {
+                     productCode: itemCode,
+                     productName: name,
+                     oemCode: oem,
+                     manufacturer,
+                     totalStock,
+                     centralStock: 0,
+                     ikitelliStock: 0,
+                     bostanciStock: 0,
+                     depotStock: 0,
+                     discounts: [],
+                     totalDiscountRate: 0,
+                     unitPrice: 0,
+                     finalPrice: 0,
+                     currencyCode: 160,
+                     customerCode
+                 };
+             });
+
+             const durationMs = Date.now() - startTime;
+
+             return res.json({
+                 success: true,
+                 query,
+                 customer_code: customerCode,
+                 total_results: mapped.length,
+                 results: mapped,
+                 response_time_ms: durationMs,
+                 estimated_total_hits: (result && (result.estimatedTotalHits ?? result.nbHits)) ?? mapped.length,
+                 offset: (result && result.offset !== undefined) ? result.offset : (Number.isFinite(offset) ? offset : 0),
+                 limit: (result && result.limit !== undefined) ? result.limit : (Number.isFinite(limit) ? limit : 50)
+             });
+         } catch (error) {
+             const durationMs = Date.now() - startTime;
+             console.error('❌ meiliSearchEnriched error:', error);
+             return res.status(500).json({
+                 success: false,
+                 error: error?.message || 'Meili arama hatası',
+                 response_time_ms: durationMs
+             });
+         }
+     }
+
+     async meiliSearchEnrichedSmart(req, res) {
+         // Şimdilik "smart" varyantı aynı handler üzerinden çalışsın.
+         // Dashboard bu endpoint'i kullanıyor; ileride müşteri özel sıralama/filtre eklenebilir.
+         return this.meiliSearchEnriched(req, res);
+     }
     
     // 7.11 ARAMA İSTATİSTİKLERİ
     async getSearchStats(req, res) {
