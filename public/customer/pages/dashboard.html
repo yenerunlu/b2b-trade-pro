@@ -2320,7 +2320,7 @@
             }
 
             productsTableBody.innerHTML = products.map(product => {
-                const productCode = product.productCode || product.code || '-';
+                const productCode = product.itemCode || product.productCode || product.code || '-';
                 const productCodeDom = safeDomId(productCode);
                 const productName = product.productName || product.name || 'İsimsiz Ürün';
                 const oemCode = product.oemCode || '-';
@@ -2329,8 +2329,8 @@
                 const ikitelliStock = product.ikitelliStock || 0;
                 const bostanciStock = product.bostanciStock || 0;
                 const depotStock = product.depotStock || 0;
-                const unitPrice = product.unitPrice || 0;
-                const currencyCode = product.currencyCode || 160;
+                const unitPrice = product.unitPrice || product.price || 0;
+                const currencyCode = product.currencyCode || product.currency || 160;
                 const finalPrice = product.finalPrice || unitPrice;
                 const discountRate = product.totalDiscountRate || product.discountRate || 0;
                 const discounts = product.discounts || [];
@@ -3195,7 +3195,32 @@
                     throw new Error(result?.error || 'Arama başarısız');
                 }
 
-                const products = Array.isArray(result.results) ? result.results : [];
+                const products = Array.isArray(result.hits) ? result.hits : [];
+
+                const isCampaignProduct = (p) => {
+                    const rate = Number(p?.totalDiscountRate ?? p?.discountRate ?? 0) || 0;
+                    const discounts = Array.isArray(p?.discounts) ? p.discounts : [];
+                    const hasDiscounts = discounts.some(d => Number(d?.rate || 0) > 0);
+                    return rate > 0 || hasDiscounts;
+                };
+
+                const hasAnyStock = (p) => {
+                    const keys = ['centralStock', 'ikitelliStock', 'bostanciStock', 'depotStock', 'stock', 'stok'];
+                    let sum = 0;
+                    keys.forEach(k => {
+                        const v = Number(p?.[k] || 0) || 0;
+                        sum += v;
+                    });
+                    return sum > 0;
+                };
+
+                let filteredProducts = products;
+                if (onlyCampaignProducts) {
+                    filteredProducts = filteredProducts.filter(isCampaignProduct);
+                }
+                if (onlyInStockProducts) {
+                    filteredProducts = filteredProducts.filter(hasAnyStock);
+                }
 
                 const isCampaignProduct = (p) => {
                     const rate = Number(p?.totalDiscountRate ?? p?.discountRate ?? 0) || 0;

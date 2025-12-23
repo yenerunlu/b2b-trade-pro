@@ -7,9 +7,29 @@
 const sql = require('mssql');
 const { b2bConfig, logoConfig } = require('../config/database');
 const smartSearchHelper = require('./smart-search');
-const meiliSearchService = require('../services/meiliSearchService');
 
 class B2BSearchController {
+    constructor() {
+        const { b2bConfig, logoConfig } = require('../config/database');
+        
+        this.logoConfig = {
+            server: '5.180.186.54',
+            database: 'LOGOGO3',
+            user: 'sa',
+            password: 'Logo12345678',
+            options: {
+                encrypt: true,
+                trustServerCertificate: true
+            }
+        };
+
+        this.b2bConfig = b2bConfig;
+        
+        this.logoPool = null;
+        this.b2bPool = null;
+        this.startupTime = new Date();
+    }
+    
     // Basit fiyat formatlama: null/undefined durumunda 0 döndürür, sayıyı 2 haneye yuvarlar
     formatPrice(value) {
         const num = Number(value) || 0;
@@ -969,6 +989,237 @@ class B2BSearchController {
         } catch (error) {
             console.error('İstatistik hatası:', error);
             res.status(500).json({ success: false, error: error.message });
+        }
+    }
+
+    // 7.12 MEILI ENRICHED WRAPPER (temporary - delegates to MeiliSearchController)
+    async meiliSearchEnriched(req, res) {
+        try {
+            const meiliSearchController = require('./meiliSearchController');
+            
+            // MeiliSearchController doğrudan response döndürür, biz enrich yapacağız
+            const response = await new Promise((resolve, reject) => {
+                const originalRes = {
+                    json: (data) => resolve(data),
+                    status: (code) => ({
+                        json: (data) => resolve({ ...data, statusCode: code })
+                    })
+                };
+                
+                meiliSearchController.search(req, originalRes).catch(reject);
+            });
+            
+            // Response'u enrich et
+            if (response && response.hits && Array.isArray(response.hits)) {
+                const enrichedHits = await Promise.all(response.hits.map(async (hit) => {
+                    // Stok bilgisini ekle
+                    const stockInfo = await this.addStockInfoForSingleItem(hit.itemCode || hit.id);
+                    // Fiyat bilgisini ekle
+                    const priceInfo = await this.addPriceInfoForSingleItem(hit.itemCode || hit.id, req.user?.cari_kodu);
+                    
+                    return {
+                        ...hit,
+                        ...stockInfo,
+                        ...priceInfo
+                    };
+                }));
+                
+                response.hits = enrichedHits;
+                return res.json(response);
+            }
+            
+            return res.json(response);
+        } catch (error) {
+            console.error('meiliSearchEnriched error:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Arama sıralanamadı'
+            });
+        }
+    }
+
+    // 7.13 MEILISEARCH ARAMA (ENRICHED SMART STRATEGY)
+    async meiliSearchEnrichedSmart(req, res) {
+        try {
+            const meiliSearchController = require('./meiliSearchController');
+            
+            // MeiliSearch'e delegasyon - Response'u yakalamak için mock nesne kullanıyoruz
+            const result = await new Promise((resolve, reject) => {
+                const originalRes = {
+                    json: (data) => resolve(data),
+                    status: (code) => ({
+                        json: (data) => resolve({ ...data, statusCode: code })
+                    })
+                };
+                
+                meiliSearchController.search(req, originalRes).catch(reject);
+            });
+            
+            // Her hit için stok ve fiyat enrich
+            if (result.hits && Array.isArray(result.hits)) {
+                const enrichedHits = await Promise.all(result.hits.map(async (hit) => {
+                    const itemCode = hit.itemCode || hit.CODE;
+                    
+                    // Stok enrich
+                    const stockInfo = await this.addStockInfoForSingleItem(itemCode);
+                    
+                    // Fiyat enrich
+                    const priceInfo = await this.addPriceInfoForSingleItem(itemCode, req.user?.customerCode);
+                    
+                    return {
+                        ...hit,
+                        ...stockInfo,
+                        ...priceInfo
+                    };
+                }));
+                result.hits = enrichedHits;
+            }
+            
+            return res.json(result);
+        } catch (error) {
+            console.error('meiliSearchEnrichedSmart error:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Arama sıralanamadı'
+            });
+        }
+    }
+
+    // ... (unchanged code)
+
+    // 7.14 TEK ÜRÜN İÇİN STOK BİLGİSİ
+    async addStockInfoForSingleItem(itemCode) {
+        if (!itemCode) return {};
+        
+        try {
+            const pool = await sql.connect(this.logoConfig);
+            const request = pool.request();
+            request.input('itemCode', sql.NVarChar(50), itemCode);
+            
+            // DOĞRU STOK SORGUSU - LV_013_01_STINVTOT view kullanılarak
+            const result = await request.query(`
+                SELECT 
+                    -- Merkez stok (INVENNO = 0)
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 0 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS centralStock,
+                    -- İkitelli (INVENNO = 1)
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 1 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS ikitelliStock,
+                    -- Bostancı (INVENNO = 2)
+                    ISNULL(SUM(CASE WHEN S.INVENNO = 2 THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS bostanciStock,
+                    -- Depo stokları (INVENNO = 1, 2 toplamı - Geriye dönük uyumluluk için)
+                    ISNULL(SUM(CASE WHEN S.INVENNO IN (1, 2) THEN S.ONHAND - S.RESERVED ELSE 0 END), 0) AS depotStock,
+                    -- Toplam stok
+                    ISNULL(SUM(S.ONHAND - S.RESERVED), 0) AS totalStock
+                FROM LOGOGO3.dbo.LG_013_ITEMS I
+                LEFT JOIN LOGOGO3.dbo.LV_013_01_STINVTOT S ON S.STOCKREF = I.LOGICALREF
+                WHERE I.CODE = @itemCode
+                GROUP BY I.CODE
+            `);
+            
+            console.log(`Stok sorgusu - ${itemCode}:`, result.recordset.length, 'kayıt bulundu');
+            
+            const stock = result.recordset[0] || {};
+            return {
+                centralStock: stock.centralStock || 0,
+                ikitelliStock: stock.ikitelliStock || 0,
+                bostanciStock: stock.bostanciStock || 0,
+                depotStock: stock.depotStock || 0,
+                totalStock: stock.totalStock || 0
+            };
+        } catch (error) {
+            console.error('Stok bilgisi alınamadı:', itemCode, error.message);
+            return {
+                centralStock: 0,
+                depotStock: 0,
+                totalStock: 0
+            };
+        }
+    }
+
+    // 7.15 TEK ÜRÜN İÇİN FİYAT BİLGİSİ
+    async addPriceInfoForSingleItem(itemCode, customerCode) {
+        if (!itemCode) return {};
+        
+        try {
+            const pool = await sql.connect(this.logoConfig);
+            const request = pool.request();
+            request.input('itemCode', sql.NVarChar(50), itemCode);
+            if (customerCode) {
+                request.input('customerCode', sql.NVarChar(50), customerCode);
+            }
+            
+            // 1. DOĞRU FİYAT SORGUSU - Logo GO3'den fiyat bilgisi al
+            const priceResult = await request.query(`
+                SELECT TOP 1
+                    ISNULL(ROUND(
+                        CASE 
+                            WHEN PR.CURRENCY = 160 THEN PR.PRICE
+                            ELSE PR.PRICE * ISNULL(C.AVGCURRVAL, 1)
+                        END, 2
+                    ), 0) AS price,
+                    CASE PR.CURRENCY
+                        WHEN 160 THEN 'TL'
+                        WHEN 1 THEN 'USD'
+                        WHEN 20 THEN 'EUR'
+                        WHEN 17 THEN 'GBP'
+                        ELSE 'DİĞER'
+                    END AS currency
+                FROM LOGOGO3.dbo.LG_013_ITEMS I
+                LEFT JOIN LOGOGO3.dbo.LG_013_PRCLIST PR ON PR.CARDREF = I.LOGICALREF
+                LEFT JOIN LOGOGO3.dbo.LG_013_AVGCURRS C ON C.CURRTYPE = PR.CURRENCY
+                WHERE I.CODE = @itemCode
+                    AND PR.PTYPE = 2  -- Satış fiyatı
+                    AND (PR.GRPCODE IS NULL OR PR.GRPCODE = '')  -- GRPCODE boş olan varsayılan fiyat
+                ORDER BY PR.BEGDATE DESC
+            `);
+            
+            const priceData = priceResult.recordset[0] || {};
+
+            // 2. İskonto Sorgusu (B2B - b2b_customer_overrides tablosundan)
+            let discounts = [];
+            if (customerCode) {
+                // Not: Aynı request nesnesini kullanabiliriz çünkü input'lar aynı scope'da
+                const discountResult = await request.query(`
+                    SELECT setting_type, value 
+                    FROM B2B_TRADE_PRO.dbo.b2b_customer_overrides 
+                    WHERE customer_code = @customerCode 
+                      AND is_active = 1 
+                      AND setting_type LIKE 'discount_general_%'
+                      AND item_code IS NULL
+                    ORDER BY setting_type
+                `);
+                
+                discounts = discountResult.recordset.map(d => ({
+                    type: d.setting_type,
+                    rate: Number(d.value) || 0
+                }));
+            }
+            
+            console.log(`✅ Fiyat/İskonto sorgusu - ${itemCode}:`, {
+                price: priceData.price, 
+                discounts: discounts.length
+            });
+            
+            // Frontend sayısal currency kodları bekliyor (160=TL, 1=USD, 20=EUR)
+            let currencyCode = 160; // Varsayılan TL
+            if (priceData.currency === 'USD') currencyCode = 1;
+            if (priceData.currency === 'EUR') currencyCode = 20;
+            if (priceData.currency === 'GBP') currencyCode = 17;
+            if (priceData.currency === 'TL') currencyCode = 160;
+
+            return {
+                price: priceData.price || 0,
+                discountRate: 0, // Ana indirim oranı (hesaplanmış) frontend tarafından yapılabilir veya buraya eklenebilir
+                discounts: discounts, // Frontend bu diziyi sırayla uygular
+                currency: currencyCode
+            };
+        } catch (error) {
+            console.error('❌ Fiyat bilgisi alınamadı:', itemCode, error.message);
+            return {
+                price: 0,
+                discountRate: 0,
+                discounts: [],
+                currency: 160
+            };
         }
     }
 }

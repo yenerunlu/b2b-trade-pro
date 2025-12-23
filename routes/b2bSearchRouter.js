@@ -8,17 +8,29 @@ const meiliSearchController = require('../controllers/meiliSearchController');
 // 7.12 AUTH MIDDLEWARE
 const authenticateCustomer = (req, res, next) => {
     try {
-        const userDataBase64 = req.headers['x-user-data-base64'];
-        if (!userDataBase64) {
-            return res.status(401).json({ 
-                success: false, 
-                error: 'Kimlik doğrulama gerekli' 
+        const rawHeader = req.headers['x-user-data-base64'] || req.headers['x-user-data'];
+        if (!rawHeader) {
+            return res.status(401).json({
+                success: false,
+                error: 'Kimlik doğrulama gerekli'
             });
         }
-        
-        // Base64 decode
-        const decoded = Buffer.from(userDataBase64, 'base64').toString('utf-8');
-        const userData = JSON.parse(decoded);
+
+        const raw = String(rawHeader || '').trim();
+
+        let userData;
+        if (raw.startsWith('{') || raw.startsWith('[')) {
+            userData = JSON.parse(raw);
+        } else {
+            const normalizedBase64 = raw
+                .replace(/\s+/g, '')
+                .replace(/-/g, '+')
+                .replace(/_/g, '/');
+            const padLen = (4 - (normalizedBase64.length % 4)) % 4;
+            const padded = normalizedBase64 + '='.repeat(padLen);
+            const decoded = Buffer.from(padded, 'base64').toString('utf-8').trim();
+            userData = JSON.parse(decoded);
+        }
 
         const role = String(userData?.rol || userData?.user_type || '').toLowerCase();
         if (role !== 'customer') {
@@ -77,8 +89,26 @@ router.post('/meili-search-enriched', authenticateCustomer, async (req, res) => 
     await b2bSearchController.meiliSearchEnriched(req, res);
 });
 
+// Alias (GET): Search (enriched with Logo DB price + warehouse stocks)
+router.get('/meili-search-enriched', authenticateCustomer, async (req, res) => {
+    req.body = {
+        ...(req.body || {}),
+        ...(req.query || {})
+    };
+    await b2bSearchController.meiliSearchEnriched(req, res);
+});
+
 // Meilisearch - Search (customer-only smart strategy: fewer noisy results)
 router.post('/meili-search-enriched-smart', authenticateCustomer, async (req, res) => {
+    await b2bSearchController.meiliSearchEnrichedSmart(req, res);
+});
+
+// Alias (GET): Search (customer-only smart strategy: fewer noisy results)
+router.get('/meili-search-enriched-smart', authenticateCustomer, async (req, res) => {
+    req.body = {
+        ...(req.body || {}),
+        ...(req.query || {})
+    };
     await b2bSearchController.meiliSearchEnrichedSmart(req, res);
 });
 
